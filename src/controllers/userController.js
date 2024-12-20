@@ -649,7 +649,6 @@ const addPickupLocation = async (pickupDetails) => {
     throw error;
   }
 };
-
 exports.loginDesigner = async (req, res) => {
   try {
     const { email, password } = req.body;
@@ -676,13 +675,25 @@ exports.loginDesigner = async (req, res) => {
       return res.status(404).json({ message: "Designer profile not found" });
     }
 
-    // Step 5: Generate a token (optional)
+    // Step 5: Check if the designer is approved
+    if (!designer.is_approved) {
+      return res.status(403).json({
+        message: "Access denied. Your profile is not approved yet.",
+      });
+    }
 
-    // Step 6: Return userId, designerId, and token
+    // Step 6: Generate a token (optional)
+    // Uncomment and integrate JWT token logic if needed
+    // const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET, {
+    //   expiresIn: "1h",
+    // });
+
+    // Step 7: Return userId, designerId, and token (if applicable)
     res.status(200).json({
       message: "Login successful",
       userId: user._id,
       designerId: designer._id,
+      // token, // Add token here if enabled
     });
   } catch (error) {
     console.error("Error during login:", error);
