@@ -780,6 +780,20 @@ exports.shippingWebhook = async (req, res) => {
 
     console.log("Matching shipping record found:", shippingRecord);
 
+    // Retrieve productId(s) from the productDetails array in the Shipping document
+    const productIds = shippingRecord.productDetails.map((product) =>
+      product.productId.toString()
+    );
+
+    if (!productIds || productIds.length === 0) {
+      console.log("No product details found in the shipping record.");
+      return res.status(404).json({
+        message: "No product details found in the shipping record.",
+      });
+    }
+
+    console.log("Product IDs from shipping record:", productIds);
+
     // Search for matching order in the Orders table
     const orderRecord = await Orders.findOne({
       orderId: shippingRecord.order_id,
@@ -796,6 +810,25 @@ exports.shippingWebhook = async (req, res) => {
     }
 
     console.log("Matching order record found:", orderRecord);
+
+    // Update the shipping_status field in the products array for the matched productId(s)
+    let updated = false;
+    orderRecord.products.forEach((product) => {
+      if (productIds.includes(product.productId.toString())) {
+        product.shipping_status = shipment_status;
+        updated = true;
+      }
+    });
+
+    if (updated) {
+      // Explicitly mark the array as modified
+      orderRecord.markModified("products");
+      await orderRecord.save();
+
+      console.log("Updated shipping_status in order record successfully.");
+    } else {
+      console.log("No matching products found in the order to update.");
+    }
 
     // Get the userId from the order document
     const userId = orderRecord.userId;
@@ -830,7 +863,8 @@ exports.shippingWebhook = async (req, res) => {
       console.log("FCM notification sent successfully:", fcmResponse);
 
       return res.status(200).json({
-        message: "Webhook handled successfully and FCM notification sent.",
+        message:
+          "Webhook handled successfully, shipping status updated, and FCM notification sent.",
       });
     } catch (fcmError) {
       console.error("Error sending FCM notification:", fcmError);
@@ -846,4 +880,5 @@ exports.shippingWebhook = async (req, res) => {
       error: error.message,
     });
   }
+  
 };
