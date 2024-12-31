@@ -9,6 +9,9 @@ const ShippingSchema = new mongoose.Schema({
     type: String,
     required: true,
   },
+  shiprocket_order_id: {
+    type: String,
+  },
   invoiceUrl: {
     type: String,
   },

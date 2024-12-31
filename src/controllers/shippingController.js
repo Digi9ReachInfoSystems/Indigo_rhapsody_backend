@@ -31,6 +31,10 @@ exports.ship = async (req, res) => {
       designerRef,
     } = req.body;
 
+    const randomOrderId = Math.floor(
+      1000000000 + Math.random() * 9000000000
+    ).toString();
+
     if (!orderId) {
       console.log("Order ID not provided");
       return res.status(400).json({ message: "orderId is required." });
@@ -107,7 +111,7 @@ exports.ship = async (req, res) => {
     }, 0);
 
     const requestBody = {
-      order_id: order.orderId,
+      order_id: randomOrderId,
       order_date: order.orderDate.toISOString(),
       pickup_location: pickup_Location || "Default Location",
       comment: "Order shipping initiated.",
@@ -172,7 +176,8 @@ exports.ship = async (req, res) => {
     console.log("Shipping status updated in Order document");
 
     const shippingDoc = new Shipping({
-      order_id: orderId, // Store the original order ID
+      order_id: orderId,
+      shiprocket_order_id: randomOrderId,
       shipmentId: shipment_id,
       status: status,
       designerRef: designerRef, // Store designerRef at the top level
