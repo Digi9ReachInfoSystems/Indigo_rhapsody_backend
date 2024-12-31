@@ -828,13 +828,12 @@ exports.getMonthlyOrderStats = async (req, res) => {
 
 exports.createReturnRequest = async (req, res) => {
   try {
-    const { orderId, productId, reason,imageUrl,status } = req.body;
+    const { orderId, productId, reason, imageUrl } = req.body;
 
     // Ensure productId is a valid ObjectId
     if (!mongoose.Types.ObjectId.isValid(productId)) {
       return res.status(400).json({ message: "Invalid productId format" });
     }
-
 
     const order = await Order.findOne({
       _id: orderId,
@@ -860,6 +859,8 @@ exports.createReturnRequest = async (req, res) => {
     product.returnRequest = true;
     product.returnStatus = "requested";
     product.returnId = `RET-${Date.now()}`; // Example return ID
+    product.returnReason = reason || "Not provided";
+    product.returnImageUrl = imageUrl || "";
 
     await order.save();
 
@@ -871,7 +872,8 @@ exports.createReturnRequest = async (req, res) => {
         designerRef: product.designerRef,
         returnId: product.returnId,
         returnStatus: product.returnStatus,
-        reason: reason || "Not provided",
+        reason: product.returnReason,
+        imageUrl: product.returnImageUrl,
       },
     });
   } catch (error) {
