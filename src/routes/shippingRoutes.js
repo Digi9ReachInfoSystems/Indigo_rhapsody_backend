@@ -15,5 +15,5 @@ router.post(
   shippingController.declineReturnRequestForDesigner
 );
 router.post("/createReturn", shippingController.createReturnRequestForDesigner);
-
+router.post("/shipping-webhook", shippingWebhook);
 module.exports = router;
