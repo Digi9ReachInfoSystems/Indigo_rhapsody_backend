@@ -745,39 +745,7 @@ exports.shippingWebhook = async (req, res) => {
     // Extract the payload from the request body
     const payload = req.body;
 
-    // Sample response for comparison
-    const sampleResponse = {
-      awb: "19041424751540",
-      courier_name: "Delhivery Surface",
-      current_status: "IN TRANSIT",
-      current_status_id: 20,
-      shipment_status: "IN TRANSIT",
-      shipment_status_id: 18,
-      current_timestamp: "23 05 2023 11:43:52",
-      order_id: "1373900_150876814",
-      sr_order_id: 348456385,
-      awb_assigned_date: "2023-05-19 11:59:16",
-      pickup_scheduled_date: "2023-05-19 11:59:17",
-      etd: "2023-05-23 15:40:19",
-      scans: [
-        {
-          date: "2023-05-19 11:59:16",
-          status: "X-UCI",
-          activity: "Manifested - Manifest uploaded",
-          location: "Chomu_SamodRd_D (Rajasthan)",
-          "sr-status": "5",
-          "sr-status-label": "MANIFEST GENERATED",
-        },
-        // More scan objects...
-      ],
-      is_return: 0,
-      channel_id: 3422553,
-      pod_status: "OTP Based Delivery",
-      pod: "Not Available",
-    };
-
-    // Compare the received payload with the sample response
-    if (JSON.stringify(payload) === JSON.stringify(sampleResponse)) {
+    if (!payload) {
       console.log("Payload matches the sample response.");
       return res.status(200).json({
         message: "Webhook received and payload matches the sample response.",
