@@ -825,7 +825,6 @@ exports.getMonthlyOrderStats = async (req, res) => {
     });
   }
 };
-
 exports.createReturnRequest = async (req, res) => {
   try {
     const { orderId, productId, reason, imageUrl } = req.body;
@@ -855,12 +854,11 @@ exports.createReturnRequest = async (req, res) => {
         .json({ message: "Product not found in the order" });
     }
 
-    // Mark product for return and update return status
     product.returnRequest = true;
     product.returnStatus = "requested";
-    product.returnId = `RET-${Date.now()}`; // Example return ID
-    product.returnReason = reason || "Not provided";
-    product.returnImageUrl = imageUrl || "";
+    product.returnId = `RET-${Date.now()}`;
+    product.reason = reason || "Not provided"; // Corrected field name
+    product.imageUrl = imageUrl || ""; // Corrected field name
 
     await order.save();
 
@@ -872,9 +870,8 @@ exports.createReturnRequest = async (req, res) => {
         designerRef: product.designerRef,
         returnId: product.returnId,
         returnStatus: product.returnStatus,
-        reason: product.returnReason,
-        imageUrl: product.returnImageUrl,
-        reason: product.returnReason,
+        reason: product.reason, // Corrected field name
+        imageUrl: product.imageUrl, // Corrected field name
       },
     });
   } catch (error) {
