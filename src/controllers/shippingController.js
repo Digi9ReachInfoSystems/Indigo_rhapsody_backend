@@ -554,6 +554,8 @@ exports.createReturnRequestForDesigner = async (req, res) => {
       },
     ];
 
+    console.log({ orderItems });
+
     // Prepare the request body as per Shiprocket API requirements
     const requestBody = {
       order_id: returnId, // Use returnId as order_id for the return request
