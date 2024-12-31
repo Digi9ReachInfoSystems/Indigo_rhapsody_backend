@@ -828,14 +828,14 @@ exports.getMonthlyOrderStats = async (req, res) => {
 
 exports.createReturnRequest = async (req, res) => {
   try {
-    const { orderId, productId, reason } = req.body;
+    const { orderId, productId, reason,imageUrl,status } = req.body;
 
     // Ensure productId is a valid ObjectId
     if (!mongoose.Types.ObjectId.isValid(productId)) {
       return res.status(400).json({ message: "Invalid productId format" });
     }
 
-    // Find the order by ID and ensure it contains the product
+
     const order = await Order.findOne({
       _id: orderId,
       "products.productId": productId,

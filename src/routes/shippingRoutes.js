@@ -10,6 +10,10 @@ router.get(
   "/designer/:designerRef",
   shippingController.getShippingsByDesignerRef
 );
+router.post(
+  "/rejectRequest",
+  shippingController.declineReturnRequestForDesigner
+);
 router.post("/createReturn", shippingController.createReturnRequestForDesigner);
 
 module.exports = router;

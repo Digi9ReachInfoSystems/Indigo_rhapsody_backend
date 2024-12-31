@@ -379,6 +379,65 @@ exports.getShippingsByDesignerRef = async (req, res) => {
   }
 };
 
+exports.declineReturnRequestForDesigner = async (req, res) => {
+  try {
+    console.log("Starting declineReturnRequestForDesigner function...");
+
+    const { returnId } = req.body; // Get returnId from request body
+
+    // Validate required fields
+    if (!returnId) {
+      console.log("Return ID not provided");
+      return res.status(400).json({ message: "returnId is required." });
+    }
+
+    // Find the order containing the product with the given returnId
+    console.log("Fetching order details...");
+    const order = await Orders.findOne({ "products.returnId": returnId })
+      .populate({
+        path: "products.productId",
+        select: "productName sku designerRef imageUrl",
+      })
+      .populate("userId");
+
+    if (!order) {
+      console.log("Order not found for returnId:", returnId);
+      return res
+        .status(404)
+        .json({ message: "Order not found for the provided returnId." });
+    }
+
+    console.log("Order details fetched successfully:", order);
+
+    // Find the product with the given returnId
+    const product = order.products.find((prod) => prod.returnId === returnId);
+
+    if (!product) {
+      console.log("Product not found with returnId:", returnId);
+      return res
+        .status(404)
+        .json({ message: "Product not found with the provided returnId." });
+    }
+
+    console.log("Product details fetched successfully:", product);
+
+    // Update the product's returnStatus to "Rejected" and save the order
+    product.returnStatus = "Rejected";
+    await order.save();
+
+    res.status(200).json({
+      message: "Return request declined successfully",
+    });
+
+    console.log("Finished declineReturnRequestForDesigner function");
+  } catch (error) {
+    console.error("Error declining return request:", error.message);
+    res
+      .status(500)
+      .json({ error: "Internal Server Error", details: error.message });
+  }
+};
+
 exports.createReturnRequestForDesigner = async (req, res) => {
   try {
     console.log("Starting createReturnRequestForDesigner function...");
