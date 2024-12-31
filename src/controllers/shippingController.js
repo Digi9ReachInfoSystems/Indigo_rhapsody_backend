@@ -745,16 +745,16 @@ exports.shippingWebhook = async (req, res) => {
     // Extract the payload from the request body
     const payload = req.body;
 
-    if (!payload) {
-      console.log("Payload matches the sample response.");
+    if (payload) {
+      console.log("Received payload:", JSON.stringify(payload, null, 2));
       return res.status(200).json({
-        message: "Webhook received and payload matches the sample response.",
+        message: "Webhook received successfully.",
+        data: payload,
       });
     } else {
-      console.log("Payload does not match the sample response.");
+      console.log("No payload received.");
       return res.status(400).json({
-        message:
-          "Webhook received, but payload does not match the sample response.",
+        message: "Webhook received, but no payload was provided.",
       });
     }
   } catch (error) {
