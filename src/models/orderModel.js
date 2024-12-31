@@ -77,6 +77,9 @@ const OrderSchema = new mongoose.Schema({
         type: Number,
         default: 0,
       },
+      imageUrl: {
+        type: String,
+      },
     },
   ],
   subtotal: {
@@ -86,7 +89,6 @@ const OrderSchema = new mongoose.Schema({
   tax_amount: {
     type: Number,
     default: 0,
-    
   },
   shipping_cost: {
     type: Number,
