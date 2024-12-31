@@ -191,7 +191,7 @@ exports.ship = async (req, res) => {
       invoiceUrl: "",
       length: length || 10,
       breadth: breadth || 5,
-      height: height || 8,
+      height: height || 8,  
       weight: weight || 1.5,
       order_date: order.orderDate,
       pickup_location: pickup_Location || "Default Location",

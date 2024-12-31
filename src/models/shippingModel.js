@@ -15,6 +15,14 @@ const ShippingSchema = new mongoose.Schema({
   invoiceUrl: {
     type: String,
   },
+  productDetails: [
+    {
+      productId: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "Product",
+      },
+    },
+  ],
   order_date: {
     type: Date,
     required: true, // Ensure this is required for data integrity
@@ -59,6 +67,11 @@ const ShippingSchema = new mongoose.Schema({
   shipping_is_billing: {
     type: Boolean,
   },
+  product_id: [
+    {
+      type: String,
+    },
+  ],
   order_items: [
     {
       productId: {
