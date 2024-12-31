@@ -550,10 +550,7 @@ exports.createReturnRequestForDesigner = async (req, res) => {
     console.log("Shipping details fetched successfully:", shippingDoc);
     const orderItems = [
       {
-        name: product.productId.productName || "Product Name",
-        sku: product.productId.sku || "SKU",
-        units: product.quantity || 1,
-        selling_price: product.price || 0,
+        productId: product.productId._id,
       },
     ];
 
