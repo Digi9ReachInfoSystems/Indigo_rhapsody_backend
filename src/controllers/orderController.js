@@ -874,6 +874,7 @@ exports.createReturnRequest = async (req, res) => {
         returnStatus: product.returnStatus,
         reason: product.returnReason,
         imageUrl: product.returnImageUrl,
+        reason: product.returnReason,
       },
     });
   } catch (error) {

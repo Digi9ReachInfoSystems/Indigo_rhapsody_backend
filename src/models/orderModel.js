@@ -80,6 +80,9 @@ const OrderSchema = new mongoose.Schema({
       imageUrl: {
         type: String,
       },
+      reason:{
+        type: String,
+      }
     },
   ],
   subtotal: {
