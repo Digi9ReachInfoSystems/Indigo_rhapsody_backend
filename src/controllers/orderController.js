@@ -906,6 +906,8 @@ exports.getReturnRequestsByDesigner = async (req, res) => {
           "products.returnStatus": 1,
           "products.color": 1,
           "products.size": 1,
+          "products.imageUrl": 1, // Include imageUrl
+          "products.reason": 1, // Include reason
           createdDate: 1,
         },
       },
