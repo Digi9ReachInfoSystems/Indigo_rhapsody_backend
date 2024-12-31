@@ -3,6 +3,10 @@ const fetch = require("node-fetch");
 const Orders = require("../models/orderModel");
 const Shipping = require("../models/shippingModel");
 const Designer = require("../models/designerModel");
+// Replace with the actual path to your Shipping model
+// Replace with the actual path to your Orders model
+const Users = require("../models/userModel"); // Replace with the actual path to your Users model
+const admin = require("firebase-admin");
 const {
   sendFcmNotification,
 } = require("../controllers/notificationController"); // Import the Shipping model if needed
@@ -544,6 +548,14 @@ exports.createReturnRequestForDesigner = async (req, res) => {
     }
 
     console.log("Shipping details fetched successfully:", shippingDoc);
+    const orderItems = [
+      {
+        name: product.productId.productName || "Product Name",
+        sku: product.productId.sku || "SKU",
+        units: product.quantity || 1,
+        selling_price: product.price || 0,
+      },
+    ];
 
     // Prepare the request body as per Shiprocket API requirements
     const requestBody = {
@@ -575,15 +587,7 @@ exports.createReturnRequestForDesigner = async (req, res) => {
       shipping_isd_code: "91",
       shipping_country: "India",
 
-      order_items: [
-        {
-          name: product.productName,
-
-          sku: product.sku,
-          units: product.quantity,
-          selling_price: product.price,
-        },
-      ],
+      order_items: orderItems,
       payment_method: order.paymentMethod || "PREPAID",
       sub_total: product.price * product.quantity,
       length: shippingDoc.length || 11,
@@ -745,16 +749,95 @@ exports.shippingWebhook = async (req, res) => {
     // Extract the payload from the request body
     const payload = req.body;
 
-    if (payload) {
-      console.log("Received payload:", JSON.stringify(payload, null, 2));
-      return res.status(200).json({
-        message: "Webhook received successfully.",
-        data: payload,
-      });
-    } else {
+    if (!payload) {
       console.log("No payload received.");
       return res.status(400).json({
         message: "Webhook received, but no payload was provided.",
+      });
+    }
+
+    console.log("Received payload:", JSON.stringify(payload, null, 2));
+
+    // Extract order_id and shipment_status from the payload
+    const { order_id, shipment_status } = payload;
+
+    if (!order_id || !shipment_status) {
+      return res.status(400).json({
+        message: "Invalid payload: Missing order_id or shipment_status.",
+      });
+    }
+
+    // Search for matching record in the Shipping table
+    const shippingRecord = await Shipping.findOne({
+      shiprocket_order_id: order_id,
+    });
+
+    if (!shippingRecord) {
+      console.log("No matching shipping record found for order_id:", order_id);
+      return res.status(404).json({
+        message: "No matching shipping record found.",
+      });
+    }
+
+    console.log("Matching shipping record found:", shippingRecord);
+
+    // Search for matching order in the Orders table
+    const orderRecord = await Orders.findOne({
+      orderId: shippingRecord.order_id,
+    });
+
+    if (!orderRecord) {
+      console.log(
+        "No matching order record found for order_id:",
+        shippingRecord.order_id
+      );
+      return res.status(404).json({
+        message: "No matching order record found.",
+      });
+    }
+
+    console.log("Matching order record found:", orderRecord);
+
+    // Get the userId from the order document
+    const userId = orderRecord.userId;
+
+    // Fetch the user's FCM token from the Users table
+    const userRecord = await Users.findById(userId);
+
+    if (!userRecord || !userRecord.fcmToken) {
+      console.log("User not found or FCM token missing for userId:", userId);
+      return res.status(404).json({
+        message: "User not found or FCM token missing.",
+      });
+    }
+
+    console.log("User found with FCM token:", userRecord.fcmToken);
+
+    // Send an FCM notification to the user
+    const fcmMessage = {
+      token: userRecord.fcmToken,
+      notification: {
+        title: "Shipping Update",
+        body: `Your order with ID ${order_id} is now ${shipment_status}.`,
+      },
+      data: {
+        orderId: order_id,
+        shipmentStatus: shipment_status,
+      },
+    };
+
+    try {
+      const fcmResponse = await admin.messaging().send(fcmMessage);
+      console.log("FCM notification sent successfully:", fcmResponse);
+
+      return res.status(200).json({
+        message: "Webhook handled successfully and FCM notification sent.",
+      });
+    } catch (fcmError) {
+      console.error("Error sending FCM notification:", fcmError);
+      return res.status(500).json({
+        message: "Error sending FCM notification.",
+        error: fcmError.message,
       });
     }
   } catch (error) {
