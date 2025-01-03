@@ -320,3 +320,34 @@ exports.updateDesignerApprovalStatus = async (req, res) => {
     });
   }
 };
+
+exports.getDesignerNameByUserId = async (req, res) => {
+  try {
+    const { userId } = req.params;
+
+    // Find the designer by userId and populate the displayName from the User table
+    const designer = await Designer.findOne({ userId }).populate(
+      "userId",
+      "displayName"
+    );
+
+    if (!designer) {
+      return res.status(404).json({ message: "Designer not found" });
+    }
+
+    // Return the designer's name (displayName from User table)
+    return res.status(200).json({
+      message: "Designer fetched successfully",
+      designer: {
+        displayName: designer.userId.displayName, // Access populated displayName
+        userId: designer.userId._id,
+      },
+    });
+  } catch (error) {
+    console.error("Error fetching designer by userId:", error);
+    return res.status(500).json({
+      message: "Error fetching designer by userId",
+      error: error.message,
+    });
+  }
+};
