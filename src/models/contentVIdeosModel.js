@@ -16,6 +16,10 @@ const contentVideoSchema = new mongoose.Schema({
     ref: "Video",
     // required: true,
   },
+  priceL: {
+    type: Number,
+   
+  },
   videoUrl: {
     type: String,
     // required: true,

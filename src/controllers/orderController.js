@@ -15,14 +15,15 @@ const {
 } = require("../controllers/notificationController");
 
 const transporter = nodemailer.createTransport({
-  host: "smtp-relay.brevo.com",
-  port: 587,
-  secure: false,
+  host: "smtp.hostinger.com",
+  port: 465,
+  secure: true,
   auth: {
-    user: "sveccha.apps@gmail.com",
-    pass: "4VhALB7qcgbYn0wv",
+    user: "Info@gully2global.com",
+    pass: "Shasudigi@217",
   },
 });
+
 
 const notifyDesignerByEmail = async (designerEmail, orderDetails) => {
   const mailOptions = {
