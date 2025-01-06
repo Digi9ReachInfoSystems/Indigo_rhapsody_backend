@@ -27,7 +27,7 @@ const transporter = nodemailer.createTransport({
 
 const notifyDesignerByEmail = async (designerEmail, orderDetails) => {
   const mailOptions = {
-    from: "sveccha.apps@gmail.com",
+    from: "Info@gully2global.com",
     to: designerEmail,
     subject: "New Order Notification",
     html: `
@@ -345,7 +345,7 @@ exports.createOrder = async (req, res) => {
 
     // Send confirmation email with invoice link
     const mailOptions = {
-      from: "sveccha.apps@gmail.com",
+      from: "Info@gully2global.com",
       to: email,
       subject: "Order Confirmation",
       html: `

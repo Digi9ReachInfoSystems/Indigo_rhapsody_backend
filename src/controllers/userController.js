@@ -55,7 +55,7 @@ exports.createUser = async (req, res) => {
     });
 
     const mailOptions = {
-      from: '"Indigo Rhapsody" <sveccha.apps@gmail.com>',
+      from: '"Indigo Rhapsody" <Info@gully2global.com>',
       to: email,
       subject: "Welcome to Indigo Rhapsody Mobile Application",
       html: `
@@ -460,7 +460,7 @@ exports.createUserAndDesigner = async (req, res) => {
     });
 
     const mailOptions = {
-      from: '"Indigo Rhapsody" <sveccha.apps@gmail.com>',
+      from: '"Indigo Rhapsody" <Info@gully2global.com>',
       to: email,
       subject: "Welcome to Indigo Rhapsody",
       html: `
