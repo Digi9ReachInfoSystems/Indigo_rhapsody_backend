@@ -119,7 +119,6 @@ exports.createUser = async (req, res) => {
       password,
       role,
       is_creator,
-      address,
     });
 
     // Save the new user to the database
