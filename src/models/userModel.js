@@ -43,23 +43,23 @@ const userSchema = new mongoose.Schema({
     {
       nick_name: {
         type: String,
-        required: true,
+  
       },
       city: {
         type: String,
-        required: true,
+
       },
       pincode: {
         type: Number,
-        required: true,
+
       },
       state: {
         type: String,
-        required: true,
+
       },
       street_details: {
         type: String,
-        required: true,
+
       },
     },
   ],
