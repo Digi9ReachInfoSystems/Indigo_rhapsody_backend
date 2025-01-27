@@ -24,7 +24,6 @@ const transporter = nodemailer.createTransport({
   },
 });
 
-
 const notifyDesignerByEmail = async (designerEmail, orderDetails) => {
   const mailOptions = {
     from: "Info@gully2global.com",
@@ -244,10 +243,9 @@ exports.getTotalOrdersOfparticularDesigner = async (req, res) => {};
 
 // Create Order Controller
 // Create Order Controller
-
 exports.createOrder = async (req, res) => {
   try {
-    const { userId, cartId, paymentMethod, notes } = req.body;
+    const { userId, cartId, paymentMethod, notes, address } = req.body;
 
     // Validate User
     const user = await User.findById(userId);
@@ -255,16 +253,29 @@ exports.createOrder = async (req, res) => {
 
     const fcmToken = user.fcmToken;
 
+    // Validate Address in the Request Body
+    if (
+      !address ||
+      !address.street ||
+      !address.city ||
+      !address.state ||
+      !address.pincode
+    ) {
+      return res
+        .status(400)
+        .json({ message: "Invalid or missing address details" });
+    }
+
     // Prepare Shipping Details
     const shippingDetails = {
       address: {
-        street: user.address,
-        city: user.city,
-        state: user.state,
-        pincode: user.pincode,
+        street: address.street,
+        city: address.city,
+        state: address.state,
+        pincode: address.pincode,
         country: "India",
       },
-      phoneNumber: user.phoneNumber,
+      phoneNumber: address.phoneNumber || user.phoneNumber, // Use provided phone number or fallback to user's
     };
 
     // Find the cart and populate product details
@@ -349,212 +360,156 @@ exports.createOrder = async (req, res) => {
       to: email,
       subject: "Order Confirmation",
       html: `
-       <!DOCTYPE html>
-<html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Order Confirmation</title>
-    <style>
-      body {
-        font-family: Arial, sans-serif;
-        margin: 0;
-        padding: 0;
-        background-color: #f9f9f9;
-      }
-      .email-container {
-        max-width: 600px;
-        margin: 20px auto;
-        background: #ffffff;
-        border-radius: 8px;
-        box-shadow: 0px 4px 10px rgba(0, 0, 0, 0.1);
-        overflow: hidden;
-      }
-      .header {
-        background-color: #004080;
-        color: #ffffff;
-        text-align: center;
-        padding: 20px;
-      }
-      .header img {
-        max-width: 100px;
-        margin-bottom: 10px;
-      }
-      .header h1 {
-        margin: 0;
-        font-size: 28px;
-      }
-      .header p {
-        margin: 5px 0 0;
-        font-size: 14px;
-      }
-      .content {
-        padding: 20px;
-        color: #333333;
-      }
-      .content h2 {
-        font-size: 20px;
-        margin-bottom: 10px;
-        color: #004080;
-      }
-      .content p {
-        font-size: 16px;
-        margin: 10px 0;
-      }
-      .content .order-details {
-        margin: 20px 0;
-      }
-      .content .order-details table {
-        width: 100%;
-        border-collapse: collapse;
-      }
-      .content .order-details table th,
-      .content .order-details table td {
-        text-align: left;
-        padding: 8px;
-        border-bottom: 1px solid #eeeeee;
-      }
-      .content .order-details table th {
-        color: #666666;
-      }
-      .content .total {
-        font-size: 18px;
-        margin: 10px 0;
-      }
-      .footer {
-        background-color: #f4f4f4;
-        padding: 15px;
-        text-align: center;
-        font-size: 14px;
-        color: #999999;
-      }
-      .footer a {
-        color: #004080;
-        text-decoration: none;
-        margin: 0 5px;
-      }
-    </style>
-  </head>
-  <body>
-    <div class="email-container">
-      <!-- Header Section -->
-      <div class="header">
-        <img
-          src="https://firebasestorage.googleapis.com/v0/b/sveccha-11c31.appspot.com/o/Logo.png?alt=media&token=c8b4c22d-8256-4092-8b46-e89e001bd1fe"
-          alt="Logo"
-        />
-        <h1>Order Received!</h1>
-        <p>Order No: ${order.orderNumber}</p>
-      </div>
-
-      <!-- Content Section -->
-      <div class="content">
-        <h2>Hello, ${order.userId.displayName}!</h2>
-        <p>
-          Thank you for your order. Your order has been received and will be
-          processed shortly. Below are the details of your order:
-        </p>
-
-        <!-- Order Details -->
-        <div class="order-details">
-          <table>
-            <tr>
-              <th>Item</th>
-              <th>Quantity</th>
-              <th>Price</th>
-            </tr>
-            ${orderProducts
-              .map(
-                (product) => `
-            <tr>
-              <td>${product.productName}</td>
-              <td>${product.quantity}</td>
-              <td>${product.price}</td>
-            </tr>
-            `
-              )
-              .join("")}
-          </table>
+      <!DOCTYPE html>
+      <html lang="en">
+      <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <title>Order Confirmation</title>
+        <style>
+          body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: #f9f9f9;
+          }
+          .email-container {
+            max-width: 600px;
+            margin: 20px auto;
+            background: #ffffff;
+            border-radius: 8px;
+            box-shadow: 0px 4px 10px rgba(0, 0, 0, 0.1);
+            overflow: hidden;
+          }
+          .header {
+            background-color: #004080;
+            color: #ffffff;
+            text-align: center;
+            padding: 20px;
+          }
+          .header img {
+            max-width: 100px;
+            margin-bottom: 10px;
+          }
+          .header h1 {
+            margin: 0;
+            font-size: 28px;
+          }
+          .header p {
+            margin: 5px 0 0;
+            font-size: 14px;
+          }
+          .content {
+            padding: 20px;
+            color: #333333;
+          }
+          .content h2 {
+            font-size: 20px;
+            margin-bottom: 10px;
+            color: #004080;
+          }
+          .content p {
+            font-size: 16px;
+            margin: 10px 0;
+          }
+          .content .order-details {
+            margin: 20px 0;
+          }
+          .content .order-details table {
+            width: 100%;
+            border-collapse: collapse;
+          }
+          .content .order-details table th,
+          .content .order-details table td {
+            text-align: left;
+            padding: 8px;
+            border-bottom: 1px solid #eeeeee;
+          }
+          .content .order-details table th {
+            color: #666666;
+          }
+          .content .total {
+            font-size: 18px;
+            margin: 10px 0;
+          }
+          .footer {
+            background-color: #f4f4f4;
+            padding: 15px;
+            text-align: center;
+            font-size: 14px;
+            color: #999999;
+          }
+          .footer a {
+            color: #004080;
+            text-decoration: none;
+            margin: 0 5px;
+          }
+        </style>
+      </head>
+      <body>
+        <div class="email-container">
+          <div class="header">
+            <img
+              src="https://firebasestorage.googleapis.com/v0/b/sveccha-11c31.appspot.com/o/Logo.png?alt=media&token=c8b4c22d-8256-4092-8b46-e89e001bd1fe"
+              alt="Logo"
+            />
+            <h1>Order Received!</h1>
+            <p>Order No: ${order.orderId}</p>
+          </div>
+          <div class="content">
+            <h2>Hello, ${user.displayName}!</h2>
+            <p>Thank you for your order. Below are the details of your order:</p>
+            <div class="order-details">
+              <table>
+                <tr>
+                  <th>Item</th>
+                  <th>Quantity</th>
+                  <th>Price</th>
+                </tr>
+                ${orderProducts
+                  .map(
+                    (product) => `
+                <tr>
+                  <td>${product.productName}</td>
+                  <td>${product.quantity}</td>
+                  <td>${product.price}</td>
+                </tr>
+                `
+                  )
+                  .join("")}
+              </table>
+            </div>
+            <p class="total"><strong>Subtotal:</strong> ${subtotal}</p>
+            <p class="total"><strong>Tax:</strong> ${tax_amount}</p>
+            <p class="total"><strong>Shipping:</strong> ${shipping_cost}</p>
+            <p class="total"><strong>Discount:</strong> -${discount_amount}</p>
+            <p class="total"><strong>Total Amount:</strong> ${total_amount}</p>
+            <p>You can download your invoice <a href="${firebaseUrl}">here</a>.</p>
+          </div>
+          <div class="footer">
+            <p>Follow us: <a href="https://twitter.com">Twitter</a> | <a href="https://facebook.com">Facebook</a></p>
+          </div>
         </div>
-
-        <p class="total"><strong>Subtotal:</strong> ${subtotal}</p>
-        <p class="total"><strong>Tax:</strong> ${tax_amount}</p>
-        <p class="total"><strong>Shipping:</strong> ${shipping_cost}</p>
-        <p class="total"><strong>Discount:</strong> -${discount_amount}</p>
-        <p class="total"><strong>Total Amount:</strong> ${total_amount}</p>
-
-        <p>You can download your invoice <a href="${firebaseUrl}">here</a>.</p>
-        <p>
-          If you have any questions, feel free to reply to this email. Thank you
-          for shopping with us!
-        </p>
-      </div>
-
-      <!-- Footer Section -->
-      <div class="footer">
-        <p>
-          Follow us:
-          <a href="https://twitter.com" target="_blank">Twitter</a> |
-          <a href="https://facebook.com" target="_blank">Facebook</a> |
-          <a href="https://instagram.com" target="_blank">Instagram</a>
-        </p>
-        <p>Unsubscribe | Privacy Policy</p>
-      </div>
-    </div>
-  </body>
-</html>
-
+      </body>
+      </html>
       `,
     };
 
-    transporter.sendMail(mailOptions, async (error, info) => {
-      if (error) {
-        console.error("Error sending email:", error);
-        return res.status(500).json({
-          message: "Order created, but failed to send email",
-          error: error.message,
-        });
-      } else {
-        console.log("Email sent:", info.response);
+    await transporter.sendMail(mailOptions);
 
-        // Extract unique designer IDs
-        const designerIds = [
-          ...new Set(orderProducts.map((p) => p.designerRef.toString())),
-        ];
+    // Send FCM Notification
+    if (fcmToken) {
+      await sendFcmNotification(
+        fcmToken,
+        "Order Placed Successfully",
+        `Your order with ID ${order.orderId} has been placed successfully.`
+      );
+    }
 
-        // Create notifications for each designer
-        for (const designerId of designerIds) {
-          try {
-            await createNotification({
-              userId: user._id,
-              designeref: designerId,
-              message: `A new order has been placed by ${user.displayName}`,
-              orderId: order._id,
-            });
-          } catch (notifError) {
-            console.error(
-              `Error creating notification for designer ${designerId}:`,
-              notifError.message
-            );
-          }
-        }
-
-        if (fcmToken) {
-          await sendFcmNotification(
-            fcmToken,
-            "Order Placed Successfully",
-            `Your order with ID ${order.orderId} has been placed successfully.`
-          );
-        } else {
-          console.warn("User has no FCM token, notification not sent.");
-        }
-
-        return res.status(201).json({
-          message:
-            "Order created, email sent, and notifications created successfully",
-          order,
-        });
-      }
+    res.status(201).json({
+      message:
+        "Order created successfully, email sent, and notifications created.",
+      order,
     });
   } catch (error) {
     console.error("Error creating order:", error);

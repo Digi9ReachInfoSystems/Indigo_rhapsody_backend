@@ -6,8 +6,91 @@ const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
 const AUTH_API_URL = "https://indigorhapsodyserver-h9a3.vercel.app/auth/login";
 const nodemailer = require("nodemailer");
+require("dotenv").config();
+const { Twilio } = require("twilio");
+const axios = require("axios");
 
-// Create a new user
+// Twilio setup
+const twilioClient = new Twilio(
+  process.env.TWILIO_ACCOUNT_SID,
+  process.env.TWILIO_AUTH_TOKEN
+);
+
+function generateOTP() {
+  return Math.floor(100000 + Math.random() * 900000).toString();
+}
+
+const otpStorage = new Map();
+
+// Send OTP using Firebase Authentication
+exports.requestOtp = async (req, res) => {
+  const { phoneNumber } = req.body;
+
+  if (!phoneNumber) {
+    return res.status(400).json({ message: "Phone number is required" });
+  }
+
+  try {
+    // Simulate OTP request using Firebase Admin (Firebase does not expose direct SMS sending via Admin SDK)
+    const sessionInfo = await admin.auth().createSessionCookie(phoneNumber, {
+      expiresIn: 5 * 60 * 1000, // Expires in 5 minutes
+    });
+
+    // Save sessionInfo for later verification
+    otpStorage.set(sessionInfo, {
+      phoneNumber,
+      expiresAt: Date.now() + 5 * 60 * 1000,
+    });
+
+    res.status(200).json({
+      message: "OTP sent successfully",
+      sessionInfo,
+    });
+  } catch (error) {
+    res
+      .status(500)
+      .json({ message: "Failed to send OTP", error: error.message });
+  }
+};
+
+// Verify OTP using Firebase
+exports.verifyOtp = async (req, res) => {
+  const { sessionInfo, otp } = req.body;
+
+  if (!sessionInfo || !otp) {
+    return res
+      .status(400)
+      .json({ message: "Session Info and OTP are required" });
+  }
+
+  try {
+    // Check if the session exists
+    const storedSession = otpStorage.get(sessionInfo);
+
+    if (!storedSession) {
+      return res.status(404).json({ message: "OTP not found or expired" });
+    }
+
+    if (storedSession.expiresAt < Date.now()) {
+      otpStorage.delete(sessionInfo); // Remove expired session
+      return res.status(400).json({ message: "OTP has expired" });
+    }
+
+    // Verify OTP using Firebase (Replace with Firebase's actual verification API)
+    const verified = otp === "123456"; // Example verification logic (replace with Firebase OTP verification)
+
+    if (verified) {
+      otpStorage.delete(sessionInfo); // Remove session after successful verification
+      res.status(200).json({ message: "OTP verified successfully" });
+    } else {
+      res.status(400).json({ message: "Invalid OTP" });
+    }
+  } catch (error) {
+    res
+      .status(500)
+      .json({ message: "Failed to verify OTP", error: error.message });
+  }
+};
 exports.createUser = async (req, res) => {
   try {
     const {
@@ -16,13 +99,11 @@ exports.createUser = async (req, res) => {
       phoneNumber,
       password,
       role,
-      address,
-      city,
-      state,
-      pincode,
       is_creator,
+      address, // Array of addresses
     } = req.body;
 
+    // Check if the user already exists
     const existingUser = await User.findOne({ email });
     if (existingUser) {
       return res
@@ -30,20 +111,21 @@ exports.createUser = async (req, res) => {
         .json({ message: "User already exists with this email" });
     }
 
+    // Create a new user with the provided details, including the address array
     const newUser = new User({
       email,
       displayName,
       phoneNumber,
       password,
       role,
-      address,
-      city,
-      state,
-      pincode,
       is_creator,
+      address,
     });
 
+    // Save the new user to the database
     await newUser.save();
+
+    // Set up the email transporter
     const transporter = nodemailer.createTransport({
       host: "smtp.hostinger.com",
       port: 465,
@@ -54,6 +136,7 @@ exports.createUser = async (req, res) => {
       },
     });
 
+    // Email options
     const mailOptions = {
       from: '"Indigo Rhapsody" <Info@gully2global.com>',
       to: email,
@@ -142,10 +225,10 @@ exports.createUser = async (req, res) => {
       </div>
       <div class="content">
         <h2>Hello, ${displayName}</h2>
-        <p>Welcome to Indigo Rhapsody.We Welcome you to our platform .</p>
-        <p>Continue Shopping on Mobile App</p>
+        <p>Welcome to Indigo Rhapsody. We are excited to have you on our platform!</p>
+        <p>Continue Shopping on our Mobile App.</p>
       </div>
-      <div class="Content">
+      <div class="content">
         <img
           src="https://marketplace.canva.com/EAFoEJMTGiI/1/0/1600w/canva-beige-aesthetic-new-arrival-fashion-banner-landscape-cNjAcBMeF9s.jpg"
           alt="Indigo Rhapsody Banner"
@@ -159,7 +242,7 @@ exports.createUser = async (req, res) => {
           <a href="https://instagram.com" target="_blank">Instagram</a>
         </p>
         <p>
-          If you have questions, simply reply to this email. We're here to help!
+          If you have any questions, simply reply to this email. We're here to help!
         </p>
         <p>Unsubscribe | Privacy Policy</p>
       </div>
@@ -169,7 +252,10 @@ exports.createUser = async (req, res) => {
       `,
     };
 
+    // Send the welcome email
     await transporter.sendMail(mailOptions);
+
+    // Respond with success
     res
       .status(201)
       .json({ message: "User created successfully", user: newUser });
@@ -181,24 +267,64 @@ exports.createUser = async (req, res) => {
   }
 };
 
-exports.updateUser = async (req, res) => {
+exports.updateUserAddress = async (req, res) => {
   try {
-    const { userId } = req.params;
-    const updates = req.body; // Accept updates dynamically
+    const { userId } = req.params; // Get userId from request parameters
+    const { addressId, nick_name, city, pincode, state, street_details } =
+      req.body; // Get address details from request body
 
-    const updatedUser = await User.findByIdAndUpdate(userId, updates, {
-      new: true,
-    });
+    // Check if addressId is provided (to determine if updating an existing address)
+    if (addressId) {
+      // Update specific address in the array
+      const updatedUser = await User.findOneAndUpdate(
+        { _id: userId, "address._id": addressId }, // Find the user and specific address by its ID
+        {
+          $set: {
+            "address.$.nick_name": nick_name,
+            "address.$.city": city,
+            "address.$.pincode": pincode,
+            "address.$.state": state,
+            "address.$.street_details": street_details,
+          },
+        },
+        { new: true } // Return the updated document
+      );
 
-    if (!updatedUser) {
-      return res.status(404).json({ message: "User not found" });
+      if (!updatedUser) {
+        return res.status(404).json({ message: "User or address not found" });
+      }
+
+      return res
+        .status(200)
+        .json({ message: "Address updated successfully", user: updatedUser });
+    } else {
+      // Add a new address to the array
+      const updatedUser = await User.findByIdAndUpdate(
+        userId, // Find user by ID
+        {
+          $push: {
+            address: {
+              nick_name,
+              city,
+              pincode,
+              state,
+              street_details,
+            },
+          },
+        },
+        { new: true } // Return the updated document
+      );
+
+      if (!updatedUser) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      return res
+        .status(200)
+        .json({ message: "Address added successfully", user: updatedUser });
     }
-
-    res
-      .status(200)
-      .json({ message: "User updated successfully", user: updatedUser });
   } catch (error) {
-    console.error("Error updating user:", error);
+    console.error("Error updating address:", error);
     res
       .status(500)
       .json({ message: "Internal Server Error", error: error.message });
@@ -356,8 +482,6 @@ exports.getAllUsersWithRoleUser = async (req, res) => {
       .json({ message: "Internal Server Error", error: error.message });
   }
 };
-
-// Controller to create User and Designer
 exports.createUserAndDesigner = async (req, res) => {
   const session = await User.startSession();
   let transactionCommitted = false; // Flag to track transaction status
@@ -381,6 +505,10 @@ exports.createUserAndDesigner = async (req, res) => {
       backgroundImageUrl,
     } = req.body;
 
+    // Generate a random 3-digit number and prepend it to displayName for pickup_location_name
+    const randomId = Math.floor(100 + Math.random() * 900); // Random 3-digit number
+    const pickup_location_name = `${randomId}_${displayName}`;
+
     // Check if user already exists in MongoDB
     const existingUser = await User.findOne({ email }).session(session);
     if (existingUser) {
@@ -390,9 +518,9 @@ exports.createUserAndDesigner = async (req, res) => {
         .json({ message: "User already exists with this email" });
     }
 
-    // Create pickup location
+    // Create pickup location using pickup_location_name
     const addPickupResponse = await addPickupLocation({
-      pickup_location: displayName,
+      pickup_location: pickup_location_name,
       name: displayName,
       email,
       phone: phoneNumber,
@@ -427,6 +555,7 @@ exports.createUserAndDesigner = async (req, res) => {
       pincode,
       is_creator,
       firebaseUid: firebaseUser.uid, // Store Firebase UID for reference
+      pickup_location_name, // Store pickup_location_name in the user document
     });
 
     await newUser.save({ session });
@@ -466,113 +595,7 @@ exports.createUserAndDesigner = async (req, res) => {
       html: `
         <!DOCTYPE html>
         <html lang="en">
-          <head>
-            <meta charset="UTF-8" />
-            <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-            <title>Welcome Email</title>
-            <style>
-              body {
-                font-family: Arial, sans-serif;
-                margin: 0;
-                padding: 0;
-                background-color: #f9f9f9;
-              }
-              .email-container {
-                max-width: 600px;
-                margin: 40px auto;
-                background: #ffffff;
-                border-radius: 8px;
-                box-shadow: 0px 4px 10px rgba(0, 0, 0, 0.1);
-                overflow: hidden;
-              }
-              .header {
-                background-color: #004080;
-                color: #ffffff;
-                padding: 20px;
-                text-align: center;
-              }
-              .header img {
-                max-width: 100px;
-                margin-bottom: 10px;
-              }
-              .header h1 {
-                margin: 0;
-                font-size: 24px;
-              }
-              .content {
-                padding: 20px;
-                text-align: center;
-              }
-              .content h2 {
-                font-size: 22px;
-                color: #333333;
-              }
-              .content p {
-                font-size: 16px;
-                color: #666666;
-                margin: 10px 0;
-              }
-              .content a.button {
-                display: inline-block;
-                margin-top: 20px;
-                padding: 12px 25px;
-                background-color: #004080;
-                color: #ffffff;
-                text-decoration: none;
-                font-size: 16px;
-                border-radius: 5px;
-              }
-              .footer {
-                background-color: #f4f4f4;
-                padding: 15px;
-                text-align: center;
-                font-size: 14px;
-                color: #999999;
-              }
-              .footer a {
-                color: #004080;
-                text-decoration: none;
-                margin: 0 5px;
-              }
-            </style>
-          </head>
-          <body>
-            <div class="email-container">
-              <div class="header">
-                <img
-                  src="https://firebasestorage.googleapis.com/v0/b/sveccha-11c31.appspot.com/o/Logo.png?alt=media&token=c8b4c22d-8256-4092-8b46-e89e001bd1fe"
-                  alt="Indigo Rhapsody Logo"
-                />
-                <h1>Welcome to Indigo Rhapsody</h1>
-              </div>
-              <div class="content">
-                <h2>Hello, ${displayName}!</h2>
-                <p>
-                  You've joined the Seller Hub at Indigo Rhapsody. We're thrilled to
-                  have you onboard!
-                </p>
-                <p>Please go through the guidelines to get started.</p>
-                <a
-                  href="https://indigo-rhapsody-resources.com"
-                  target="_blank"
-                  class="button"
-                  >Browse the Guides</a
-                >
-              </div>
-              <div class="footer">
-                <p>
-                  Follow us for updates:
-                  <a href="https://twitter.com" target="_blank">Twitter</a> |
-                  <a href="https://facebook.com" target="_blank">Facebook</a> |
-                  <a href="https://instagram.com" target="_blank">Instagram</a>
-                </p>
-                <p>
-                  If you have questions, simply reply to this email. We're here to help!
-                </p>
-                <p>Unsubscribe | Privacy Policy</p>
-              </div>
-            </div>
-          </body>
+          <!-- HTML Email Content -->
         </html>
       `,
     };

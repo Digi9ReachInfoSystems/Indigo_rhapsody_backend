@@ -30,22 +30,7 @@ const userSchema = new mongoose.Schema({
     type: Boolean,
     default: false,
   },
-  address: {
-    type: String,
-    required: true,
-  },
-  city: {
-    type: String,
-    required: true,
-  },
-  state: {
-    type: String,
-    required: true,
-  },
-  pincode: {
-    type: Number,
-    required: true,
-  },
+
   last_logged_in: {
     type: Date,
     default: Date.now,
@@ -54,6 +39,30 @@ const userSchema = new mongoose.Schema({
     type: String,
     required: false,
   },
+  address: [
+    {
+      nick_name: {
+        type: String,
+        required: true,
+      },
+      city: {
+        type: String,
+        required: true,
+      },
+      pincode: {
+        type: Number,
+        required: true,
+      },
+      state: {
+        type: String,
+        required: true,
+      },
+      street_details: {
+        type: String,
+        required: true,
+      },
+    },
+  ],
 });
 
 module.exports = mongoose.model("User", userSchema);

@@ -32,6 +32,9 @@ const designerSchema = new mongoose.Schema({
     type: Date,
     default: Date.now,
   },
+  pickup_location_name: {
+    type: String,
+  },
 });
 
 exports = module.exports = mongoose.model("Designer", designerSchema);

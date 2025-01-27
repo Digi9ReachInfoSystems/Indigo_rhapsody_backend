@@ -8,13 +8,13 @@ router.get("/user-count-by-state", userController.getUserCountByState);
 router.get("/most-users-state", userController.getStateWithMostUsers);
 router.get("/role-user", userController.getAllUsersWithRoleUser);
 
-// CRUD routes for users
 router.get("/getUser", userController.getUsers);
 router.get("/:userId", userController.getUserById);
 router.post("/createUser", userController.createUser);
-router.put("/:userId", userController.updateUser);
+router.put("/:userId", userController.updateUserAddress);
 
-// User and Designer creation/login
+router.post("/request-otp", userController.requestOtp);
+
 router.post("/user-designer", userController.createUserAndDesigner);
 router.post("/login", userController.loginDesigner);
 router.post("/adminLogin", userController.loginAdmin);

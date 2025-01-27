@@ -219,6 +219,7 @@ exports.getDesignerDetailsById = async (req, res) => {
     });
   }
 };
+
 exports.updateDesignerInfo = async (req, res) => {
   try {
     const { designerId } = req.params;
