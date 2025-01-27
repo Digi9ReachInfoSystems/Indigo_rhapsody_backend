@@ -330,6 +330,33 @@ exports.updateUserAddress = async (req, res) => {
   }
 };
 
+
+exports.getUserAddresses = async (req, res) => {
+  try {
+    const { userId } = req.params; // Extract the user ID from request parameters
+
+    // Find the user by their ID and select only the address field
+    const user = await User.findById(userId).select('address');
+
+    // Check if the user exists
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    // Check if the user has any addresses
+    if (!user.address || user.address.length === 0) {
+      return res.status(404).json({ message: "No addresses found for this user" });
+    }
+
+    // Respond with the list of addresses
+    res.status(200).json({ message: "Addresses fetched successfully", addresses: user.address });
+  } catch (error) {
+    console.error("Error fetching user addresses:", error);
+    res.status(500).json({ message: "Internal Server Error", error: error.message });
+  }
+};
+
+
 exports.deleteUser = async (req, res) => {
   try {
     const { userId } = req.params;

@@ -12,6 +12,7 @@ router.get("/getUser", userController.getUsers);
 router.get("/:userId", userController.getUserById);
 router.post("/createUser", userController.createUser);
 router.put("/:userId", userController.updateUserAddress);
+router.get("/user/:userId/addresses", userController.getUserAddresses);
 
 router.post("/request-otp", userController.requestOtp);
 
