@@ -300,7 +300,13 @@ exports.getLatestUpdateRequests = async (req, res) => {
     // Fetch all update requests sorted by the most recent first
     const updateRequests = await UpdateRequest.find()
       .sort({ createdAt: -1 }) // Sort by creation date in descending order
-      .populate("designerId", "displayName email phoneNumber") // Populate designer details
+      .populate({
+        path: "designerId", // Populate designer details
+        populate: {
+          path: "userId", // Populate user details from the User table
+          select: "displayName email phoneNumber", // Select necessary fields
+        },
+      })
       .exec();
 
     res.status(200).json({
