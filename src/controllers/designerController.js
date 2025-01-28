@@ -353,7 +353,6 @@ exports.requestUpdateDesignerInfo = async (req, res) => {
     });
   }
 };
-
 exports.reviewUpdateRequests = async (req, res) => {
   try {
     const { requestId } = req.params; // Update request ID
@@ -379,17 +378,22 @@ exports.reviewUpdateRequests = async (req, res) => {
       const designerId = updateRequest.designerId._id;
       const updates = updateRequest.requestedUpdates;
 
-      // If address is being updated, include it
-      if (updates.address) {
-        const updatedAddresses = updates.address;
+      // Dynamically construct the update object
+      const updateFields = {};
+
+      Object.keys(updates).forEach((key) => {
+        if (key !== "_id" && updates[key] !== undefined) {
+          updateFields[key] = updates[key];
+        }
+      });
+
+      // Perform the update only if there are fields to update
+      if (Object.keys(updateFields).length > 0) {
         await Designer.findByIdAndUpdate(
           designerId,
-          { $set: { address: updatedAddresses, ...updates } },
+          { $set: updateFields },
           { new: true }
         );
-      } else {
-        // Update other fields
-        await Designer.findByIdAndUpdate(designerId, updates, { new: true });
       }
 
       updateRequest.status = "Approved";
@@ -399,6 +403,7 @@ exports.reviewUpdateRequests = async (req, res) => {
       updateRequest.adminComments = adminComments || "Rejected by Admin";
     }
 
+    // Save the update request status
     await updateRequest.save();
 
     res.status(200).json({
