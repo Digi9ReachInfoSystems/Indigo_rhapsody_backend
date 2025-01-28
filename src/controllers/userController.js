@@ -350,12 +350,10 @@ exports.getUserAddresses = async (req, res) => {
     }
 
     // Respond with the list of addresses
-    res
-      .status(200)
-      .json({
-        message: "Addresses fetched successfully",
-        addresses: user.address,
-      });
+    res.status(200).json({
+      message: "Addresses fetched successfully",
+      addresses: user.address,
+    });
   } catch (error) {
     console.error("Error fetching user addresses:", error);
     res
@@ -605,6 +603,7 @@ exports.createUserAndDesigner = async (req, res) => {
       backGroundImage: backgroundImageUrl || null,
       shortDescription,
       about,
+      pickup_location_name,
     });
 
     await newDesigner.save({ session });

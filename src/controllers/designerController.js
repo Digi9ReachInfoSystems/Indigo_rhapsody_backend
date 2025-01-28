@@ -421,10 +421,10 @@ exports.reviewUpdateRequests = async (req, res) => {
 
 exports.getPickupLocationName = async (req, res) => {
   try {
-    const { designerRef } = req.params; // Get designer reference (designerId) from request params
+    const { designerId } = req.params; // Get designer reference (designerId) from request params
 
     // Find the designer by ID
-    const designer = await Designer.findById(designerRef).select(
+    const designer = await Designer.findById(designerId).select(
       "pickup_location_name"
     );
 
