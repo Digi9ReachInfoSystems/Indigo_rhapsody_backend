@@ -38,7 +38,7 @@ router.get(
   designerController.getLatestUpdateRequests
 );
 router.get(
-  "/:designerRef/pickup-location",
+  "/:designerId/pickup-location",
   designerController.getPickupLocationName
 );
 // Update designer status (admin only)
