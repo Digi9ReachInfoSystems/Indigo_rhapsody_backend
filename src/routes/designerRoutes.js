@@ -33,7 +33,10 @@ router.get("/name/:userId", designerController.getDesignerNameByUserId);
 
 // Get count of approved designers
 router.get("/approved-count", designerController.getApprovedDesignerCount);
-
+router.get(
+  "/update-requests/latest",
+  designerController.getLatestUpdateRequests
+);
 // Update designer status (admin only)
 router.patch(
   "/:designerId/status",

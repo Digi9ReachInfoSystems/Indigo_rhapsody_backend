@@ -295,6 +295,27 @@ exports.updateProfileRequest = async (req, res) => {
   }
 };
 
+exports.getLatestUpdateRequests = async (req, res) => {
+  try {
+    // Fetch all update requests sorted by the most recent first
+    const updateRequests = await UpdateRequest.find()
+      .sort({ createdAt: -1 }) // Sort by creation date in descending order
+      .populate("designerId", "displayName email phoneNumber") // Populate designer details
+      .exec();
+
+    res.status(200).json({
+      message: "Latest update requests fetched successfully",
+      updateRequests,
+    });
+  } catch (error) {
+    console.error("Error fetching latest update requests:", error);
+    res.status(500).json({
+      message: "Error fetching latest update requests",
+      error: error.message,
+    });
+  }
+};
+
 exports.requestUpdateDesignerInfo = async (req, res) => {
   try {
     const { designerId } = req.params;
