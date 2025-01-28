@@ -419,6 +419,36 @@ exports.reviewUpdateRequests = async (req, res) => {
   }
 };
 
+exports.getPickupLocationName = async (req, res) => {
+  try {
+    const { designerRef } = req.params; // Get designer reference (designerId) from request params
+
+    // Find the designer by ID
+    const designer = await Designer.findById(designerRef).select(
+      "pickup_location_name"
+    );
+
+    // If designer not found, return a 404 response
+    if (!designer) {
+      return res.status(404).json({
+        message: "Designer not found",
+      });
+    }
+
+    // Return the pickup_location_name
+    res.status(200).json({
+      message: "Pickup location name fetched successfully",
+      pickup_location_name: designer.pickup_location_name,
+    });
+  } catch (error) {
+    console.error("Error fetching pickup location name:", error);
+    res.status(500).json({
+      message: "Error fetching pickup location name",
+      error: error.message,
+    });
+  }
+};
+
 exports.getPendingDesignerCount = async (req, res) => {
   try {
     const pendingCount = await Designer.countDocuments({ is_approved: false });
