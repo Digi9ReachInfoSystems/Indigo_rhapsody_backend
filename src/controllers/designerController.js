@@ -2,7 +2,7 @@ const mongoose = require("mongoose");
 const Designer = require("../models/designerModel");
 const path = require("path");
 const { bucket } = require("../service/firebaseServices"); // Firebase storage configuration
-
+const UpdateRequest = require("../models/updateDesignerSchema");
 // Upload Image Helper Function
 const uploadImage = async (file, folder) => {
   const filename = `${Date.now()}_${file.originalname}`;
@@ -257,6 +257,131 @@ exports.updateDesignerInfo = async (req, res) => {
     console.error("Error updating designer information:", error);
     return res.status(500).json({
       message: "Error updating designer information",
+      error: error.message,
+    });
+  }
+};
+
+exports.updateProfileRequest = async (req, res) => {
+  try {
+    const { designerId } = req.params;
+    const { updates } = req.body;
+
+    // Check if designer exists
+    const designer = await Designer.findById(designerId);
+    if (!designer) {
+      return res.status(404).json({ message: "Designer not found" });
+    }
+
+    // Save the update request for admin approval
+    const updateRequest = new UpdateRequest({
+      designerId,
+      requestedUpdates: updates,
+    });
+
+    await updateRequest.save();
+
+    res.status(201).json({
+      message:
+        "Profile update request submitted successfully. Pending admin approval.",
+      updateRequest,
+    });
+  } catch (error) {
+    console.error("Error submitting profile update request:", error);
+    res.status(500).json({
+      message: "Error submitting profile update request",
+      error: error.message,
+    });
+  }
+};
+
+exports.requestUpdateDesignerInfo = async (req, res) => {
+  try {
+    const { designerId } = req.params;
+    const { updates } = req.body;
+
+    // Check if designer exists
+    const designer = await Designer.findById(designerId);
+    if (!designer) {
+      return res.status(404).json({ message: "Designer not found" });
+    }
+
+    // Create a new update request
+    const updateRequest = new UpdateRequest({
+      designerId,
+      requestedUpdates: updates,
+    });
+
+    await updateRequest.save();
+
+    res.status(201).json({
+      message: "Update request submitted successfully. Pending admin approval.",
+      updateRequest,
+    });
+  } catch (error) {
+    console.error("Error requesting designer info update:", error);
+    res.status(500).json({
+      message: "Error requesting designer info update",
+      error: error.message,
+    });
+  }
+};
+
+exports.reviewUpdateRequests = async (req, res) => {
+  try {
+    const { requestId } = req.params; // Update request ID
+    const { status, adminComments } = req.body;
+
+    // Find the update request
+    const updateRequest = await UpdateRequest.findById(requestId).populate(
+      "designerId"
+    );
+
+    if (!updateRequest) {
+      return res.status(404).json({ message: "Update request not found" });
+    }
+
+    if (updateRequest.status !== "Pending") {
+      return res
+        .status(400)
+        .json({ message: "This request has already been reviewed" });
+    }
+
+    // If approved, update the designer's information
+    if (status === "Approved") {
+      const designerId = updateRequest.designerId._id;
+      const updates = updateRequest.requestedUpdates;
+
+      // If address is being updated, include it
+      if (updates.address) {
+        const updatedAddresses = updates.address;
+        await Designer.findByIdAndUpdate(
+          designerId,
+          { $set: { address: updatedAddresses, ...updates } },
+          { new: true }
+        );
+      } else {
+        // Update other fields
+        await Designer.findByIdAndUpdate(designerId, updates, { new: true });
+      }
+
+      updateRequest.status = "Approved";
+      updateRequest.adminComments = adminComments || "Approved by Admin";
+    } else if (status === "Rejected") {
+      updateRequest.status = "Rejected";
+      updateRequest.adminComments = adminComments || "Rejected by Admin";
+    }
+
+    await updateRequest.save();
+
+    res.status(200).json({
+      message: `Request ${status.toLowerCase()} successfully`,
+      updateRequest,
+    });
+  } catch (error) {
+    console.error("Error reviewing update request:", error);
+    res.status(500).json({
+      message: "Error reviewing update request",
       error: error.message,
     });
   }

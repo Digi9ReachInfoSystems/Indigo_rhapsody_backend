@@ -330,13 +330,12 @@ exports.updateUserAddress = async (req, res) => {
   }
 };
 
-
 exports.getUserAddresses = async (req, res) => {
   try {
     const { userId } = req.params; // Extract the user ID from request parameters
 
     // Find the user by their ID and select only the address field
-    const user = await User.findById(userId).select('address');
+    const user = await User.findById(userId).select("address");
 
     // Check if the user exists
     if (!user) {
@@ -345,17 +344,25 @@ exports.getUserAddresses = async (req, res) => {
 
     // Check if the user has any addresses
     if (!user.address || user.address.length === 0) {
-      return res.status(404).json({ message: "No addresses found for this user" });
+      return res
+        .status(404)
+        .json({ message: "No addresses found for this user" });
     }
 
     // Respond with the list of addresses
-    res.status(200).json({ message: "Addresses fetched successfully", addresses: user.address });
+    res
+      .status(200)
+      .json({
+        message: "Addresses fetched successfully",
+        addresses: user.address,
+      });
   } catch (error) {
     console.error("Error fetching user addresses:", error);
-    res.status(500).json({ message: "Internal Server Error", error: error.message });
+    res
+      .status(500)
+      .json({ message: "Internal Server Error", error: error.message });
   }
 };
-
 
 exports.deleteUser = async (req, res) => {
   try {
@@ -520,10 +527,7 @@ exports.createUserAndDesigner = async (req, res) => {
       displayName,
       phoneNumber,
       role,
-      address,
-      city,
-      state,
-      pincode,
+      address, // Array of addresses
       is_creator,
       shortDescription,
       about,
@@ -535,7 +539,7 @@ exports.createUserAndDesigner = async (req, res) => {
     const randomId = Math.floor(100 + Math.random() * 900); // Random 3-digit number
     const pickup_location_name = `${randomId}_${displayName}`;
 
-    // Check if user already exists in MongoDB
+    // Step 1: Check if user already exists in MongoDB
     const existingUser = await User.findOne({ email }).session(session);
     if (existingUser) {
       await session.abortTransaction(); // Abort if user already exists
@@ -544,21 +548,30 @@ exports.createUserAndDesigner = async (req, res) => {
         .json({ message: "User already exists with this email" });
     }
 
-    // Create pickup location using pickup_location_name
+    // Step 2: Validate and create pickup location for the first address
+    if (!address || address.length === 0) {
+      throw new Error("At least one address is required");
+    }
+
+    const firstAddress = address[0]; // Use the first address for pickup location
     const addPickupResponse = await addPickupLocation({
       pickup_location: pickup_location_name,
       name: displayName,
       email,
       phone: phoneNumber,
-      address,
-      address_2: "", // Additional address line, if any
-      city,
-      state,
+      address: firstAddress.street_details,
+      address_2: firstAddress.nick_name || "", // Additional address line, if any
+      city: firstAddress.city,
+      state: firstAddress.state,
       country: "India",
-      pin_code: pincode,
+      pin_code: firstAddress.pincode,
     });
 
-    // Step 1: Create Firebase Auth User
+    if (!addPickupResponse || !addPickupResponse.success) {
+      throw new Error("Failed to create pickup location");
+    }
+
+    // Step 3: Create Firebase Auth User
     const firebaseUser = await admin.auth().createUser({
       email,
       password,
@@ -566,27 +579,26 @@ exports.createUserAndDesigner = async (req, res) => {
       phoneNumber,
     });
 
-    console.log("Firebase user created:", firebaseUser.uid);
+    if (!firebaseUser || !firebaseUser.uid) {
+      throw new Error("Failed to create Firebase user");
+    }
 
-    // Step 2: Create MongoDB User
+    // Step 4: Create MongoDB User with address array
     const newUser = new User({
       email,
       displayName,
       phoneNumber,
-      password, // You may choose to hash this before storing.
+      password, // Hash the password in production
       role,
-      address,
-      city,
-      state,
-      pincode,
       is_creator,
       firebaseUid: firebaseUser.uid, // Store Firebase UID for reference
       pickup_location_name, // Store pickup_location_name in the user document
+      address, // Save the array of addresses
     });
 
     await newUser.save({ session });
 
-    // Step 3: Create Designer Document
+    // Step 5: Create Designer Document
     const newDesigner = new Designer({
       userId: newUser._id,
       logoUrl: logoUrl || null,
@@ -603,7 +615,7 @@ exports.createUserAndDesigner = async (req, res) => {
 
     session.endSession();
 
-    // Send welcome email
+    // Step 6: Send welcome email
     const transporter = nodemailer.createTransport({
       host: "smtp.hostinger.com",
       port: 465,
@@ -621,7 +633,14 @@ exports.createUserAndDesigner = async (req, res) => {
       html: `
         <!DOCTYPE html>
         <html lang="en">
-          <!-- HTML Email Content -->
+          <head>
+            <meta charset="UTF-8">
+            <title>Welcome</title>
+          </head>
+          <body>
+            <h1>Welcome to Indigo Rhapsody!</h1>
+            <p>Thank you for joining our platform, ${displayName}.</p>
+          </body>
         </html>
       `,
     };
@@ -635,8 +654,8 @@ exports.createUserAndDesigner = async (req, res) => {
       pickupResponse: addPickupResponse,
     });
   } catch (error) {
+    // Abort transaction and rollback if any step fails
     if (!transactionCommitted) {
-      // Only abort if the transaction has not been committed
       await session.abortTransaction();
     }
     session.endSession();

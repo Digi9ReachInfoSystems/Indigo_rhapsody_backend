@@ -40,4 +40,17 @@ router.patch(
   designerController.updateDesignerApprovalStatus
 );
 
+router.post(
+  "/:designerId/request-update",
+  designerController.requestUpdateDesignerInfo
+);
+
+router.post(
+  "/:designerId/update-request",
+  designerController.updateProfileRequest
+);
+
+// Admin reviews update requests
+router.put("/review/:requestId", designerController.reviewUpdateRequests);
+
 module.exports = router;
