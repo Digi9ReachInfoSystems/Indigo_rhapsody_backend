@@ -3,8 +3,11 @@ const router = express.Router();
 const subcategoryController = require("../controllers/subcategoryController");
 
 router.post("/", subcategoryController.createSubCategory);
+router.put(
+  "/:subCategoryId",
 
-router.post("/update/:id", subcategoryController.updateSubCategory);
+  subcategoryController.updateSubCategory
+);
 
 router.get("/subcategories", subcategoryController.getApprovedSubCategories);
 
