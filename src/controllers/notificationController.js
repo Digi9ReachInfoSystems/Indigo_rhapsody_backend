@@ -203,8 +203,7 @@ exports.updateFcmToken = async (req, res) => {
       error: error.message,
     });
   }
-};
-exports.sendNotificationToAllUsers = async (req, res) => {
+};exports.sendNotificationToAllUsers = async (req, res) => {
   try {
     const { title, body, image } = req.body;
 
@@ -218,7 +217,7 @@ exports.sendNotificationToAllUsers = async (req, res) => {
     // Fetch all users with an FCM token
     const usersWithFcmTokens = await User.find({
       fcmToken: { $exists: true, $ne: null },
-    }).select("fcmToken");
+    }).select("fcmToken email displayName");
 
     if (!usersWithFcmTokens.length) {
       return res.status(404).json({
@@ -232,19 +231,33 @@ exports.sendNotificationToAllUsers = async (req, res) => {
       notification: {
         title,
         body,
-        image, // optional field for image in notification
+        ...(image && { image }), // Optional image field
       },
     };
 
-    // Send the notification to each user with an FCM token
+    let successCount = 0;
+    let failedCount = 0;
+    const failedUsers = []; // To store users for whom notification failed
+
+    // Send notifications to each user and handle individual errors
     const sendPromises = usersWithFcmTokens.map(async (user) => {
-      const userMessage = { ...message, token: user.fcmToken };
-      await admin.messaging().send(userMessage);
+      try {
+        const userMessage = { ...message, token: user.fcmToken };
+        await admin.messaging().send(userMessage);
+        successCount++; // Increment success count
+      } catch (error) {
+        console.error(
+          `Failed to send notification to user: ${user.email}`,
+          error.message
+        );
+        failedUsers.push({ email: user.email, fcmToken: user.fcmToken });
+        failedCount++; // Increment failure count
+      }
     });
 
     await Promise.all(sendPromises);
 
-    // Save a single notification document in the database for record-keeping
+    // Save the notification in the database for record-keeping
     const newNotification = new Notifications({
       title,
       message: body,
@@ -253,13 +266,22 @@ exports.sendNotificationToAllUsers = async (req, res) => {
 
     await newNotification.save();
 
+    // Extract the list of users to whom notifications were sent
+    const sentUsers = usersWithFcmTokens.map((user) => ({
+      email: user.email,
+      displayName: user.displayName,
+      fcmToken: user.fcmToken,
+    }));
+
     res.status(200).json({
       success: true,
-      message:
-        "Notification sent to all users and saved in the database successfully",
+      message: `Notification sent successfully. Success: ${successCount}, Failed: ${failedCount}`,
+      sentUsers,
+      failedUsers,
       data: newNotification,
     });
   } catch (error) {
+    console.error("Error in sending notifications:", error);
     res.status(500).json({
       success: false,
       message: "Error sending notifications to all users",
@@ -267,6 +289,7 @@ exports.sendNotificationToAllUsers = async (req, res) => {
     });
   }
 };
+
 
 // Create a new return notification
 exports.createReturnNotification = async (req, res) => {

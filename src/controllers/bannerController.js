@@ -112,7 +112,7 @@ exports.deleteBanner = async (req, res) => {
     const file = bucket.file(`banners/${filename}`);
     await file.delete();
 
-    res.status(200).json({ message: "Banner deleted successfully" });
+    res.status(204).json({ message: "Banner deleted successfully" });
   } catch (error) {
     res.status(500).json({ message: "Error deleting banner", error });
   }
