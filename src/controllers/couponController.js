@@ -28,6 +28,36 @@ exports.createCoupon = async (req, res) => {
   }
 };
 
+const updateCouponStatus = async () => {
+  try {
+    const currentDate = new Date();
+    const expiredCoupons = await Coupon.find({
+      expiryDate: { $lt: currentDate }, // Find coupons where expiryDate is less than currentDate
+      is_active: true, // Only update active coupons
+    });
+
+    if (expiredCoupons.length > 0) {
+      console.log(
+        `Found ${expiredCoupons.length} expired coupons. Updating status...`
+      );
+      await Promise.all(
+        expiredCoupons.map(async (coupon) => {
+          coupon.is_active = false;
+          await coupon.save();
+        })
+      );
+      console.log("Expired coupons updated successfully.");
+    } else {
+      console.log("No expired coupons found.");
+    }
+  } catch (error) {
+    console.error("Error updating coupon status:", error);
+  }
+};
+
+updateCouponStatus(); // Run on server start
+setInterval(updateCouponStatus, 60 * 60 * 1000);
+
 // Update an existing coupon by ID
 exports.updateCoupon = async (req, res) => {
   try {

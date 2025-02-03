@@ -110,7 +110,7 @@ exports.updateSubCategory = async (req, res) => {
       }
     }
 
-    // Handle image upload if a new image is provided
+   
     let imageUrl = req.body.image; // Default to existing image URL if no new image
     if (req.file) {
       const file = req.file;
