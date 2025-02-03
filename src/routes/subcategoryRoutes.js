@@ -4,7 +4,7 @@ const subcategoryController = require("../controllers/subcategoryController");
 
 router.post("/", subcategoryController.createSubCategory);
 
-router.post("/update", subcategoryController.updateSubCategory);
+router.post("/update/:id", subcategoryController.updateSubCategory);
 
 router.get("/subcategories", subcategoryController.getApprovedSubCategories);
 
