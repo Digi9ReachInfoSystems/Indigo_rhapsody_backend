@@ -380,11 +380,12 @@ exports.deleteUser = async (req, res) => {
       .json({ message: "Internal Server Error", error: error.message });
   }
 };
-
 exports.getUsers = async (req, res) => {
   try {
     const filters = req.query;
-    const users = await User.find(filters);
+
+    // Sort users by createdTime in descending order (latest first)
+    const users = await User.find(filters).sort({ createdTime: -1 });
 
     if (!users.length) {
       return res.status(404).json({ message: "No users found" });

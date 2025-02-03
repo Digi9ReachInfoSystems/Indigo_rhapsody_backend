@@ -80,11 +80,12 @@ exports.createDesigner = async (req, res) => {
     });
   }
 };
-
-// Get All Designers
 exports.getAllDesigners = async (req, res) => {
   try {
-    const designers = await Designer.find().populate("userId", "displayName");
+    // Sort the designers by createdTime in descending order
+    const designers = await Designer.find()
+      .populate("userId", "displayName")
+      .sort({ createdTime: -1 }); // Sort by createdTime, latest first
 
     if (!designers.length) {
       return res.status(404).json({ message: "No designers found" });
