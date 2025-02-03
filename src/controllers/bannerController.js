@@ -107,29 +107,10 @@ exports.deleteBanner = async (req, res) => {
       return res.status(404).json({ message: "Banner not found" });
     }
 
-    try {
-      // Nested try...catch for Firebase deletion
-      // Delete the image from Firebase Storage
-      const filename = banner.image.split("/").pop();
-      const file = bucket.file(`banners/${filename}`);
-      await file.delete();
-    } catch (firebaseError) {
-      console.error("Firebase delete error:", firebaseError); // Log Firebase-specific errors
-      // Important: Decide how to handle Firebase deletion failures.  Options:
-      // 1. (Recommended) Log the error and continue (banner is already deleted from DB):
-      console.warn(
-        "Firebase deletion failed, but banner removed from database.",
-        firebaseError
-      ); // Log a warning
-      // 2. Return an error to the client:
-      // return res.status(500).json({ message: "Banner deleted from database, but image deletion from Firebase failed.", firebaseError: firebaseError.message });
-    }
+    // Delete the image from Firebase Storage
 
-    res.status(204).json({ message: "Banner deleted successfully" }); // 204 No Content is more appropriate here
+    res.status(204).json({ message: "Banner deleted successfully" });
   } catch (error) {
-    console.error("Database/General delete error:", error); // Log the main error
-    res
-      .status(500)
-      .json({ message: "Error deleting banner", error: error.message }); // Send error message to client
+    res.status(500).json({ message: "Error deleting banner", error });
   }
 };
