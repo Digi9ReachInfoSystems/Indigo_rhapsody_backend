@@ -18,11 +18,11 @@ const coupons = require("./src/routes/couponRoutes.js");
 const wishlist = require("./src/routes/wishlistRoutes.js");
 const notifications = require("./src/routes/notificationroutes.js");
 const states = require("./src/routes/stateRoutes.js");
+const queryRoutes = require("./src/routes/queryRoutes.js");
 const app = express();
 
 const cors = require("cors");
 app.use(cors());
-
 
 // app.use((req, res, next) => {
 //   console.log(`${req.method} request for '${req.url}'`);
@@ -34,6 +34,7 @@ connectDB();
 app.use(express.json());
 
 app.use("/products", productRoutes);
+app.use("/queries", queryRoutes);
 app.use("/category", categoryRoutes);
 app.use("/subcategory", subcategoryRoutes);
 app.use("/cart", cartRoutes);
