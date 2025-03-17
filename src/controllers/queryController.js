@@ -1,5 +1,5 @@
 const mongoose = require("mongoose");
-const Query = require("../models/queryModel");
+const Query = require("../models/queryModel"); // Ensure the path is correct
 
 // Create a new query
 const createQuery = async (req, res) => {
