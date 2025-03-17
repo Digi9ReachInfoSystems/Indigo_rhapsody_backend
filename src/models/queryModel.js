@@ -25,3 +25,5 @@ const querySchema = new mongoose.Schema({
     default: "Pending",
   },
 });
+
+module.exports = mongoose.model("Query", querySchema);
