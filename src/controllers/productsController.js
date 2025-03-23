@@ -489,8 +489,7 @@ exports.getProducts = async (req, res) => {
     } = req.query;
 
     // Construct the query object based on the filters
-    let query = {};
-
+    let query = { enabled: true };
     // 1. Filter by product name (case-insensitive search)
     if (productName) {
       query.productName = { $regex: new RegExp(productName, "i") };
