@@ -575,7 +575,11 @@ exports.searchProducts = async (req, res) => {
     // Log the query parameters to debug input issues
     console.log("Search Term:", searchTerm);
 
-    const products = await Product.find({ productName: { $regex: regex } })
+    // Add filter for enabled: true
+    const products = await Product.find({
+      productName: { $regex: regex },
+      enabled: true, // Only fetch enabled products
+    })
       .populate("category", "name")
       .populate("subCategory", "name")
       .limit(parseInt(limit) || 10);
@@ -602,7 +606,9 @@ exports.getLatestProducts = async (req, res) => {
     const productLimit = parseInt(limit) || 10;
 
     // Fetch latest products sorted by createdDate in descending order
-    const latestProducts = await Product.find()
+    const latestProducts = await Product.find({
+      enabled: true,
+    })
       .sort({ createdDate: -1 }) // Sort by latest first
       .limit(productLimit) // Limit the results
       .populate("category", "name") // Populate category name
@@ -744,7 +750,6 @@ exports.toggleProductStatus = async (req, res) => {
     });
   }
 };
-
 exports.getProductsBySubCategory = async (req, res) => {
   try {
     const { subCategoryId } = req.params;
@@ -756,7 +761,10 @@ exports.getProductsBySubCategory = async (req, res) => {
     }
 
     // Build the query object with optional filters
-    const query = { subCategory: subCategoryId };
+    const query = {
+      subCategory: subCategoryId,
+      enabled: true, // Only fetch enabled products
+    };
 
     // Handle comma-separated fit values
     if (fit) {
