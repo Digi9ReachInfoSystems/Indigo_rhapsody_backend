@@ -19,6 +19,7 @@ const wishlist = require("./src/routes/wishlistRoutes.js");
 const notifications = require("./src/routes/notificationroutes.js");
 const states = require("./src/routes/stateRoutes.js");
 const queryRoutes = require("./src/routes/queryRoutes.js");
+const Blogs = require("./src/routes/blogsRoutes.js");
 const app = express();
 
 const cors = require("cors");
@@ -51,6 +52,7 @@ app.use("/coupon", coupons);
 app.use("/wishlist", wishlist);
 app.use("/notification", notifications);
 app.use("/states", states);
+app.use("/blogs", Blogs);
 
 const PORT = 5000;
 

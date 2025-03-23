@@ -42,6 +42,10 @@ const productsSchema = new mongoose.Schema({
     type: Number,
     required: true,
   },
+  mrp: {
+    type: Number,
+    required: true,
+  },
   sku: {
     type: String,
     required: true,
