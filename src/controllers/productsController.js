@@ -708,6 +708,43 @@ exports.getProductsById = async (req, res) => {
   }
 };
 
+exports.toggleProductStatus = async (req, res) => {
+  try {
+    const { productId } = req.params;
+
+    // Validate the productId
+    if (!mongoose.isValidObjectId(productId)) {
+      return res.status(400).json({ message: "Invalid product ID" });
+    }
+
+    // Find the product by ID
+    const product = await Product.findById(productId);
+    if (!product) {
+      return res.status(404).json({ message: "Product not found" });
+    }
+
+    // Toggle the enabled field
+    product.enabled = !product.enabled;
+
+    // Save the updated product
+    await product.save();
+
+    // Return success response
+    return res.status(200).json({
+      message: `Product ${
+        product.enabled ? "enabled" : "disabled"
+      } successfully`,
+      product,
+    });
+  } catch (error) {
+    console.error("Error toggling product status:", error);
+    return res.status(500).json({
+      message: "Error toggling product status",
+      error: error.message,
+    });
+  }
+};
+
 exports.getProductsBySubCategory = async (req, res) => {
   try {
     const { subCategoryId } = req.params;

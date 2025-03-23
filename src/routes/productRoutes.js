@@ -25,6 +25,8 @@ router.get("/products/search", productController.searchProductsAdvanced);
 router.get("/designerSearch", productController.searchProductsByDesigner);
 router.get("/latestProducts", productController.getLatestProducts);
 router.put("/products/:id", productController.updateProduct);
+router.put("/:productId/toggle-status", productController.toggleProductStatus);
+
 router.get("/total-count", productController.getTotalProductCount);
 router.get(
   "/subCategory/:subCategoryId",
