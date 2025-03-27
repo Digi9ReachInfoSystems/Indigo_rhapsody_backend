@@ -80,9 +80,9 @@ const OrderSchema = new mongoose.Schema({
       imageUrl: {
         type: String,
       },
-      reason:{
+      reason: {
         type: String,
-      }
+      },
     },
   ],
   subtotal: {
@@ -120,7 +120,7 @@ const OrderSchema = new mongoose.Schema({
       street: String,
       city: String,
       state: String,
-      postalCode: String,
+      pincode: String,
       country: String,
     },
     shippingMethod: {
