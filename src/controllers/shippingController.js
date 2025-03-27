@@ -124,7 +124,7 @@ exports.ship = async (req, res) => {
       billing_address: order.shippingDetails?.address?.street || "N/A",
       billing_address_2: "Address Line 2",
       billing_city: order.shippingDetails?.address?.city || "N/A",
-      billing_pincode: order.userId.pincode || "000000",
+      billing_pincode: order.shippingDetails?.address?.pincode || "000000",
       billing_state: order.shippingDetails?.address?.state || "N/A",
       billing_country: order.shippingDetails?.address?.country || "N/A",
       billing_email: order.userId.email || "example@example.com",
@@ -880,5 +880,4 @@ exports.shippingWebhook = async (req, res) => {
       error: error.message,
     });
   }
-  
 };
