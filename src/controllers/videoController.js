@@ -184,24 +184,30 @@ exports.getVideosByUser = async (req, res) => {
 exports.updateVideoStatus = async (req, res) => {
   try {
     const { videoId } = req.params;
-    const { is_approved } = req.body;
 
-    const updatedVideo = await Video.findByIdAndUpdate(
-      videoId,
-      { is_approved, updated_at: Date.now() },
-      { new: true }
-    );
+    // First find the video to get its current status
+    const video = await Video.findById(videoId);
 
-    if (!updatedVideo) {
+    if (!video) {
       return res.status(404).json({ message: "Video not found" });
     }
 
+    // Toggle the is_approved status
+    const updatedVideo = await Video.findByIdAndUpdate(
+      videoId,
+      {
+        is_approved: !video.is_approved,
+        updated_at: Date.now(),
+      },
+      { new: true }
+    );
+
     res.status(200).json({
-      message: "Video status updated successfully",
+      message: `Video approval status toggled to ${updatedVideo.is_approved}`,
       video: updatedVideo,
     });
   } catch (error) {
-    console.error("Error updating video status:", error);
+    console.error("Error toggling video approval status:", error);
     res
       .status(500)
       .json({ message: "Internal Server Error", error: error.message });
@@ -345,7 +351,9 @@ exports.toggleLikeVideo = async (req, res) => {
     const { userId } = req.body; // Get the user ID from the request body
 
     if (!videoId || !userId) {
-      return res.status(400).json({ message: "Video ID and User ID are required" });
+      return res
+        .status(400)
+        .json({ message: "Video ID and User ID are required" });
     }
 
     // Find the video by ID
@@ -373,12 +381,17 @@ exports.toggleLikeVideo = async (req, res) => {
     await video.save();
 
     res.status(200).json({
-      message: userIndex === -1 ? "Video liked successfully" : "Video unliked successfully",
+      message:
+        userIndex === -1
+          ? "Video liked successfully"
+          : "Video unliked successfully",
       video,
     });
   } catch (error) {
     console.error("Error toggling like status:", error);
-    res.status(500).json({ message: "Internal Server Error", error: error.message });
+    res
+      .status(500)
+      .json({ message: "Internal Server Error", error: error.message });
   }
 };
 
@@ -392,7 +405,9 @@ exports.getAllVideoRequests = async (req, res) => {
     );
 
     if (!videoRequests.length) {
-      return res.status(404).json({ message: "No pending video requests found" });
+      return res
+        .status(404)
+        .json({ message: "No pending video requests found" });
     }
 
     res.status(200).json({ videoRequests });
