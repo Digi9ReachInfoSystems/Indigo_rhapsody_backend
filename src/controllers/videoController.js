@@ -1,5 +1,6 @@
 const Video = require("../models/videosModel");
 const mongoose = require("mongoose");
+const User = require("../models/userModel");
 
 exports.createVideoCreator = async (req, res) => {
   try {
@@ -40,28 +41,51 @@ exports.createVideoCreator = async (req, res) => {
       .json({ message: "Internal Server Error", error: error.message });
   }
 };
-
 exports.approveVideoCreator = async (req, res) => {
   try {
     const { videoId } = req.params;
     const { is_approved } = req.body;
 
-    const updatedCreator = await Video.findByIdAndUpdate(
-      videoId,
-      { is_approved, updated_at: Date.now() },
-      { new: true }
-    );
+    // Start a transaction to ensure both updates succeed or fail together
+    const session = await mongoose.startSession();
+    session.startTransaction();
 
-    if (!updatedCreator) {
-      return res.status(404).json({ message: "Video creator not found" });
+    try {
+      // 1. Update the video creator status
+      const updatedCreator = await Video.findByIdAndUpdate(
+        videoId,
+        { is_approved, updated_at: Date.now() },
+        { new: true, session }
+      );
+
+      if (!updatedCreator) {
+        await session.abortTransaction();
+        return res.status(404).json({ message: "Video creator not found" });
+      }
+
+      // 2. If approving, update the user's is_creator status
+      if (is_approved) {
+        await User.findByIdAndUpdate(
+          updatedCreator.userId,
+          { is_creator: true },
+          { new: true, session }
+        );
+      }
+
+      await session.commitTransaction();
+
+      res.status(200).json({
+        message: `Video creator ${
+          is_approved ? "approved" : "rejected"
+        } successfully`,
+        creator: updatedCreator,
+      });
+    } catch (error) {
+      await session.abortTransaction();
+      throw error;
+    } finally {
+      session.endSession();
     }
-
-    res.status(200).json({
-      message: `Video creator ${
-        is_approved ? "approved" : "rejected"
-      } successfully`,
-      creator: updatedCreator,
-    });
   } catch (error) {
     console.error("Error updating video creator status:", error);
     res
