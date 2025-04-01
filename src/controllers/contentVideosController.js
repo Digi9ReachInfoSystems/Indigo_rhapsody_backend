@@ -34,26 +34,35 @@ exports.approveVideo = async (req, res) => {
   try {
     const { videoId } = req.params;
 
-    // Find the video by ID and update the is_approved field to true
-    const video = await ContentVideo.findByIdAndUpdate(
-      videoId,
-      { is_approved: true },
-      { new: true } // Return the updated document
-    );
+    // First find the video to get its current status
+    const currentVideo = await ContentVideo.findById(videoId);
 
-    if (!video) {
+    if (!currentVideo) {
       return res.status(404).json({ message: "Video not found." });
     }
 
+    // Toggle the is_approved status
+    const video = await ContentVideo.findByIdAndUpdate(
+      videoId,
+      {
+        is_approved: !currentVideo.is_approved,
+        updated_at: Date.now(), // Optional: update timestamp
+      },
+      { new: true } // Return the updated document
+    );
+
     res.status(200).json({
-      message: "Video approved successfully",
+      message: `Video ${
+        video.is_approved ? "approved" : "unapproved"
+      } successfully`,
       video,
     });
   } catch (error) {
-    console.error("Error approving video:", error);
-    res
-      .status(500)
-      .json({ message: "Internal Server Error", error: error.message });
+    console.error("Error toggling video approval:", error);
+    res.status(500).json({
+      message: "Internal Server Error",
+      error: error.message,
+    });
   }
 };
 
