@@ -1,5 +1,6 @@
 const mongoose = require("mongoose");
 const Product = require("../models/productModels");
+const Designer = require("../models/designerModel");
 const Category = require("../models/categoryModel");
 const SubCategory = require("../models/subcategoryModel");
 const { bucket } = require("../service/firebaseServices"); // Firebase storage configuration
@@ -474,11 +475,10 @@ exports.updateVariantStock = async (req, res) => {
     });
   }
 };
-
 exports.getProducts = async (req, res) => {
   try {
     const {
-      productName, // New filter to search by product name
+      productName,
       minPrice,
       maxPrice,
       sort,
@@ -486,82 +486,153 @@ exports.getProducts = async (req, res) => {
       fit,
       category,
       subCategory,
+      page = 1,
+      limit = 10,
     } = req.query;
 
-    // Construct the query object based on the filters
+    // Construct the base query
     let query = { enabled: true };
-    // 1. Filter by product name (case-insensitive search)
+
+    // 1. Product name search (case-insensitive)
     if (productName) {
-      query.productName = { $regex: new RegExp(productName, "i") };
+      query.productName = { $regex: productName, $options: "i" };
     }
 
-    // 2. Filter by price range
+    // 2. Price range filter
     if (minPrice || maxPrice) {
       query.price = {};
-      if (minPrice) query.price.$gte = parseFloat(minPrice);
-      if (maxPrice) query.price.$lte = parseFloat(maxPrice);
+      if (minPrice) query.price.$gte = Number(minPrice);
+      if (maxPrice) query.price.$lte = Number(maxPrice);
     }
 
-    // 3. Filter by color (inside variants)
+    // 3. Color filter (search in variants array)
     if (color) {
-      query["variants.color"] = { $regex: new RegExp(color, "i") };
+      query["variants.color"] = { $regex: color, $options: "i" };
     }
 
-    // 4. Filter by fit
+    // 4. Fit filter
     if (fit) {
       query.fit = fit;
     }
 
-    // 5. Filter by category
+    // 5. Category filter
     if (category) {
       const categoryDoc = await Category.findOne({ name: category });
-      if (categoryDoc) {
-        query.category = categoryDoc._id;
-      } else {
+      if (!categoryDoc) {
         return res.status(404).json({ message: "Category not found" });
       }
+      query.category = categoryDoc._id;
     }
 
-    // 6. Filter by subCategory
+    // 6. SubCategory filter
     if (subCategory) {
       const subCategoryDoc = await SubCategory.findOne({ name: subCategory });
-      if (subCategoryDoc) {
-        query.subCategory = subCategoryDoc._id;
-      } else {
+      if (!subCategoryDoc) {
         return res.status(404).json({ message: "SubCategory not found" });
       }
+      query.subCategory = subCategoryDoc._id;
     }
 
-    // 7. Set up sorting by price (low to high or high to low)
-    let sortQuery = {};
+    // 7. Sorting options
+    let sortOptions = {};
     if (sort === "lowToHigh") {
-      sortQuery.price = 1; // Ascending
+      sortOptions.price = 1;
     } else if (sort === "highToLow") {
-      sortQuery.price = -1; // Descending
+      sortOptions.price = -1;
+    } else if (sort === "newest") {
+      sortOptions.createdAt = -1;
     }
 
-    // 8. Execute the query with filters and sorting
-    const products = await Product.find(query)
-      .populate("category", "name")
-      .populate("subCategory", "name")
-      .sort(sortQuery);
+    // 8. Pagination calculations
+    const pageNumber = parseInt(page);
+    const limitNumber = parseInt(limit);
+    const skip = (pageNumber - 1) * limitNumber;
 
-    // 9. Handle case where no products are found
+    // 9. Main query with population and filtering
+    const products = await Product.aggregate([
+      { $match: query },
+      {
+        $lookup: {
+          from: "designers",
+          localField: "designerRef",
+          foreignField: "_id",
+          as: "designer",
+        },
+      },
+      { $unwind: "$designer" },
+      { $match: { "designer.is_approved": true } },
+      {
+        $lookup: {
+          from: "categories",
+          localField: "category",
+          foreignField: "_id",
+          as: "category",
+        },
+      },
+      { $unwind: { path: "$category", preserveNullAndEmptyArrays: true } },
+      {
+        $lookup: {
+          from: "subcategories",
+          localField: "subCategory",
+          foreignField: "_id",
+          as: "subCategory",
+        },
+      },
+      { $unwind: { path: "$subCategory", preserveNullAndEmptyArrays: true } },
+      // { $sort: sortOptions },
+      { $skip: skip },
+      { $limit: limitNumber },
+      {
+        $project: {
+          productName: 1,
+          price: 1,
+          description: 1,
+          variants: 1,
+          fit: 1,
+          images: 1,
+          enabled: 1,
+          createdAt: 1,
+          "category.name": 1,
+          "subCategory.name": 1,
+          "designer.userId": 1,
+          "designer.is_approved": 1,
+        },
+      },
+    ]);
+
+    // 10. Count total matching products (for pagination)
+    const countQuery = { ...query };
+    const totalCount = await Product.countDocuments(countQuery)
+      .where("designerRef")
+      .in(await Designer.find({ is_approved: true }).distinct("_id"));
+
+    // 11. Handle empty results
     if (products.length === 0) {
-      return res.status(404).json({ message: "No products found" });
+      return res.status(404).json({
+        message: "No approved products found matching your criteria",
+        total: 0,
+        page: 1,
+        pages: 1,
+      });
     }
 
-    // 10. Return the list of products
-    return res.status(200).json({ products });
+    // 12. Return successful response
+    return res.status(200).json({
+      message: "Products retrieved successfully",
+      products,
+      total: totalCount,
+      page: pageNumber,
+      pages: Math.ceil(totalCount / limitNumber),
+    });
   } catch (error) {
-    console.error("Error fetching products:", error.message);
+    console.error("Error fetching products:", error);
     return res.status(500).json({
       message: "Error fetching products",
       error: error.message,
+      stack: process.env.NODE_ENV === "development" ? error.stack : undefined,
     });
   }
 };
-
 exports.searchProducts = async (req, res) => {
   try {
     const { searchTerm, limit } = req.query;
@@ -597,7 +668,6 @@ exports.searchProducts = async (req, res) => {
     });
   }
 };
-
 exports.getLatestProducts = async (req, res) => {
   try {
     const { limit } = req.query;
@@ -605,17 +675,61 @@ exports.getLatestProducts = async (req, res) => {
     // Default limit is 10 if not provided
     const productLimit = parseInt(limit) || 10;
 
-    // Fetch latest products sorted by createdDate in descending order
-    const latestProducts = await Product.find({
-      enabled: true,
-    })
-      .sort({ createdDate: -1 }) // Sort by latest first
-      .limit(productLimit) // Limit the results
-      .populate("category", "name") // Populate category name
-      .populate("subCategory", "name"); // Populate subcategory name
+    // Fetch latest products from approved designers
+    const latestProducts = await Product.aggregate([
+      {
+        $match: { enabled: true },
+      },
+      {
+        $lookup: {
+          from: "designers",
+          localField: "designerRef",
+          foreignField: "_id",
+          as: "designer",
+        },
+      },
+      { $unwind: "$designer" },
+      { $match: { "designer.is_approved": true } },
+      {
+        $lookup: {
+          from: "categories",
+          localField: "category",
+          foreignField: "_id",
+          as: "category",
+        },
+      },
+      { $unwind: { path: "$category", preserveNullAndEmptyArrays: true } },
+      {
+        $lookup: {
+          from: "subcategories",
+          localField: "subCategory",
+          foreignField: "_id",
+          as: "subCategory",
+        },
+      },
+      { $unwind: { path: "$subCategory", preserveNullAndEmptyArrays: true } },
+      { $sort: { createdDate: -1 } },
+      { $limit: productLimit },
+      {
+        $project: {
+          productName: 1,
+          price: 1,
+          description: 1,
+          variants: 1,
+          fit: 1,
+          images: 1,
+          enabled: 1,
+          createdDate: 1,
+          "category.name": 1,
+          "subCategory.name": 1,
+        },
+      },
+    ]);
 
     if (latestProducts.length === 0) {
-      return res.status(404).json({ message: "No latest products found" });
+      return res.status(404).json({
+        message: "No latest products from approved designers found",
+      });
     }
 
     return res.status(200).json({ products: latestProducts });
@@ -627,7 +741,6 @@ exports.getLatestProducts = async (req, res) => {
     });
   }
 };
-
 exports.getTotalProductCount = async (req, res) => {
   try {
     // Count the total number of documents in the Product collection
@@ -760,47 +873,92 @@ exports.getProductsBySubCategory = async (req, res) => {
       return res.status(400).json({ message: "Invalid subCategory ID" });
     }
 
-    // Build the query object with optional filters
+    // Build the base query
     const query = {
-      subCategory: subCategoryId,
-      enabled: true, // Only fetch enabled products
+      subCategory: new mongoose.Types.ObjectId(subCategoryId), // Fixed: added 'new'
+      enabled: true,
     };
 
-    // Handle comma-separated fit values
+    // Handle fit filter
     if (fit) {
       const fitArray = fit.split(",").map((f) => f.trim());
       query.fit = { $in: fitArray };
     }
 
-    // Handle comma-separated color values
+    // Handle color filter
     if (color) {
       const colorArray = color.split(",").map((c) => c.trim());
-      query.color = { $in: colorArray };
+      query["variants.color"] = { $in: colorArray };
     }
 
-    // Add price filter only if minPrice or maxPrice is provided
+    // Handle price range
     if (minPrice || maxPrice) {
       query.price = {};
       if (minPrice) query.price.$gte = Number(minPrice);
       if (maxPrice) query.price.$lte = Number(maxPrice);
     }
 
-    // Determine sorting order (default to ascending if not provided)
+    // Handle sorting
     const sortOptions = {};
     if (sortBy) {
       sortOptions[sortBy] = sortOrder === "desc" ? -1 : 1;
+    } else {
+      // Default sorting if not specified
+      sortOptions.createdDate = -1;
     }
 
-    // Fetch the products with the applied filters and sorting
-    const products = await Product.find(query)
-      .populate("category", "name") // Populate category name
-      .populate("subCategory", "name") // Populate subcategory name
-      .sort(sortOptions);
+    // Fetch products with aggregation pipeline
+    const products = await Product.aggregate([
+      { $match: query },
+      {
+        $lookup: {
+          from: "designers",
+          localField: "designerRef",
+          foreignField: "_id",
+          as: "designer",
+        },
+      },
+      { $unwind: "$designer" },
+      { $match: { "designer.is_approved": true } },
+      {
+        $lookup: {
+          from: "categories",
+          localField: "category",
+          foreignField: "_id",
+          as: "category",
+        },
+      },
+      { $unwind: { path: "$category", preserveNullAndEmptyArrays: true } },
+      {
+        $lookup: {
+          from: "subcategories",
+          localField: "subCategory",
+          foreignField: "_id",
+          as: "subCategory",
+        },
+      },
+      { $unwind: { path: "$subCategory", preserveNullAndEmptyArrays: true } },
+      { $sort: sortOptions },
+      {
+        $project: {
+          productName: 1,
+          price: 1,
+          description: 1,
+          variants: 1,
+          fit: 1,
+          images: 1,
+          enabled: 1,
+          createdDate: 1,
+          "category.name": 1,
+          "subCategory.name": 1,
+        },
+      },
+    ]);
 
     if (products.length === 0) {
-      return res
-        .status(404)
-        .json({ message: "No products found for this subcategory" });
+      return res.status(404).json({
+        message: "No approved products found for this subcategory",
+      });
     }
 
     return res.status(200).json({ products });
