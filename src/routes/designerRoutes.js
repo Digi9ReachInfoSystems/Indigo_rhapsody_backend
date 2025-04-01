@@ -13,6 +13,8 @@ router.post(
 );
 
 router.get("/designers", designerController.getAllDesigners);
+router.get("/designersDashboard", designerController.getAllDesignersForAdmin);
+
 router.get("/total-count", designerController.getTotalDesignerCount);
 
 router.get("/designers/:id", designerController.getDesignerById);
@@ -51,6 +53,7 @@ router.post(
   "/:designerId/request-update",
   designerController.requestUpdateDesignerInfo
 );
+router.patch("/disable/:id", designerController.toggleDesignerApproval);
 
 router.post(
   "/:designerId/update-request",

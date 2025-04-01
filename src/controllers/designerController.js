@@ -83,6 +83,52 @@ exports.createDesigner = async (req, res) => {
 exports.getAllDesigners = async (req, res) => {
   try {
     // Sort the designers by createdTime in descending order
+    const designers = await Designer.find({ is_approved: true })
+      .populate("userId", "displayName")
+      .sort({ createdTime: -1 }); // Sort by createdTime, latest first
+
+    if (!designers.length) {
+      return res.status(404).json({ message: "No designers found" });
+    }
+
+    return res.status(200).json({ designers });
+  } catch (error) {
+    return res.status(500).json({
+      message: "Error fetching designers",
+      error: error.message,
+    });
+  }
+};
+
+exports.toggleDesignerApproval = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const designer = await Designer.findById(id);
+    if (!designer) {
+      return res.status(404).json({ message: "Designer not found" });
+    }
+
+    // Simply toggle the boolean value
+    designer.is_approved = !designer.is_approved;
+    await designer.save();
+
+    return res.status(200).json({
+      message: `Designer ${
+        designer.is_approved ? "approved" : "disabled"
+      } successfully`,
+      is_approved: designer.is_approved,
+    });
+  } catch (error) {
+    return res.status(500).json({
+      message: "Error toggling designer status",
+      error: error.message,
+    });
+  }
+};
+exports.getAllDesignersForAdmin = async (req, res) => {
+  try {
+    // Sort the designers by createdTime in descending order
     const designers = await Designer.find()
       .populate("userId", "displayName")
       .sort({ createdTime: -1 }); // Sort by createdTime, latest first

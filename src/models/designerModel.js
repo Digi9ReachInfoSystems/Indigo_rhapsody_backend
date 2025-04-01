@@ -6,6 +6,10 @@ const designerSchema = new mongoose.Schema({
     ref: "User",
     required: true,
   },
+  status: {
+    type: Boolean,
+    default: true,
+  },
   logoUrl: {
     type: String,
     required: true,
