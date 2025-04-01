@@ -185,14 +185,13 @@ exports.updateVideoStatus = async (req, res) => {
   try {
     const { videoId } = req.params;
 
-    // First find the video to get its current status
-    const video = await Video.findById(videoId);
+    // Find video without populating to avoid missing creator errors
+    const video = await Video.findById(videoId).lean();
 
     if (!video) {
       return res.status(404).json({ message: "Video not found" });
     }
 
-    // Toggle the is_approved status
     const updatedVideo = await Video.findByIdAndUpdate(
       videoId,
       {
@@ -208,12 +207,12 @@ exports.updateVideoStatus = async (req, res) => {
     });
   } catch (error) {
     console.error("Error toggling video approval status:", error);
-    res
-      .status(500)
-      .json({ message: "Internal Server Error", error: error.message });
+    res.status(500).json({
+      message: "Internal Server Error",
+      error: error.message,
+    });
   }
 };
-
 // Get a single video by its ID
 exports.getVideoById = async (req, res) => {
   try {
