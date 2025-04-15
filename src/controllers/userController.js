@@ -227,12 +227,7 @@ exports.createUser = async (req, res) => {
         <p>Welcome to Indigo Rhapsody. We are excited to have you on our platform!</p>
         <p>Continue Shopping on our Mobile App.</p>
       </div>
-      <div class="content">
-        <img
-          src="https://marketplace.canva.com/EAFoEJMTGiI/1/0/1600w/canva-beige-aesthetic-new-arrival-fashion-banner-landscape-cNjAcBMeF9s.jpg"
-          alt="Indigo Rhapsody Banner"
-        />
-      </div>
+      
       <div class="footer">
         <p>
           Follow us for updates:
