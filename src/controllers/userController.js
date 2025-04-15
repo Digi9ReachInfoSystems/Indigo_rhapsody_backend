@@ -130,14 +130,14 @@ exports.createUser = async (req, res) => {
       port: 465,
       secure: true,
       auth: {
-        user: "Info@gully2global.com",
-        pass: "Shasudigi@217",
+        user: "info@indigorhapsody.com",
+        pass: "InfoPassword123#@",
       },
     });
 
     // Email options
     const mailOptions = {
-      from: '"Indigo Rhapsody" <Info@gully2global.com>',
+      from: '"Indigo Rhapsody" <info@indigorhapsody.com>',
       to: email,
       subject: "Welcome to Indigo Rhapsody Mobile Application",
       html: `

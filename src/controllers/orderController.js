@@ -19,14 +19,14 @@ const transporter = nodemailer.createTransport({
   port: 465,
   secure: true,
   auth: {
-    user: "Info@gully2global.com",
-    pass: "Shasudigi@217",
+    user: "orders@indigorhapsody.com",
+    pass: "OrdersPassword123@#",
   },
 });
 
 const notifyDesignerByEmail = async (designerEmail, orderDetails) => {
   const mailOptions = {
-    from: "Info@gully2global.com",
+    from: "orders@indigorhapsody.com",
     to: designerEmail,
     subject: "New Order Notification",
     html: `
