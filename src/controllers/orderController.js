@@ -356,7 +356,7 @@ exports.createOrder = async (req, res) => {
 
     // Send confirmation email with invoice link
     const mailOptions = {
-      from: "Info@gully2global.com",
+      from: "orders@indigorhapsody.com",
       to: email,
       subject: "Order Confirmation",
       html: `
