@@ -9,5 +9,12 @@ router.get("/:id", couponController.getCouponById);
 router.put("/:id", couponController.updateCoupon);
 router.delete("/:id", couponController.deleteCoupon);
 router.post("/applyCoupon", couponController.applyCouponToCart);
+router.post("/particularUser", couponController.createCouponForParticularUser);
+router.post(
+  "/createCouponForPromotion",
+  couponController.createCouponForPromotion
+);
+
+router.post("/applyUniversal", couponController.applyCouponUniversal);
 
 module.exports = router;

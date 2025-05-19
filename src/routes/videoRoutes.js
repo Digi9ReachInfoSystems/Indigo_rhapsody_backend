@@ -20,14 +20,13 @@ router.get("/videos/:videoId", videoController.getVideoById);
 
 router.post("/video-creator", videoController.createVideoCreator);
 
-// Admin approves or rejects video creator
 router.put(
   "/video-creator/:videoId/approve",
   videoController.approveVideoCreator
 );
 
-// Create video (only for approved creators)
 router.post("/videos", videoController.createVideo);
+router.post("/videos/admin", videoController.createVideoByAdmin);
 router.post("/:videoId/like", videoController.LikeVideo);
 
 router.post("/video-creator/status", videoController.checkApprovalStatus);
