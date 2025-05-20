@@ -134,7 +134,7 @@ exports.createVideo = async (req, res) => {
 
 exports.createVideoByAdmin = async (req, res) => {
   try {
-    const { userId, instagram_User, demo_url, videoUrl } = req.body;
+    const { userId, videoUrl } = req.body;
 
     if (!userId || !videoUrl) {
       return res
@@ -144,8 +144,10 @@ exports.createVideoByAdmin = async (req, res) => {
 
     const newVideo = new Video({
       userId,
-      instagram_User,
-      demo_url,
+      is_approved: true, // Set to true for admin-created videos
+      instagram_User: "N/A",
+      demo_url: "N/A",
+
       videoUrl,
     });
 
