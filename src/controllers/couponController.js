@@ -397,7 +397,6 @@ exports.createCouponForParticularUser = async (req, res) => {
   }
 };
 
-
 exports.applyCouponUniversal = async (req, res) => {
   try {
     const { userId, couponCode, cartId } = req.body;
@@ -437,19 +436,15 @@ exports.applyCouponUniversal = async (req, res) => {
         (u) => u.user_id.toString() === userId
       );
       if (!rec)
-        return res
-          .status(403)
-          .json({
-            success: false,
-            message: "Coupon not valid for this account",
-          });
+        return res.status(403).json({
+          success: false,
+          message: "Coupon not valid for this account",
+        });
       if (rec.is_used)
-        return res
-          .status(400)
-          .json({
-            success: false,
-            message: "You have already used this coupon",
-          });
+        return res.status(400).json({
+          success: false,
+          message: "You have already used this coupon",
+        });
     } else if (coupon.created_for_promotion) {
       if (coupon.usedBy.length >= coupon.created_for_promotion.no_of_max_usage)
         return res
@@ -465,12 +460,10 @@ exports.applyCouponUniversal = async (req, res) => {
         .json({ success: false, message: "Cart not found" });
 
     if (cart.discount_applied)
-      return res
-        .status(400)
-        .json({
-          success: false,
-          message: "A coupon is already applied to this cart",
-        });
+      return res.status(400).json({
+        success: false,
+        message: "A coupon is already applied to this cart",
+      });
 
     /* ─── compute subtotal & discount ─────────────────────────────────── */
     const subtotal = cart.products.reduce(
@@ -513,13 +506,48 @@ exports.applyCouponUniversal = async (req, res) => {
     });
   } catch (err) {
     console.error("applyCouponUniversal ►", err);
-    res
-      .status(500)
-      .json({
-        success: false,
-        message: "Internal server error",
-        error: err.message,
-      });
+    res.status(500).json({
+      success: false,
+      message: "Internal server error",
+      error: err.message,
+    });
   }
 };
 
+exports.searchUsers = async (req, res) => {
+  try {
+    const { q } = req.query;
+
+    if (!q) {
+      return res.status(400).json({
+        success: false,
+        message: "Search query parameter 'q' is required",
+      });
+    }
+
+    // Create a case-insensitive regex for searching
+    const searchRegex = new RegExp(q, "i");
+
+    const users = await User.find({
+      $or: [
+        { email: searchRegex },
+        { displayName: searchRegex },
+        { phoneNumber: isNaN(q) ? null : Number(q) }, // Only search by number if q is numeric
+      ],
+    })
+      .select("-password -__v") // Exclude sensitive/uneeded fields
+      .limit(10); // Limit results to 10
+
+    res.status(200).json({
+      success: true,
+      data: users,
+    });
+  } catch (error) {
+    console.error("Error searching users:", error);
+    res.status(500).json({
+      success: false,
+      message: "Internal server error",
+      error: error.message,
+    });
+  }
+};
