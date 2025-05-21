@@ -10,6 +10,7 @@ router.get("/videos/:videoId", videoController.getVideoById);
 router.delete("/videos/:videoId", videoController.deleteVideo);
 router.post("/videos/:videoId/like", videoController.toggleLikeVideo);
 router.post("/comments", videoController.createComment); // Create a comment
+router.post("/createAdminVideo", videoController.createVideoByAdmin);
 router.get("/videos/:videoId/comments", videoController.getCommentsByVideo);
 router.patch("/videos/:videoId/approve", videoController.approveVideo);
 
