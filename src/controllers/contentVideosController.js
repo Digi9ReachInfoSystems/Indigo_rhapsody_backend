@@ -302,3 +302,33 @@ exports.getCommentsByVideo = async (req, res) => {
     });
   }
 };
+
+
+exports.createVideoByAdmin = async (req, res) => {
+  try {
+    const { userId, videoUrl } = req.body;
+    if (!userId || !videoUrl) {
+      return res
+        .status(400)
+        .json({ message: "User ID, Creator ID, and Video URL are required." });
+    }
+
+    const video = new ContentVideo({
+      userId,
+      videoUrl,
+      is_approved: true,
+    });
+
+    await video.save();
+    res.status(201).json({
+      message: "Admin video created and approved successfully",
+      video,
+    });
+  } catch (error) {
+    console.error("Error creating admin video:", error);
+    res
+      .status(500)
+      .json({ message: "Internal Server Error", error: error.message });
+  }
+};
+
