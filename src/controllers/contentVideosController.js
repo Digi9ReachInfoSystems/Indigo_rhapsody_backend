@@ -307,8 +307,8 @@ exports.getCommentsByVideo = async (req, res) => {
 
 exports.createVideoByAdmin = async (req, res) => {
   try {
-    const { userId, videoUrl } = req.body;
-    if (!userId || !videoUrl) {
+    const { userId, videoUrl, title } = req.body;
+    if (!userId || !videoUrl || !title) {
       return res
         .status(400)
         .json({ message: "User ID, Creator ID, and Video URL are required." });
@@ -316,6 +316,7 @@ exports.createVideoByAdmin = async (req, res) => {
 
     const video = new ContentVideo({
       userId,
+      title,
       videoUrl,
       is_approved: true,
     });
