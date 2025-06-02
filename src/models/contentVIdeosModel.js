@@ -20,6 +20,11 @@ const contentVideoSchema = new mongoose.Schema(
         },
       },
     ],
+    creatorId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Video",
+      // required: true,
+    },
     videoUrl: {
       type: String,
       required: true,
