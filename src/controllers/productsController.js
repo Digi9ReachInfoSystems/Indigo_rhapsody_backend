@@ -6,6 +6,8 @@ const SubCategory = require("../models/subcategoryModel");
 const { bucket } = require("../service/firebaseServices"); // Firebase storage configuration
 const axios = require("axios"); // To fetch images from URLs
 const xlsx = require("xlsx"); // Add this at the top of your file
+const { v4: uuid } = require('uuid');
+
 const uploadImageFromURL = async (imageUrl, filename) => {
   try {
     // Check if the URL is a Google Drive URL and modify it accordingly
