@@ -235,164 +235,141 @@ exports.uploadSingleProduct = async (req, res) => {
     return res.status(500).json({ message: "Error creating product", error });
   }
 };
-
 exports.uploadBulkProducts = async (req, res) => {
+  const reqId = uuid();                       // correlation for all logs
+  const L     = (...a) => console.log(`[bulk:${reqId}]`, ...a);
+
   try {
-    console.log("uploadBulkProducts called");
+    L('START');
+
+    // ─── Basic input check ─────────────────────────────────────
     const { fileUrl, designerRef } = req.body;
-    console.log("Received fileUrl:", fileUrl);
-    console.log("Received designerRef:", designerRef);
+    if (!fileUrl)     return res.status(400).json({ message: 'fileUrl required' });
+    if (!designerRef) return res.status(400).json({ message: 'designerRef required' });
 
-    if (!fileUrl)
-      return res.status(400).json({ message: "No file URL provided" });
-    if (!designerRef)
-      return res
-        .status(400)
-        .json({ message: "Designer reference is required" });
+    // ─── Download spreadsheet ──────────────────────────────────
+    L('GET', fileUrl);
+    const { data: buf } = await axios.get(fileUrl, { responseType: 'arraybuffer' });
 
-    console.log("Attempting to download file from fileUrl");
+    // ─── Parse first sheet to JSON ─────────────────────────────
+    const wb         = xlsx.read(buf, { type: 'buffer' });
+    const sheetName  = wb.SheetNames[0];
+    const rows       = xlsx.utils.sheet_to_json(wb.Sheets[sheetName]);
+    L(`sheet "${sheetName}" rows:`, rows.length);
+    if (!rows.length) throw new Error('Spreadsheet has no data rows');
 
-    const response = await axios.get(fileUrl, { responseType: "arraybuffer" });
-    console.log("File downloaded successfully");
+    // ─── Build product map in memory ───────────────────────────
+    const products = {};                         // key = productName (lower)
+    for (let i = 0; i < rows.length; i++) {
+      const r   = rows[i];
+      const tag = `row:${i + 2}`;               // +2 for 1-based Excel lines
 
-    const fileBuffer = Buffer.from(response.data, "binary");
-    console.log("File buffer created");
+      try {
+        // ---------- mandatory column check ----------
+        ['productName', 'category', 'subCategory', 'color', 'size']
+          .forEach(c => { if (!r[c]) throw new Error(`missing ${c}`); });
 
-    const workbook = xlsx.read(fileBuffer, { type: "buffer" });
-    console.log("Workbook read successfully");
+        // ---------- upsert category / subCategory ----
+        const [catDoc, subDoc] = await Promise.all([
+          Category.findOneAndUpdate(
+            { name: r.category.trim() },
+            { $setOnInsert: { name: r.category.trim() } },
+            { upsert: true, new: true }
+          ),
+          SubCategory.findOneAndUpdate(
+            { name: r.subCategory.trim() },
+            { $setOnInsert: { name: r.subCategory.trim() } },
+            { upsert: true, new: true }
+          )
+        ]);
+        if (!subDoc.category)
+          await SubCategory.updateOne({ _id: subDoc._id }, { category: catDoc._id });
 
-    const sheetName = workbook.SheetNames[0];
-    console.log("Sheet name obtained:", sheetName);
-
-    const sheetData = xlsx.utils.sheet_to_json(workbook.Sheets[sheetName]);
-    console.log("Sheet data converted to JSON:", sheetData.length, "rows");
-
-    const products = {};
-
-    for (const row of sheetData) {
-      const categoryDoc = await Category.findOneAndUpdate(
-        { name: row.category },
-        { name: row.category },
-        { upsert: true, new: true }
-      );
-
-      const subCategoryDoc = await SubCategory.findOneAndUpdate(
-        { name: row.subCategory },
-        { name: row.subCategory, category: categoryDoc._id },
-        { upsert: true, new: true }
-      );
-
-      const productName = row.productName.trim().toLowerCase();
-
-      if (!products[productName]) {
-        let imageList = [];
-        let coverImageFirebaseUrl = "";
-
-        if (row.ImageList) {
-          const imageUrls = row.ImageList.split(",");
-          for (let index = 0; index < imageUrls.length; index++) {
-            const url = imageUrls[index].trim();
-            try {
-              const filename = url.split("/").pop();
-              const firebaseUrl = await uploadImageFromURL(url, filename);
-              imageList.push(firebaseUrl);
-
-              // Set the first image as coverImage
-              if (index === 0) {
-                coverImageFirebaseUrl = firebaseUrl;
+        // ---------- product skeleton -----------------
+        const key        = r.productName.trim().toLowerCase();
+        const firstSeen  = !products[key];
+        if (firstSeen) {
+          // collect images once per product
+          const imgList = [];
+          if (r.ImageList) {
+            for (const rawUrl of r.ImageList.split(',').map(s => s.trim()).filter(Boolean)) {
+              try {
+                const file = rawUrl.split('/').pop();
+                const upl  = await uploadImageFromURL(rawUrl, file);
+                imgList.push(upl);
+              } catch (e) {
+                L(tag, 'image upload fail', e.message);
               }
-            } catch (error) {
-              console.error(`Failed to upload image: ${error.message}`);
             }
           }
+
+          products[key] = {
+            productName : r.productName.trim(),
+            description : r.description || '',
+            price       : r.price,
+            mrp         : r.mrp,
+            sku         : r.sku,
+            fit         : r.fit,
+            fabric      : r.fabric,
+            material    : r.material,
+            category    : catDoc._id,
+            subCategory : subDoc._id,
+            designerRef,
+            createdDate : new Date(),
+            coverImage  : imgList[0] || '',
+            variants    : [],
+            _baseImages : imgList        // temporary for variant reuse
+          };
         }
 
-        products[productName] = {
-          productName: row.productName,
-          description: row.description,
-          price: row.price,
-          mrp: row.mrp,
-          sku: row.sku,
-          fit: row.fit,
-          fabric: row.fabric,
-          material: row.material,
-          category: categoryDoc._id,
-          subCategory: subCategoryDoc._id,
-          designerRef: designerRef, // Use designerRef from form data
-          createdDate: new Date(),
-          coverImage: coverImageFirebaseUrl,
-          variants: [],
-        };
-      }
-
-      // Handle product variant
-      let variant = products[productName].variants.find(
-        (v) => v.color === row.color
-      );
-
-      if (!variant) {
-        variant = {
-          color: row.color,
-          imageList: [], // We'll fill this below
-          sizes: [],
-        };
-        products[productName].variants.push(variant);
-      }
-
-      // Use the imageList from the product for the variant
-      // Assuming all variants share the same images
-      if (row.ImageList) {
-        const imageUrls = row.ImageList.split(",");
-        for (let index = 0; index < imageUrls.length; index++) {
-          const url = imageUrls[index].trim();
-          try {
-            const filename = url.split("/").pop();
-            const firebaseUrl = await uploadImageFromURL(url, filename);
-
-            if (!variant.imageList.includes(firebaseUrl)) {
-              variant.imageList.push(firebaseUrl); // Avoid duplicates
-            }
-
-            // Set the coverImage if it's the first image
-            if (index === 0 && !products[productName].coverImage) {
-              products[productName].coverImage = firebaseUrl;
-            }
-          } catch (error) {
-            console.error(`Failed to upload image: ${error.message}`);
-          }
+        // ---------- variant by color -----------------
+        const prod   = products[key];
+        let variant  = prod.variants.find(v => v.color === r.color);
+        if (!variant) {
+          variant = {
+            color     : r.color,
+            imageList : [...prod._baseImages],  // reuse, no dup upload
+            sizes     : []
+          };
+          prod.variants.push(variant);
         }
-      }
 
-      // Add size to the variant
-      if (!variant.sizes.find((size) => size.size === row.size)) {
-        variant.sizes.push({
-          size: row.size,
-          price: row.sizePrice || row.price, // Handle size-specific price
-          stock: row.sizeStock || row.stock || 0, // Handle size-specific stock
-        });
+        // size entry
+        if (!variant.sizes.some(s => s.size === r.size)) {
+          variant.sizes.push({
+            size  : r.size,
+            price : r.sizePrice ?? r.price,
+            stock : r.sizeStock ?? r.stock ?? 0
+          });
+        }
+
+        L(tag, 'OK');
+      } catch (err) {
+        L(tag, 'FAIL ⇒', err.message);
       }
     }
 
-    // Upsert (create or update) products in the database
-    for (const productName in products) {
-      const productData = products[productName];
-      await Product.findOneAndUpdate(
-        { productName: productData.productName },
-        { $set: productData },
-        { upsert: true, new: true }
-      );
-    }
+    // remove temp property before save
+    Object.values(products).forEach(p => delete p._baseImages);
 
-    return res.status(201).json({ message: "Products uploaded successfully" });
-  } catch (error) {
-    console.error("Error uploading products:", error.message);
-    return res.status(500).json({
-      message: "Error uploading products",
-      error: error.message,
-    });
+    // ─── Bulk upsert to MongoDB ────────────────────────────────
+    const ops = Object.values(products).map(p => ({
+      updateOne: {
+        filter : { productName: p.productName },
+        update : { $set: p },
+        upsert : true
+      }
+    }));
+    const bulkRes = await Product.bulkWrite(ops);
+    L('bulkWrite result:', JSON.stringify(bulkRes));
+
+    L('END ✓');
+    res.status(201).json({ message: 'Bulk import complete', counts: bulkRes });
+  } catch (err) {
+    console.error(`[bulk:${reqId}] FATAL`, err);
+    res.status(500).json({ message: 'Bulk import failed', error: err.message });
   }
 };
-
 exports.updateVariantStock = async (req, res) => {
   try {
     const { fileUrl } = req.body; // Multer handles file upload
