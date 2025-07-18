@@ -571,6 +571,7 @@ exports.getProducts = async (req, res) => {
           images: 1,
           enabled: 1,
           createdAt: 1,
+          coverImage:1,
           "category.name": 1,
           "subCategory.name": 1,
           "designer.userId": 1,
