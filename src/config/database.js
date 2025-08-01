@@ -1,7 +1,6 @@
 const mongoose = require("mongoose");
 
-const MONGODB_URI =
-  "mongodb+srv://vercel-admin-user:XM542odoAQkOSCxt@cluster0.f3uf4.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0";
+const MONGODB_URI = process.env.MONGODB_URI;
 
 const connectDB = async () => {
   try {

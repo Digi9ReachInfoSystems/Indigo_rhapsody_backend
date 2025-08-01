@@ -1,3 +1,4 @@
+require("dotenv").config(); // This should be at the VERY TOP of your file
 const express = require("express");
 const router = express.Router();
 const categoryRoutes = require("./src/routes/categoryRoutes.js");

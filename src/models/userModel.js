@@ -1,4 +1,5 @@
 const mongoose = require("mongoose");
+const bcrypt = require("bcryptjs");
 
 const userSchema = new mongoose.Schema({
   email: {
@@ -43,26 +44,22 @@ const userSchema = new mongoose.Schema({
     {
       nick_name: {
         type: String,
-  
       },
       city: {
         type: String,
-
       },
       pincode: {
         type: Number,
-
       },
       state: {
         type: String,
-
       },
       street_details: {
         type: String,
-
       },
     },
   ],
 });
+
 
 module.exports = mongoose.model("User", userSchema);
