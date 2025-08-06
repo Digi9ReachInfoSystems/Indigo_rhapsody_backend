@@ -351,23 +351,31 @@ exports.getCartForUser = async (req, res) => {
     // Map through cart products to append size, price, and color info
     const populatedProducts = cart.products.map((item) => {
       const product = item.productId;
-      const variant = product.variants.find((v) => v.color === item.color);
-
-      if (variant) {
-        const sizeInfo = variant.sizes.find((s) => s.size === item.size);
-
+      // Check if product exists and has variants
+      if (!product || !product.variants || !Array.isArray(product.variants)) {
         return {
           ...item.toObject(),
-          productName: product.productName,
-          price: sizeInfo ? sizeInfo.price : product.price,
-          color: variant.color,
+          productName: product?.productName || "Unknown Product",
+          price: product?.price || 0,
+          color: item.color,
           size: item.size,
-          is_customizable: product.is_customizable,
-          image: product.coverImage,
+          is_customizable: product?.is_customizable || false,
+          image: product?.coverImage || null,
         };
       }
 
-      return item;
+      const variant = product.variants.find((v) => v.color === item.color);
+      const sizeInfo = variant?.sizes?.find((s) => s.size === item.size);
+
+      return {
+        ...item.toObject(),
+        productName: product.productName,
+        price: sizeInfo ? sizeInfo.price : product.price,
+        color: variant?.color || item.color,
+        size: item.size,
+        is_customizable: product.is_customizable,
+        image: product.coverImage,
+      };
     });
 
     const responseCart = {
