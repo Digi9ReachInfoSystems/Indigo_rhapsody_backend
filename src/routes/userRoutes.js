@@ -40,6 +40,7 @@ router.get(
   roleMiddleware(["Admin"]),
   userController.getUsers
 );
+
 router.get("/:userId", userController.getUserById);
 router.post("/createUser", userController.createUser);
 router.put("/:userId", userController.updateUserAddress);
