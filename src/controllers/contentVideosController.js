@@ -289,14 +289,25 @@ exports.toggleVideoReaction = async (req, res) => {
     await video.save();
 
     // Populate user details for response
-    await video.populate('userId', 'displayName email');
-    await video.populate('creatorId', 'displayName email');
+    await video.populate('userId', 'displayName email phoneNumber profilePicture');
+    await video.populate('creatorId', 'displayName email phoneNumber profilePicture');
     await video.populate('products.productId', 'productName price coverImage sku category subCategory');
+
+    // Get user details for the person who reacted
+    const User = require("../models/userModel");
+    const reactingUser = await User.findById(userId).select('displayName email phoneNumber profilePicture');
 
     res.status(200).json({
       message,
       action,
       reactionType,
+      reactingUser: {
+        _id: reactingUser._id,
+        displayName: reactingUser.displayName,
+        email: reactingUser.email,
+        phoneNumber: reactingUser.phoneNumber,
+        profilePicture: reactingUser.profilePicture
+      },
       video: {
         _id: video._id,
         title: video.title,
@@ -363,6 +374,104 @@ exports.getUserReaction = async (req, res) => {
   }
 };
 
+// Get users who liked a video
+exports.getUsersWhoLiked = async (req, res) => {
+  try {
+    const { videoId } = req.params;
+    const { limit = 20, page = 1 } = req.query;
+    const skip = (parseInt(page) - 1) * parseInt(limit);
+
+    const video = await ContentVideo.findById(videoId);
+    if (!video) {
+      return res.status(404).json({ message: "Video not found" });
+    }
+
+    if (!video.likedBy || video.likedBy.length === 0) {
+      return res.status(200).json({
+        users: [],
+        totalUsers: 0,
+        currentPage: parseInt(page),
+        totalPages: 0,
+        hasNextPage: false,
+        hasPrevPage: false
+      });
+    }
+
+    // Get paginated user IDs
+    const paginatedUserIds = video.likedBy.slice(skip, skip + parseInt(limit));
+
+    // Fetch user details
+    const User = require("../models/userModel");
+    const users = await User.find({ _id: { $in: paginatedUserIds } })
+      .select('displayName email phoneNumber profilePicture')
+      .lean();
+
+    res.status(200).json({
+      users,
+      totalUsers: video.likedBy.length,
+      currentPage: parseInt(page),
+      totalPages: Math.ceil(video.likedBy.length / parseInt(limit)),
+      hasNextPage: skip + users.length < video.likedBy.length,
+      hasPrevPage: parseInt(page) > 1
+    });
+  } catch (error) {
+    console.error("Error getting users who liked:", error);
+    res.status(500).json({ 
+      message: "Internal Server Error", 
+      error: error.message 
+    });
+  }
+};
+
+// Get users who disliked a video
+exports.getUsersWhoDisliked = async (req, res) => {
+  try {
+    const { videoId } = req.params;
+    const { limit = 20, page = 1 } = req.query;
+    const skip = (parseInt(page) - 1) * parseInt(limit);
+
+    const video = await ContentVideo.findById(videoId);
+    if (!video) {
+      return res.status(404).json({ message: "Video not found" });
+    }
+
+    if (!video.dislikedBy || video.dislikedBy.length === 0) {
+      return res.status(200).json({
+        users: [],
+        totalUsers: 0,
+        currentPage: parseInt(page),
+        totalPages: 0,
+        hasNextPage: false,
+        hasPrevPage: false
+      });
+    }
+
+    // Get paginated user IDs
+    const paginatedUserIds = video.dislikedBy.slice(skip, skip + parseInt(limit));
+
+    // Fetch user details
+    const User = require("../models/userModel");
+    const users = await User.find({ _id: { $in: paginatedUserIds } })
+      .select('displayName email phoneNumber profilePicture')
+      .lean();
+
+    res.status(200).json({
+      users,
+      totalUsers: video.dislikedBy.length,
+      currentPage: parseInt(page),
+      totalPages: Math.ceil(video.dislikedBy.length / parseInt(limit)),
+      hasNextPage: skip + users.length < video.dislikedBy.length,
+      hasPrevPage: parseInt(page) > 1
+    });
+  } catch (error) {
+    console.error("Error getting users who disliked:", error);
+    res.status(500).json({ 
+      message: "Internal Server Error", 
+      error: error.message 
+    });
+  }
+};
+
 // Add comment to a video
 exports.addComment = async (req, res) => {
   try {
@@ -391,11 +500,22 @@ exports.addComment = async (req, res) => {
 
     // Populate the newly added comment with user details
     const newComment = video.comments[video.comments.length - 1];
-    await video.populate('comments.userId', 'displayName email');
+    await video.populate('comments.userId', 'displayName email phoneNumber profilePicture');
 
     res.status(201).json({
       message: "Comment added successfully",
-      comment: newComment,
+      comment: {
+        _id: newComment._id,
+        userId: {
+          _id: newComment.userId._id,
+          displayName: newComment.userId.displayName,
+          email: newComment.userId.email,
+          phoneNumber: newComment.userId.phoneNumber,
+          profilePicture: newComment.userId.profilePicture
+        },
+        commentText: newComment.commentText,
+        createdAt: newComment.createdAt
+      },
       totalComments: video.comments.length
     });
   } catch (error) {
@@ -415,7 +535,7 @@ exports.getVideoComments = async (req, res) => {
     const skip = (parseInt(page) - 1) * parseInt(limit);
 
     const video = await ContentVideo.findById(videoId)
-      .populate('comments.userId', 'displayName email')
+      .populate('comments.userId', 'displayName email phoneNumber profilePicture')
       .select('comments');
 
     if (!video) {
@@ -689,10 +809,10 @@ exports.getContentVideosWithProducts = async (req, res) => {
     }
 
     const videos = await ContentVideo.find(query)
-      .populate('userId', 'displayName email')
-      .populate('creatorId', 'displayName email')
+      .populate('userId', 'displayName email phoneNumber profilePicture')
+      .populate('creatorId', 'displayName email phoneNumber profilePicture')
       .populate('products.productId', 'productName price coverImage sku category subCategory')
-      .populate('comments.userId', 'displayName email')
+      .populate('comments.userId', 'displayName email phoneNumber profilePicture')
       .sort({ createdDate: -1 })
       .limit(parseInt(limit))
       .skip(skip)
@@ -743,10 +863,10 @@ exports.getContentVideoWithProducts = async (req, res) => {
     const { userId } = req.query;
 
     const video = await ContentVideo.findById(videoId)
-      .populate('userId', 'displayName email')
-      .populate('creatorId', 'displayName email')
+      .populate('userId', 'displayName email phoneNumber profilePicture')
+      .populate('creatorId', 'displayName email phoneNumber profilePicture')
       .populate('products.productId', 'productName price coverImage sku category subCategory description variants')
-      .populate('comments.userId', 'displayName email')
+      .populate('comments.userId', 'displayName email phoneNumber profilePicture')
       .lean();
 
     if (!video) {

@@ -116,7 +116,72 @@ Get the current reaction of a specific user for a video.
 }
 ```
 
-### 3. Add Comment
+### 3. Get Users Who Liked a Video
+**GET** `/content-video/videos/:videoId/liked-users`
+
+Get paginated list of users who liked a video.
+
+**Query Parameters:**
+- `limit` (optional): Number of users per page (default: 20)
+- `page` (optional): Page number (default: 1)
+
+**Response:**
+```json
+{
+  "users": [
+    {
+      "_id": "user_id_1",
+      "displayName": "John Doe",
+      "email": "john@example.com",
+      "phoneNumber": "+1234567890",
+      "profilePicture": "https://example.com/profile1.jpg"
+    },
+    {
+      "_id": "user_id_2",
+      "displayName": "Jane Smith",
+      "email": "jane@example.com",
+      "phoneNumber": "+1234567891",
+      "profilePicture": "https://example.com/profile2.jpg"
+    }
+  ],
+  "totalUsers": 15,
+  "currentPage": 1,
+  "totalPages": 1,
+  "hasNextPage": false,
+  "hasPrevPage": false
+}
+```
+
+### 4. Get Users Who Disliked a Video
+**GET** `/content-video/videos/:videoId/disliked-users`
+
+Get paginated list of users who disliked a video.
+
+**Query Parameters:**
+- `limit` (optional): Number of users per page (default: 20)
+- `page` (optional): Page number (default: 1)
+
+**Response:**
+```json
+{
+  "users": [
+    {
+      "_id": "user_id_3",
+      "displayName": "Bob Wilson",
+      "email": "bob@example.com",
+      "phoneNumber": "+1234567892",
+      "profilePicture": "https://example.com/profile3.jpg"
+    }
+  ],
+  "totalUsers": 1,
+  "currentPage": 1,
+  "totalPages": 1,
+  "hasNextPage": false,
+  "hasPrevPage": false
+}
+```
+
+### 5. Add Comment
 **POST** `/content-video/videos/:videoId/comments`
 
 Add a new comment to a video.
@@ -144,7 +209,9 @@ Authorization: Bearer jwt_token
     "userId": {
       "_id": "user_id",
       "displayName": "User Name",
-      "email": "user@example.com"
+      "email": "user@example.com",
+      "phoneNumber": "+1234567890",
+      "profilePicture": "https://example.com/profile.jpg"
     },
     "commentText": "Amazing fashion show! Love the designs.",
     "createdAt": "2024-01-15T10:30:00.000Z"
@@ -153,7 +220,7 @@ Authorization: Bearer jwt_token
 }
 ```
 
-### 4. Get Video Comments
+### 6. Get Video Comments
 **GET** `/content-video/videos/:videoId/comments`
 
 Get paginated comments for a video.
@@ -176,7 +243,9 @@ GET /content-video/videos/video_id/comments?limit=5&page=1
       "userId": {
         "_id": "user_id_1",
         "displayName": "User Name",
-        "email": "user@example.com"
+        "email": "user@example.com",
+        "phoneNumber": "+1234567890",
+        "profilePicture": "https://example.com/profile1.jpg"
       },
       "commentText": "Amazing fashion show! Love the designs.",
       "createdAt": "2024-01-15T10:30:00.000Z"
@@ -186,7 +255,9 @@ GET /content-video/videos/video_id/comments?limit=5&page=1
       "userId": {
         "_id": "user_id_2",
         "displayName": "Another User",
-        "email": "another@example.com"
+        "email": "another@example.com",
+        "phoneNumber": "+1234567891",
+        "profilePicture": "https://example.com/profile2.jpg"
       },
       "commentText": "The products look fantastic!",
       "createdAt": "2024-01-15T10:25:00.000Z"
@@ -200,7 +271,7 @@ GET /content-video/videos/video_id/comments?limit=5&page=1
 }
 ```
 
-### 5. Update Comment
+### 7. Update Comment
 **PUT** `/content-video/videos/:videoId/comments/:commentId`
 
 Update an existing comment (only by comment owner).
@@ -233,7 +304,7 @@ Authorization: Bearer jwt_token
 }
 ```
 
-### 6. Delete Comment
+### 8. Delete Comment
 **DELETE** `/content-video/videos/:videoId/comments/:commentId`
 
 Delete a comment (by comment owner or admin).
@@ -259,7 +330,7 @@ Authorization: Bearer jwt_token
 }
 ```
 
-### 7. Enhanced Video Retrieval with Reactions
+### 9. Enhanced Video Retrieval with Reactions
 **GET** `/content-video/videos-with-products?userId=user_id`
 
 Get videos with user reaction information.
@@ -286,10 +357,25 @@ Get videos with user reaction information.
       "userId": {
         "_id": "user_id",
         "displayName": "Designer Name",
-        "email": "designer@example.com"
+        "email": "designer@example.com",
+        "phoneNumber": "+1234567890",
+        "profilePicture": "https://example.com/designer.jpg"
       },
       "products": [...],
-      "comments": [...],
+      "comments": [
+        {
+          "_id": "comment_id",
+          "userId": {
+            "_id": "commenter_id",
+            "displayName": "Commenter Name",
+            "email": "commenter@example.com",
+            "phoneNumber": "+1234567891",
+            "profilePicture": "https://example.com/commenter.jpg"
+          },
+          "commentText": "Great video!",
+          "createdAt": "2024-01-15T10:30:00.000Z"
+        }
+      ],
       "userReaction": "like"
     }
   ],

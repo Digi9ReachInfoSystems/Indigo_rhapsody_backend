@@ -191,7 +191,23 @@ limit=10&page=1&approved=true
 ### 9. Get User Reaction
 **GET** `{{BASE_URL}}/content-video/videos/{{VIDEO_ID}}/reaction/{{USER_ID}}`
 
-### 10. Add Comment
+### 10. Get Users Who Liked
+**GET** `{{BASE_URL}}/content-video/videos/{{VIDEO_ID}}/liked-users`
+
+**Query Parameters:**
+```
+limit=10&page=1
+```
+
+### 11. Get Users Who Disliked
+**GET** `{{BASE_URL}}/content-video/videos/{{VIDEO_ID}}/disliked-users`
+
+**Query Parameters:**
+```
+limit=10&page=1
+```
+
+### 12. Add Comment
 **POST** `{{BASE_URL}}/content-video/videos/{{VIDEO_ID}}/comments`
 
 **Request Body:**
@@ -202,7 +218,7 @@ limit=10&page=1&approved=true
 }
 ```
 
-### 11. Get Video Comments
+### 13. Get Video Comments
 **GET** `{{BASE_URL}}/content-video/videos/{{VIDEO_ID}}/comments`
 
 **Query Parameters:**
@@ -210,7 +226,7 @@ limit=10&page=1&approved=true
 limit=10&page=1
 ```
 
-### 12. Update Comment
+### 14. Update Comment
 **PUT** `{{BASE_URL}}/content-video/videos/{{VIDEO_ID}}/comments/{{COMMENT_ID}}`
 
 **Request Body:**
@@ -221,7 +237,7 @@ limit=10&page=1
 }
 ```
 
-### 13. Delete Comment
+### 15. Delete Comment
 **DELETE** `{{BASE_URL}}/content-video/videos/{{VIDEO_ID}}/comments/{{COMMENT_ID}}`
 
 **Request Body:**
@@ -334,7 +350,10 @@ limit=10&page=1
    }
    ```
 
-2. **Add a Comment**
+2. **Get Users Who Liked**
+   - GET `{{BASE_URL}}/content-video/videos/{{VIDEO_ID}}/liked-users?limit=10&page=1`
+
+3. **Add a Comment**
    ```json
    {
      "userId": "507f1f77bcf86cd799439011",
@@ -342,13 +361,13 @@ limit=10&page=1
    }
    ```
 
-3. **Get User Reaction**
+4. **Get User Reaction**
    - GET `{{BASE_URL}}/content-video/videos/{{VIDEO_ID}}/reaction/507f1f77bcf86cd799439011`
 
-4. **Get Comments**
+5. **Get Comments**
    - GET `{{BASE_URL}}/content-video/videos/{{VIDEO_ID}}/comments?limit=5&page=1`
 
-5. **Change to Dislike**
+6. **Change to Dislike**
    ```json
    {
      "userId": "507f1f77bcf86cd799439011",
@@ -356,7 +375,10 @@ limit=10&page=1
    }
    ```
 
-6. **Update Comment**
+7. **Get Users Who Disliked**
+   - GET `{{BASE_URL}}/content-video/videos/{{VIDEO_ID}}/disliked-users?limit=10&page=1`
+
+8. **Update Comment**
    ```json
    {
      "userId": "507f1f77bcf86cd799439011",
@@ -364,7 +386,7 @@ limit=10&page=1
    }
    ```
 
-7. **Delete Comment**
+9. **Delete Comment**
    ```json
    {
      "userId": "507f1f77bcf86cd799439011"
