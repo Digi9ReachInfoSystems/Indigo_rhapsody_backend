@@ -9,14 +9,14 @@ router.get("/totalVideos", videoController.getAllVideosWithLikesAndComments);
 router.get("/videos/user/:userId", videoController.getVideosByUser);
 router.get("/videos/:videoId", videoController.getVideoById);
 router.delete("/videos/:videoId", videoController.deleteVideo);
-router.post("/videos/:videoId/like", videoController.toggleLikeVideo);
-router.post("/comments", videoController.createComment); // Create a comment
+// router.post("/videos/:videoId/like", videoController.toggleLikeVideo);
+// router.post("/comments", videoController.createComment); // Create a comment
 router.post(
   "/createAdminVideo",
   roleMiddleware(["Admin"]),
   videoController.createVideoByAdmin
 );
-router.get("/videos/:videoId/comments", videoController.getCommentsByVideo);
+// router.get("/videos/:videoId/comments", videoController.getCommentsByVideo);
 router.patch(
   "/videos/:videoId/approve",
   roleMiddleware(["Admin"]),
@@ -37,20 +37,38 @@ router.delete(
 );
 
 // Get content videos with products
-router.get("/videos-with-products", videoController.getContentVideosWithProducts);
-router.get("/videos-with-products/:videoId", videoController.getContentVideoWithProducts);
+router.get(
+  "/videos-with-products",
+  videoController.getContentVideosWithProducts
+);
+router.get(
+  "/videos-with-products/:videoId",
+  videoController.getContentVideoWithProducts
+);
 router.get("/videos-by-product/:productId", videoController.getVideosByProduct);
 
 // Like/Dislike functionality
 router.post("/videos/:videoId/reaction", videoController.toggleVideoReaction);
-router.get("/videos/:videoId/reaction/:userId", videoController.getUserReaction);
+router.get(
+  "/videos/:videoId/reaction/:userId",
+  videoController.getUserReaction
+);
 router.get("/videos/:videoId/liked-users", videoController.getUsersWhoLiked);
-router.get("/videos/:videoId/disliked-users", videoController.getUsersWhoDisliked);
+router.get(
+  "/videos/:videoId/disliked-users",
+  videoController.getUsersWhoDisliked
+);
 
 // Comment functionality
 router.post("/videos/:videoId/comments", videoController.addComment);
 router.get("/videos/:videoId/comments", videoController.getVideoComments);
-router.put("/videos/:videoId/comments/:commentId", videoController.updateComment);
-router.delete("/videos/:videoId/comments/:commentId", videoController.deleteComment);
+router.put(
+  "/videos/:videoId/comments/:commentId",
+  videoController.updateComment
+);
+router.delete(
+  "/videos/:videoId/comments/:commentId",
+  videoController.deleteComment
+);
 
 module.exports = router;
