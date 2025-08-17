@@ -55,6 +55,18 @@ const contentVideoSchema = new mongoose.Schema(
       type: Boolean,
       default: false,
     },
+    products: [
+      {
+        productId: {
+          type: mongoose.Schema.Types.ObjectId,
+          ref: "Product",
+        },
+        addedAt: {
+          type: Date,
+          default: Date.now,
+        },
+      },
+    ],
   },
   { timestamps: true }
 );

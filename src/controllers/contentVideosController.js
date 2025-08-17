@@ -333,3 +333,227 @@ exports.createVideoByAdmin = async (req, res) => {
       .json({ message: "Internal Server Error", error: error.message });
   }
 };
+
+// Add products to a content video
+exports.addProductsToVideo = async (req, res) => {
+  try {
+    const { videoId } = req.params;
+    const { productIds } = req.body; // Array of product IDs
+
+    if (!productIds || !Array.isArray(productIds) || productIds.length === 0) {
+      return res.status(400).json({
+        message: "Product IDs array is required and must not be empty.",
+      });
+    }
+
+    // Check if video exists
+    const video = await ContentVideo.findById(videoId);
+    if (!video) {
+      return res.status(404).json({ message: "Video not found." });
+    }
+
+    // Add new products (avoid duplicates)
+    const existingProductIds = video.products.map(p => p.productId.toString());
+    const newProducts = productIds
+      .filter(productId => !existingProductIds.includes(productId))
+      .map(productId => ({
+        productId,
+        addedAt: new Date()
+      }));
+
+    if (newProducts.length === 0) {
+      return res.status(400).json({
+        message: "All products are already added to this video.",
+      });
+    }
+
+    video.products.push(...newProducts);
+    await video.save();
+
+    // Populate the products for response
+    await video.populate('products.productId', 'productName price coverImage');
+
+    res.status(200).json({
+      message: `${newProducts.length} product(s) added to video successfully`,
+      video,
+    });
+  } catch (error) {
+    console.error("Error adding products to video:", error);
+    res.status(500).json({
+      message: "Internal Server Error",
+      error: error.message,
+    });
+  }
+};
+
+// Remove products from a content video
+exports.removeProductsFromVideo = async (req, res) => {
+  try {
+    const { videoId } = req.params;
+    const { productIds } = req.body; // Array of product IDs to remove
+
+    if (!productIds || !Array.isArray(productIds) || productIds.length === 0) {
+      return res.status(400).json({
+        message: "Product IDs array is required and must not be empty.",
+      });
+    }
+
+    // Check if video exists
+    const video = await ContentVideo.findById(videoId);
+    if (!video) {
+      return res.status(404).json({ message: "Video not found." });
+    }
+
+    // Remove products
+    const initialLength = video.products.length;
+    video.products = video.products.filter(
+      product => !productIds.includes(product.productId.toString())
+    );
+
+    if (video.products.length === initialLength) {
+      return res.status(400).json({
+        message: "No products were found to remove.",
+      });
+    }
+
+    await video.save();
+
+    // Populate the remaining products for response
+    await video.populate('products.productId', 'productName price coverImage');
+
+    res.status(200).json({
+      message: `${initialLength - video.products.length} product(s) removed from video successfully`,
+      video,
+    });
+  } catch (error) {
+    console.error("Error removing products from video:", error);
+    res.status(500).json({
+      message: "Internal Server Error",
+      error: error.message,
+    });
+  }
+};
+
+// Get content videos with products
+exports.getContentVideosWithProducts = async (req, res) => {
+  try {
+    const { limit = 10, page = 1, approved = true } = req.query;
+    const skip = (parseInt(page) - 1) * parseInt(limit);
+
+    // Build query
+    const query = {};
+    if (approved === 'true' || approved === true) {
+      query.is_approved = true;
+    }
+
+    const videos = await ContentVideo.find(query)
+      .populate('userId', 'displayName email')
+      .populate('creatorId', 'displayName email')
+      .populate('products.productId', 'productName price coverImage sku category subCategory')
+      .sort({ createdDate: -1 })
+      .limit(parseInt(limit))
+      .skip(skip)
+      .lean();
+
+    if (!videos.length) {
+      return res.status(404).json({ message: "No videos found." });
+    }
+
+    // Get total count for pagination
+    const totalVideos = await ContentVideo.countDocuments(query);
+
+    res.status(200).json({
+      videos,
+      pagination: {
+        currentPage: parseInt(page),
+        totalPages: Math.ceil(totalVideos / parseInt(limit)),
+        totalVideos,
+        hasNextPage: skip + videos.length < totalVideos,
+        hasPrevPage: parseInt(page) > 1,
+      },
+    });
+  } catch (error) {
+    console.error("Error fetching videos with products:", error);
+    res.status(500).json({
+      message: "Internal Server Error",
+      error: error.message,
+    });
+  }
+};
+
+// Get single content video with products
+exports.getContentVideoWithProducts = async (req, res) => {
+  try {
+    const { videoId } = req.params;
+
+    const video = await ContentVideo.findById(videoId)
+      .populate('userId', 'displayName email')
+      .populate('creatorId', 'displayName email')
+      .populate('products.productId', 'productName price coverImage sku category subCategory description variants')
+      .lean();
+
+    if (!video) {
+      return res.status(404).json({ message: "Video not found." });
+    }
+
+    res.status(200).json({ video });
+  } catch (error) {
+    console.error("Error fetching video with products:", error);
+    res.status(500).json({
+      message: "Internal Server Error",
+      error: error.message,
+    });
+  }
+};
+
+// Get videos by product (find videos that contain a specific product)
+exports.getVideosByProduct = async (req, res) => {
+  try {
+    const { productId } = req.params;
+    const { limit = 10, page = 1, approved = true } = req.query;
+    const skip = (parseInt(page) - 1) * parseInt(limit);
+
+    // Build query
+    const query = {
+      'products.productId': productId
+    };
+    if (approved === 'true' || approved === true) {
+      query.is_approved = true;
+    }
+
+    const videos = await ContentVideo.find(query)
+      .populate('userId', 'displayName email')
+      .populate('creatorId', 'displayName email')
+      .populate('products.productId', 'productName price coverImage sku category subCategory')
+      .sort({ createdDate: -1 })
+      .limit(parseInt(limit))
+      .skip(skip)
+      .lean();
+
+    if (!videos.length) {
+      return res.status(404).json({ 
+        message: "No videos found for this product." 
+      });
+    }
+
+    // Get total count for pagination
+    const totalVideos = await ContentVideo.countDocuments(query);
+
+    res.status(200).json({
+      videos,
+      pagination: {
+        currentPage: parseInt(page),
+        totalPages: Math.ceil(totalVideos / parseInt(limit)),
+        totalVideos,
+        hasNextPage: skip + videos.length < totalVideos,
+        hasPrevPage: parseInt(page) > 1,
+      },
+    });
+  } catch (error) {
+    console.error("Error fetching videos by product:", error);
+    res.status(500).json({
+      message: "Internal Server Error",
+      error: error.message,
+    });
+  }
+};
