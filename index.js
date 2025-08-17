@@ -1,3 +1,4 @@
+require("dotenv").config(); // This should be at the VERY TOP of your file
 const express = require("express");
 const router = express.Router();
 const categoryRoutes = require("./src/routes/categoryRoutes.js");
@@ -8,6 +9,7 @@ const cartRoutes = require("./src/routes/cartRoutes.js");
 const orderRoutes = require("./src/routes/orderRoutes.js");
 const paymentRoutes = require("./src/routes/paymentRoutes.js");
 const userRoutes = require("./src/routes/userRoutes.js");
+const authRoutes = require("./src/routes/authRoutes.js");
 const shippingRoutes = require("./src/routes/shippingRoutes.js");
 const designerRoutes = require("./src/routes/designerRoutes.js");
 const bannerRoutes = require("./src/routes/bannerRoutes.js");
@@ -42,6 +44,7 @@ app.use("/cart", cartRoutes);
 app.use("/order", orderRoutes);
 app.use("/payment", paymentRoutes);
 app.use("/user", userRoutes);
+app.use("/auth", authRoutes);
 app.use("/shipping", shippingRoutes);
 app.use("/designer", designerRoutes);
 app.use("/banner", bannerRoutes);

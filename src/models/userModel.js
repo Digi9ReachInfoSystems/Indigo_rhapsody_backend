@@ -3,7 +3,7 @@ const mongoose = require("mongoose");
 const userSchema = new mongoose.Schema({
   email: {
     type: String,
-    required: true,
+    required: false, // Optional for phone-based auth
   },
   displayName: {
     type: String,
@@ -14,12 +14,17 @@ const userSchema = new mongoose.Schema({
     default: Date.now,
   },
   phoneNumber: {
-    type: Number,
+    type: String, // Changed to String to support international format
     required: true,
+    unique: true,
+  },
+  firebaseUid: {
+    type: String,
+    required: false, // Will be set after Firebase verification
   },
   password: {
     type: String,
-    required: true,
+    required: false, // Optional for phone-based auth
   },
   role: {
     type: String,
@@ -43,26 +48,35 @@ const userSchema = new mongoose.Schema({
     {
       nick_name: {
         type: String,
-  
       },
       city: {
         type: String,
-
       },
       pincode: {
         type: Number,
-
       },
       state: {
         type: String,
-
       },
       street_details: {
         type: String,
-
+      },
+    },
+  ],
+  recentlyViewedProducts: [
+    {
+      productId: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "Product",
+        required: true,
+      },
+      viewedAt: {
+        type: Date,
+        default: Date.now,
       },
     },
   ],
 });
+
 
 module.exports = mongoose.model("User", userSchema);

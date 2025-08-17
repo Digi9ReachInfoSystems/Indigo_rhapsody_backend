@@ -3,6 +3,9 @@ const Designer = require("../models/designerModel");
 const path = require("path");
 const { bucket } = require("../service/firebaseServices"); // Firebase storage configuration
 const UpdateRequest = require("../models/updateDesignerSchema");
+const Video = require("../models/videosModel");
+const Product = require("../models/productModels");
+
 // Upload Image Helper Function
 const uploadImage = async (file, folder) => {
   const filename = `${Date.now()}_${file.originalname}`;
@@ -582,6 +585,263 @@ exports.getDesignerNameByUserId = async (req, res) => {
     console.error("Error fetching designer by userId:", error);
     return res.status(500).json({
       message: "Error fetching designer by userId",
+      error: error.message,
+    });
+  }
+};
+
+exports.createDesignerVideosForProducts = async (req, res) => {
+  try {
+    const {
+      videoUrl,
+      userId,
+      productTagged,
+      designerRef,
+      demo_url,
+      instagram_User,
+    } = req.body;
+
+    // Validate required fields
+    if (!videoUrl || !productTagged || !designerRef) {
+      return res.status(400).json({
+        success: false,
+        message: "videoUrl, productTagged, and designerRef are required",
+      });
+    }
+
+    // Create new video
+    const newVideo = new Video({
+      videoUrl: Array.isArray(videoUrl) ? videoUrl : [videoUrl],
+      typeOfVideo: "ProductVideo",
+      productTagged,
+      userId,
+      designerRef,
+      demo_url,
+      instagram_User,
+      is_approved: false, // Default to false for approval
+    });
+
+    // Save video to database
+    const savedVideo = await newVideo.save();
+
+    res.status(201).json({
+      success: true,
+      message: "Designer video for products created successfully",
+      data: savedVideo,
+    });
+  } catch (error) {
+    console.error("Error creating designer video:", error);
+    res.status(500).json({
+      success: false,
+      message: "Internal server error",
+      error: error.message,
+    });
+  }
+};
+
+exports.getAllDesignerVideosForProducts = async (req, res) => {
+  try {
+    const { page = 1, limit = 10, approved, designerId, productId } = req.query;
+    const skip = (page - 1) * limit;
+
+    // Build query
+    const query = { typeOfVideo: "ProductVideo" };
+
+    // Add filters
+    if (approved !== undefined) query.is_approved = approved === "true";
+    if (designerId) query.designerRef = designerId;
+    if (productId) query.productTagged = { $in: [productId] };
+
+    // Get videos with population
+    const videos = await Video.find(query)
+      .populate({
+        path: "productTagged",
+        select:
+          "productName description price mrp coverImage in_stock discount averageRating variants designerRef",
+        model: "Product",
+        populate: [
+          {
+            path: "designerRef",
+            select: "name profileImage",
+          },
+          {
+            path: "category",
+            select: "name",
+          },
+          {
+            path: "subCategory",
+            select: "name",
+          },
+        ],
+      })
+      .populate({
+        path: "designerRef",
+        select: "name profileImage bio",
+        model: "Designer",
+      })
+      .populate({
+        path: "userId",
+        select: "username profileImage",
+        model: "User",
+      })
+      .skip(skip)
+      .limit(parseInt(limit))
+      .sort({ created_at: -1 });
+
+    // Count total videos for pagination info
+    const total = await Video.countDocuments(query);
+
+    res.status(200).json({
+      success: true,
+      message: "Designer videos for products retrieved successfully",
+      data: videos,
+      pagination: {
+        total,
+        page: parseInt(page),
+        limit: parseInt(limit),
+        totalPages: Math.ceil(total / limit),
+      },
+    });
+  } catch (error) {
+    console.error("Error getting designer videos:", error);
+    res.status(500).json({
+      success: false,
+      message: "Internal server error",
+      error: error.message,
+    });
+  }
+};
+
+exports.getDesignerVideoForProductsById = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    // Find video by ID with detailed population
+    const video = await Video.findOne({ _id: id, typeOfVideo: "ProductVideo" })
+      .populate({
+        path: "productTagged",
+        select:
+          "productName description price mrp coverImage in_stock discount averageRating variants material fabric is_sustainable productDetails fit reviews",
+        model: "Product",
+        populate: [
+          {
+            path: "designerRef",
+            select: "name profileImage bio",
+          },
+          {
+            path: "category",
+            select: "name slug",
+          },
+          {
+            path: "subCategory",
+            select: "name slug",
+          },
+          {
+            path: "reviews.userId",
+            select: "name profileImage",
+          },
+        ],
+      })
+      .populate({
+        path: "designerRef",
+        select: "name profileImage bio socialMedia",
+        model: "Designer",
+      })
+      .populate({
+        path: "userId",
+        select: "username email profileImage",
+        model: "User",
+      });
+
+    if (!video) {
+      return res.status(404).json({
+        success: false,
+        message: "Designer video not found",
+      });
+    }
+
+    res.status(200).json({
+      success: true,
+      message: "Designer video retrieved successfully",
+      data: video,
+    });
+  } catch (error) {
+    console.error("Error getting designer video by ID:", error);
+    res.status(500).json({
+      success: false,
+      message: "Internal server error",
+      error: error.message,
+    });
+  }
+};
+// Approve designer video for products
+exports.ApproveDesignerVideoForProducts = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    // Find and update video
+    const video = await Video.findOneAndUpdate(
+      { _id: id, typeOfVideo: "ProductVideo" },
+      { is_approved: true, updated_at: Date.now() },
+      { new: true }
+    ).populate("productTagged designerRef userId");
+
+    if (!video) {
+      return res.status(404).json({
+        success: false,
+        message: "Designer video not found",
+      });
+    }
+
+    res.status(200).json({
+      success: true,
+      message: "Designer video approved successfully",
+      data: video,
+    });
+  } catch (error) {
+    console.error("Error approving designer video:", error);
+    res.status(500).json({
+      success: false,
+      message: "Internal server error",
+      error: error.message,
+    });
+  }
+};
+
+// Reject designer video for products
+exports.rejectDesignerVideoForProducts = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { rejectionReason } = req.body; // Optional rejection reason
+
+    // Find and update video
+    const video = await Video.findOneAndUpdate(
+      { _id: id, typeOfVideo: "ProductVideo" },
+      {
+        is_approved: false,
+        updated_at: Date.now(),
+        rejectionReason: rejectionReason || "Rejected by admin",
+      },
+      { new: true }
+    ).populate("productTagged designerRef userId");
+
+    if (!video) {
+      return res.status(404).json({
+        success: false,
+        message: "Designer video not found",
+      });
+    }
+
+    res.status(200).json({
+      success: true,
+      message: "Designer video rejected successfully",
+      data: video,
+    });
+  } catch (error) {
+    console.error("Error rejecting designer video:", error);
+    res.status(500).json({
+      success: false,
+      message: "Internal server error",
       error: error.message,
     });
   }

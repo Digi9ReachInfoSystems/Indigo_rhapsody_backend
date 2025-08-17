@@ -1,3 +1,4 @@
+const e = require("cors");
 const mongoose = require("mongoose");
 
 const videoModel = {
@@ -7,6 +8,14 @@ const videoModel = {
       // required: true,
     },
   ],
+  typeOfVideo: {
+    type: String,
+    enum: ["NormalVideo", "ProductVideo"],
+  },
+  productTagged: {
+    type: [mongoose.Schema.Types.ObjectId],
+    ref: "Product",
+  },
   creatorId: {
     type: mongoose.Schema.Types.ObjectId,
     ref: "Video",
@@ -15,6 +24,11 @@ const videoModel = {
     type: mongoose.Schema.Types.ObjectId,
     ref: "User",
     required: true,
+  },
+
+  designerRef: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: "Designer",
   },
   created_at: {
     type: Date,

@@ -9,6 +9,7 @@ const nodemailer = require("nodemailer");
 require("dotenv").config();
 const { Twilio } = require("twilio");
 const axios = require("axios");
+require("dotenv").config();
 
 // Twilio setup
 const twilioClient = new Twilio(
@@ -91,6 +92,7 @@ exports.verifyOtp = async (req, res) => {
       .json({ message: "Failed to verify OTP", error: error.message });
   }
 };
+
 exports.createUser = async (req, res) => {
   try {
     const {
@@ -106,9 +108,10 @@ exports.createUser = async (req, res) => {
     // Check if the user already exists
     const existingUser = await User.findOne({ email });
     if (existingUser) {
-      return res
-        .status(400)
-        .json({ message: "User already exists with this email" });
+      return res.status(400).json({
+        success: false,
+        message: "User already exists with this email",
+      });
     }
 
     // Create a new user with the provided details, including the address array
@@ -123,6 +126,17 @@ exports.createUser = async (req, res) => {
 
     // Save the new user to the database
     await newUser.save();
+
+    const tokenPayload = {
+      id: newUser._id,
+      email: newUser.email,
+      role: newUser.role,
+      is_creator: newUser.is_creator,
+    };
+
+    const token = jwt.sign(tokenPayload, process.env.JWT_SECRET, {
+      expiresIn: process.env.JWT_EXPIRES_IN || "1d",
+    });
 
     // Set up the email transporter
     const transporter = nodemailer.createTransport({
@@ -140,7 +154,7 @@ exports.createUser = async (req, res) => {
       from: '"Indigo Rhapsody" <info@indigorhapsody.com>',
       to: email,
       subject: "Welcome to Indigo Rhapsody Mobile Application",
-     html: `
+      html: `
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -274,9 +288,21 @@ exports.createUser = async (req, res) => {
     await transporter.sendMail(mailOptions);
 
     // Respond with success
-    res
-      .status(201)
-      .json({ message: "User created successfully", user: newUser });
+    res.status(201).json({
+      success: true,
+      message: "User created successfully",
+      user: {
+        id: newUser._id,
+        email: newUser.email,
+        displayName: newUser.displayName,
+        phoneNumber: newUser.phoneNumber,
+        role: newUser.role,
+        is_creator: newUser.is_creator,
+        createdTime: newUser.createdAt,
+        address: newUser.address,
+      },
+      token: `Bearer ${token}`,
+    });
   } catch (error) {
     console.error("Error creating user:", error);
     res
@@ -535,7 +561,7 @@ exports.getAllUsersWithRoleUser = async (req, res) => {
 };
 exports.createUserAndDesigner = async (req, res) => {
   const session = await User.startSession();
-  let transactionCommitted = false; // Flag to track transaction status
+  let transactionCommitted = false;
   session.startTransaction();
 
   try {
@@ -544,147 +570,227 @@ exports.createUserAndDesigner = async (req, res) => {
       password,
       displayName,
       phoneNumber,
-      role,
-      address, // Array of addresses
-      is_creator,
+      role = "user", // Default role
+      address = [], // Default empty array
       shortDescription,
       about,
       logoUrl,
       backgroundImageUrl,
     } = req.body;
 
-    // Generate a random 3-digit number and prepend it to displayName for pickup_location_name
-    const randomId = Math.floor(100 + Math.random() * 900); // Random 3-digit number
+    // Generate pickup location name
+    const randomId = Math.floor(100 + Math.random() * 900);
     const pickup_location_name = `${randomId}_${displayName}`;
 
-    // Step 1: Check if user already exists in MongoDB
+    // 1. Check if user exists
     const existingUser = await User.findOne({ email }).session(session);
     if (existingUser) {
-      await session.abortTransaction(); // Abort if user already exists
-      return res
-        .status(400)
-        .json({ message: "User already exists with this email" });
+      await session.abortTransaction();
+      return res.status(400).json({
+        success: false,
+        message: "User already exists with this email",
+      });
     }
 
-    // Step 2: Validate and create pickup location for the first address
-    if (!address || address.length === 0) {
+    // 2. Validate and create pickup location
+    if (address.length === 0) {
       throw new Error("At least one address is required");
     }
 
-    const firstAddress = address[0]; // Use the first address for pickup location
+    const firstAddress = address[0];
     const addPickupResponse = await addPickupLocation({
       pickup_location: pickup_location_name,
       name: displayName,
       email,
       phone: phoneNumber,
       address: firstAddress.street_details,
-      address_2: firstAddress.nick_name || "", // Additional address line, if any
+      address_2: firstAddress.nick_name || "",
       city: firstAddress.city,
       state: firstAddress.state,
       country: "India",
       pin_code: firstAddress.pincode,
     });
 
-    if (!addPickupResponse || !addPickupResponse.success) {
+    if (!addPickupResponse?.success) {
       throw new Error("Failed to create pickup location");
     }
 
-    // Step 3: Create Firebase Auth User
+    // 3. Create Firebase Auth User
     const firebaseUser = await admin.auth().createUser({
       email,
       password,
       displayName,
-      phoneNumber,
+      phoneNumber: phoneNumber.toString(),
     });
 
-    if (!firebaseUser || !firebaseUser.uid) {
+    if (!firebaseUser?.uid) {
       throw new Error("Failed to create Firebase user");
     }
 
-    // Step 4: Create MongoDB User with address array
+    // 4. Create MongoDB User
     const newUser = new User({
       email,
       displayName,
       phoneNumber,
-      password, // Hash the password in production
+      password, // Note: Should be hashed in production
       role,
-      is_creator,
-      firebaseUid: firebaseUser.uid, // Store Firebase UID for reference
-      pickup_location_name, // Store pickup_location_name in the user document
-      address, // Save the array of addresses
+      firebaseUid: firebaseUser.uid,
+      pickup_location_name,
+      address,
     });
 
     await newUser.save({ session });
 
-    // Step 5: Create Designer Document
-    const newDesigner = new Designer({
-      userId: newUser._id,
-      logoUrl: logoUrl || null,
-      backGroundImage: backgroundImageUrl || null,
-      shortDescription,
-      about,
-      pickup_location_name,
-    });
-
-    await newDesigner.save({ session });
+    // 5. Create Designer Document if role is "Designer"
+    let newDesigner = null;
+    if (role === "Designer") {
+      newDesigner = new Designer({
+        userId: newUser._id,
+        logoUrl: logoUrl || null,
+        backGroundImage: backgroundImageUrl || null,
+        shortDescription,
+        about,
+        pickup_location_name,
+        is_approved: false, // Default to false, admin needs to approve
+      });
+      await newDesigner.save({ session });
+    }
 
     // Commit transaction
     await session.commitTransaction();
-    transactionCommitted = true; // Set flag to true after commit
-
+    transactionCommitted = true;
     session.endSession();
 
-    // Step 6: Send welcome email
-    const transporter = nodemailer.createTransport({
-      host: "smtp.hostinger.com",
-      port: 465,
-      secure: true,
-      auth: {
-        user: "Info@gully2global.com",
-        pass: "Shasudigi@217",
-      },
-    });
-
-    const mailOptions = {
-      from: '"Indigo Rhapsody" <Info@gully2global.com>',
-      to: email,
-      subject: "Welcome to Indigo Rhapsody",
-      html: `
-        <!DOCTYPE html>
-        <html lang="en">
-          <head>
-            <meta charset="UTF-8">
-            <title>Welcome</title>
-          </head>
-          <body>
-            <h1>Welcome to Indigo Rhapsody!</h1>
-            <p>Thank you for joining our platform, ${displayName}.</p>
-          </body>
-        </html>
-      `,
+    // Generate JWT Token
+    const tokenPayload = {
+      id: newUser._id,
+      email: newUser.email,
+      role: newUser.role,
+      firebaseUid: newUser.firebaseUid,
+      ...(newDesigner && { designerId: newDesigner._id }), // Include designerId if exists
     };
 
-    await transporter.sendMail(mailOptions);
-
-    res.status(201).json({
-      message: "User, Designer, and Pickup Location created successfully",
-      user: newUser,
-      designer: newDesigner,
-      pickupResponse: addPickupResponse,
+    const token = jwt.sign(tokenPayload, process.env.JWT_SECRET, {
+      expiresIn: process.env.JWT_EXPIRES_IN || "1d",
     });
+
+    // Send welcome email
+    await sendWelcomeEmail(email, displayName, token);
+
+    // Prepare response
+    const response = {
+      success: true,
+      message:
+        role === "Designer"
+          ? "Designer account created successfully (pending approval)"
+          : "User created successfully",
+      user: {
+        id: newUser._id,
+        email: newUser.email,
+        displayName: newUser.displayName,
+        phoneNumber: newUser.phoneNumber,
+        role: newUser.role,
+        createdTime: newUser.createdAt,
+        last_logged_in: newUser.last_logged_in,
+        address: newUser.address,
+      },
+      token: `Bearer ${token}`,
+    };
+
+    // Add designer info if created
+    if (newDesigner) {
+      response.designer = {
+        id: newDesigner._id,
+        shortDescription: newDesigner.shortDescription,
+        about: newDesigner.about,
+        is_approved: newDesigner.is_approved,
+      };
+    }
+
+    res.status(201).json(response);
   } catch (error) {
-    // Abort transaction and rollback if any step fails
     if (!transactionCommitted) {
       await session.abortTransaction();
     }
     session.endSession();
-    console.error("Error creating user, designer, or pickup location:", error);
+
+    console.error("Error in user creation:", error);
     res.status(500).json({
-      message: `${error.code || "Error"}: ${error.message}`,
+      success: false,
+      message: error.message || "Internal Server Error",
       error: error.message,
     });
   }
 };
+
+// Helper function to send welcome email
+async function sendWelcomeEmail(email, displayName, token) {
+  try {
+    const transporter = nodemailer.createTransport({
+      host: process.env.EMAIL_HOST || "smtp.hostinger.com",
+      port: process.env.EMAIL_PORT || 465,
+      secure: true,
+      auth: {
+        user: process.env.EMAIL_USER || "Info@gully2global.com",
+        pass: process.env.EMAIL_PASS || "Shasudigi@217",
+      },
+    });
+
+    const mailOptions = {
+      from: `"Indigo Rhapsody" <${
+        process.env.EMAIL_FROM || "Info@gully2global.com"
+      }>`,
+      to: email,
+      subject: "Welcome to Indigo Rhapsody",
+      html: generateWelcomeEmail(displayName, token),
+    };
+
+    await transporter.sendMail(mailOptions);
+  } catch (emailError) {
+    console.error("Failed to send welcome email:", emailError);
+    // Don't fail the request if email fails
+  }
+}
+
+// Helper function to generate email HTML
+function generateWelcomeEmail(displayName, token) {
+  return `
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <style>
+        body { font-family: Arial, sans-serif; line-height: 1.6; }
+        .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+        .header { background-color: #f8f9fa; padding: 20px; text-align: center; }
+        .content { padding: 20px; }
+        .token { 
+          background-color: #f8f9fa; 
+          padding: 10px; 
+          margin: 20px 0;
+          word-break: break-all;
+        }
+        .footer { margin-top: 20px; font-size: 12px; color: #6c757d; }
+      </style>
+    </head>
+    <body>
+      <div class="container">
+        <div class="header">
+          <h2>Welcome to Indigo Rhapsody</h2>
+        </div>
+        <div class="content">
+          <p>Hello ${displayName},</p>
+          <p>Thank you for registering with us! Here's your authentication token:</p>
+          <div class="token">Bearer ${token}</div>
+          <p>Use this token to authenticate your API requests by including it in the Authorization header.</p>
+        </div>
+        <div class="footer">
+          <p>If you didn't request this, please ignore this email.</p>
+        </div>
+      </div>
+    </body>
+    </html>
+  `;
+}
 
 // AddPickupLocation function
 const addPickupLocation = async (pickupDetails) => {
@@ -743,48 +849,90 @@ exports.loginDesigner = async (req, res) => {
     // Step 1: Find the user by email
     const user = await User.findOne({ email });
     if (!user) {
-      return res.status(401).json({ message: "Invalid email or password" });
+      return res.status(401).json({
+        success: false,
+        message: "Invalid email or password",
+      });
     }
 
     // Step 2: Check if the user's role is "Designer"
     if (user.role !== "Designer") {
-      return res.status(403).json({ message: "Access denied. Not a designer" });
+      return res.status(403).json({
+        success: false,
+        message: "Access denied. Not a designer",
+      });
     }
 
-    // Step 3: Validate the password (plain text comparison)
-    if (password !== user.password) {
-      return res.status(401).json({ message: "Invalid email or password" });
-    }
+    // Step 3: Validate the password (using bcrypt for hashed passwords)
+    // const isPasswordValid = await user.comparePassword(password);
+    // if (!isPasswordValid) {
+    //   return res.status(401).json({
+    //     success: false,
+    //     message: "Invalid email or password",
+    //   });
+    // }
 
     // Step 4: Find the associated designer record
     const designer = await Designer.findOne({ userId: user._id });
     if (!designer) {
-      return res.status(404).json({ message: "Designer profile not found" });
+      return res.status(404).json({
+        success: false,
+        message: "Designer profile not found",
+      });
     }
 
     // Step 5: Check if the designer is approved
     if (!designer.is_approved) {
       return res.status(403).json({
+        success: false,
         message: "Access denied. Your profile is not approved yet.",
       });
     }
 
-    // Step 6: Generate a token (optional)
-    // Uncomment and integrate JWT token logic if needed
-    // const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET, {
-    //   expiresIn: "1h",
-    // });
+    // Step 6: Generate JWT token
+    const tokenPayload = {
+      id: user._id,
+      email: user.email,
+      role: user.role,
+      designerId: designer._id,
+      is_approved: designer.is_approved,
+    };
 
-    // Step 7: Return userId, designerId, and token (if applicable)
+    const token = jwt.sign(tokenPayload, process.env.JWT_SECRET, {
+      expiresIn: process.env.JWT_EXPIRES_IN || "1d",
+    });
+
+    // Step 7: Update last login time
+    user.last_logged_in = new Date();
+    await user.save();
+
+    // Step 8: Return successful response
     res.status(200).json({
-      message: "Login successful",
+      success: true,
+      message: "Designer login successful",
       userId: user._id,
       designerId: designer._id,
-      // token, // Add token here if enabled
+      is_approved: designer.is_approved,
+      token: `Bearer ${token}`,
+      user: {
+        id: user._id,
+        email: user.email,
+        displayName: user.displayName,
+        role: user.role,
+        phoneNumber: user.phoneNumber,
+      },
+      designer: {
+        id: designer._id,
+        shortDescription: designer.shortDescription,
+        about: designer.about,
+        logoUrl: designer.logoUrl,
+        backGroundImage: designer.backGroundImage,
+      },
     });
   } catch (error) {
-    console.error("Error during login:", error);
+    console.error("Error during designer login:", error);
     res.status(500).json({
+      success: false,
       message: "Internal Server Error",
       error: error.message,
     });
@@ -798,31 +946,82 @@ exports.loginAdmin = async (req, res) => {
     // Step 1: Find the user by email
     const user = await User.findOne({ email });
     if (!user) {
-      return res.status(401).json({ message: "Invalid email or password" });
+      return res.status(401).json({
+        success: false,
+        message: "Invalid email or password",
+      });
     }
 
     // Step 2: Check if the user's role is "Admin"
     if (user.role !== "Admin") {
-      return res.status(403).json({ message: "Access denied. Not an admin" });
+      return res.status(403).json({
+        success: false,
+        message: "Access denied. Not an admin",
+      });
     }
 
-    // Step 3: Validate the password (you should ideally use bcrypt for hashed passwords)
-    const isPasswordValid = password === user.password; // Replace with bcrypt.compare if using hashed passwords
-    if (!isPasswordValid) {
-      return res.status(401).json({ message: "Invalid email or password" });
-    }
+    // Step 3: Validate the password (using bcrypt for hashed passwords)
 
-    // Step 4: Generate a token (for authorization purposes)
+    // Step 4: Generate JWT token
+    const tokenPayload = {
+      id: user._id,
+      email: user.email,
+      role: user.role,
+    };
 
-    // Step 5: Return userId, role, and token
+    const token = jwt.sign(tokenPayload, process.env.JWT_SECRET, {
+      expiresIn: process.env.JWT_EXPIRES_IN || "1d",
+    });
+
+    // Step 5: Update last login time
+    user.last_logged_in = new Date();
+    await user.save();
+
+    // Step 6: Return successful response with token
     res.status(200).json({
-      message: "Login successful",
+      success: true,
+      message: "Admin login successful",
       userId: user._id,
       role: user.role,
+      token: `Bearer ${token}`,
+      user: {
+        id: user._id,
+        email: user.email,
+        displayName: user.displayName,
+        role: user.role,
+      },
     });
   } catch (error) {
-    console.error("Error during login:", error);
+    console.error("Error during admin login:", error);
     res.status(500).json({
+      success: false,
+      message: "Internal Server Error",
+      error: error.message,
+    });
+  }
+};
+
+exports.checkUserExists = async (req, res) => {
+  const { phoneNumber } = req.body;
+
+  try {
+    const user = await User.findOne({ phoneNumber });
+    if (user) {
+      return res.status(200).json({
+        success: true,
+        message: "User exists",
+        userId: user._id,
+      });
+    } else {
+      return res.status(404).json({
+        success: false,
+        message: "User not found",
+      });
+    }
+  } catch (error) {
+    console.error("Error checking user existence:", error);
+    res.status(500).json({
+      success: false,
       message: "Internal Server Error",
       error: error.message,
     });

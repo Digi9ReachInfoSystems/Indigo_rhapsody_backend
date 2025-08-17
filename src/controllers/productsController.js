@@ -741,6 +741,7 @@ exports.getProductsById = async (req, res) => {
   try {
     const { productId } = req.params;
     const { color } = req.query; // Accept color as a query parameter
+    const userId = req.user?.id; // Get user ID from auth middleware (optional)
 
     // Validate the productId format
     if (!mongoose.isValidObjectId(productId)) {
@@ -754,6 +755,37 @@ exports.getProductsById = async (req, res) => {
 
     if (!product) {
       return res.status(404).json({ message: "Product not found" });
+    }
+
+    // Track product view if user is authenticated (not guest)
+    if (userId && req.user?.role !== 'Guest') {
+      try {
+        const User = require("../models/userModel");
+        const user = await User.findById(userId);
+        
+        if (user) {
+          // Remove existing entry for this product if it exists
+          user.recentlyViewedProducts = user.recentlyViewedProducts.filter(
+            item => item.productId.toString() !== productId
+          );
+
+          // Add the new view at the beginning (most recent first)
+          user.recentlyViewedProducts.unshift({
+            productId: productId,
+            viewedAt: new Date()
+          });
+
+          // Keep only the last 20 viewed products
+          if (user.recentlyViewedProducts.length > 20) {
+            user.recentlyViewedProducts = user.recentlyViewedProducts.slice(0, 20);
+          }
+
+          await user.save();
+        }
+      } catch (trackError) {
+        // Log the error but don't fail the main request
+        console.error("Error tracking product view:", trackError.message);
+      }
     }
 
     // Create availableColors array with color and a single image
@@ -798,6 +830,8 @@ exports.getProductsById = async (req, res) => {
       coverImage: product.coverImage,
       availableColors: availableColors, // Now includes color and single image
       variant: selectedVariant,
+      userType: userId ? (req.user?.role === 'Guest' ? 'guest' : 'authenticated') : 'anonymous',
+      trackingEnabled: userId && req.user?.role !== 'Guest'
     });
   } catch (error) {
     console.error("Error fetching product:", error);
@@ -848,6 +882,7 @@ exports.getProductsBySubCategory = async (req, res) => {
   try {
     const { subCategoryId } = req.params;
     const { fit, color, minPrice, maxPrice, sortBy, sortOrder } = req.query;
+    const userId = req.user?.id; // Get user ID from auth middleware (optional)
 
     // Validate the subCategoryId format
     if (!mongoose.isValidObjectId(subCategoryId)) {
@@ -922,6 +957,7 @@ exports.getProductsBySubCategory = async (req, res) => {
       { $sort: sortOptions },
       {
         $project: {
+          _id: 1,
           productName: 1,
           price: 1,
           description: 1,
@@ -943,7 +979,45 @@ exports.getProductsBySubCategory = async (req, res) => {
       });
     }
 
-    return res.status(200).json({ products });
+    // Track product views for authenticated users (not guests)
+    if (userId && req.user?.role !== 'Guest') {
+      try {
+        const User = require("../models/userModel");
+        const user = await User.findById(userId);
+        
+        if (user) {
+          // Track each product in the subcategory view
+          for (const product of products) {
+            // Remove existing entry for this product if it exists
+            user.recentlyViewedProducts = user.recentlyViewedProducts.filter(
+              item => item.productId.toString() !== product._id.toString()
+            );
+
+            // Add the new view at the beginning (most recent first)
+            user.recentlyViewedProducts.unshift({
+              productId: product._id,
+              viewedAt: new Date()
+            });
+          }
+
+          // Keep only the last 20 viewed products
+          if (user.recentlyViewedProducts.length > 20) {
+            user.recentlyViewedProducts = user.recentlyViewedProducts.slice(0, 20);
+          }
+
+          await user.save();
+        }
+      } catch (trackError) {
+        // Log the error but don't fail the main request
+        console.error("Error tracking subcategory product views:", trackError.message);
+      }
+    }
+
+    return res.status(200).json({ 
+      products,
+      userType: userId ? (req.user?.role === 'Guest' ? 'guest' : 'authenticated') : 'anonymous',
+      trackingEnabled: userId && req.user?.role !== 'Guest'
+    });
   } catch (error) {
     console.error("Error fetching products by subcategory:", error);
     return res.status(500).json({
@@ -1228,5 +1302,286 @@ exports.updateProduct = async (req, res) => {
     return res
       .status(500)
       .json({ message: "Failed to update product", error: error.message });
+  }
+};
+
+exports.getTrendingProducts = async (req, res) => {
+  try {
+    const { limit = 10, random = false } = req.query;
+
+    // Build the query for trending products
+    let query = { isTrending: true, enabled: true };
+
+    let products;
+    
+    if (random === 'true') {
+      // Get random trending products using MongoDB's $sample aggregation
+      products = await Product.aggregate([
+        { $match: query },
+        { $sample: { size: parseInt(limit) } },
+        {
+          $lookup: {
+            from: "categories",
+            localField: "category",
+            foreignField: "_id",
+            as: "category"
+          }
+        },
+        {
+          $lookup: {
+            from: "subcategories",
+            localField: "subCategory",
+            foreignField: "_id",
+            as: "subCategory"
+          }
+        },
+        {
+          $unwind: {
+            path: "$category",
+            preserveNullAndEmptyArrays: true
+          }
+        },
+        {
+          $unwind: {
+            path: "$subCategory",
+            preserveNullAndEmptyArrays: true
+          }
+        },
+        {
+          $project: {
+            category: { name: 1 },
+            subCategory: { name: 1 },
+            productName: 1,
+            description: 1,
+            price: 1,
+            mrp: 1,
+            discount: 1,
+            coverImage: 1,
+            variants: 1,
+            averageRating: 1,
+            totalRatings: 1,
+            isTrending: 1,
+            enabled: 1,
+            in_stock: 1,
+            stock: 1,
+            createdDate: 1
+          }
+        }
+      ]);
+    } else {
+      // Get trending products in order (most recent first)
+      products = await Product.find(query)
+        .populate("category", "name")
+        .populate("subCategory", "name")
+        .sort({ createdDate: -1 })
+        .limit(parseInt(limit));
+    }
+
+    if (products.length === 0) {
+      return res.status(404).json({ 
+        message: "No trending products found",
+        products: []
+      });
+    }
+
+    return res.status(200).json({
+      message: "Trending products retrieved successfully",
+      products,
+      totalCount: products.length,
+      isRandom: random === 'true'
+    });
+
+  } catch (error) {
+    console.error("Error fetching trending products:", error.message);
+    return res.status(500).json({
+      message: "Error fetching trending products",
+      error: error.message,
+    });
+  }
+};
+
+exports.toggleTrendingStatus = async (req, res) => {
+  try {
+    const { productId } = req.params;
+
+    // Ensure the product exists
+    const product = await Product.findById(productId);
+    if (!product) {
+      return res.status(404).json({ message: "Product not found" });
+    }
+
+    // Toggle the trending status
+    const updatedProduct = await Product.findByIdAndUpdate(
+      productId,
+      { $set: { isTrending: !product.isTrending } },
+      { new: true }
+    ).populate("category", "name")
+     .populate("subCategory", "name");
+
+    return res.status(200).json({
+      message: `Product ${updatedProduct.isTrending ? 'marked as' : 'removed from'} trending successfully`,
+      product: updatedProduct
+    });
+
+  } catch (error) {
+    console.error("Error toggling trending status:", error.message);
+    return res.status(500).json({
+      message: "Error toggling trending status",
+      error: error.message,
+    });
+  }
+};
+
+exports.trackProductView = async (req, res) => {
+  try {
+    const { productId } = req.params;
+    const userId = req.user?.id; // Get user ID from auth middleware
+
+    // Validate productId
+    if (!mongoose.isValidObjectId(productId)) {
+      return res.status(400).json({ message: "Invalid product ID" });
+    }
+
+    // Check if user is authenticated
+    if (!userId) {
+      return res.status(401).json({ message: "User authentication required" });
+    }
+
+    // Verify the product exists
+    const product = await Product.findById(productId);
+    if (!product) {
+      return res.status(404).json({ message: "Product not found" });
+    }
+
+    // Get user and update recently viewed products
+    const User = require("../models/userModel");
+    const user = await User.findById(userId);
+    
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    // Remove existing entry for this product if it exists
+    user.recentlyViewedProducts = user.recentlyViewedProducts.filter(
+      item => item.productId.toString() !== productId
+    );
+
+    // Add the new view at the beginning (most recent first)
+    user.recentlyViewedProducts.unshift({
+      productId: productId,
+      viewedAt: new Date()
+    });
+
+    // Keep only the last 20 viewed products
+    if (user.recentlyViewedProducts.length > 20) {
+      user.recentlyViewedProducts = user.recentlyViewedProducts.slice(0, 20);
+    }
+
+    await user.save();
+
+    return res.status(200).json({
+      message: "Product view tracked successfully",
+      productId: productId
+    });
+
+  } catch (error) {
+    console.error("Error tracking product view:", error.message);
+    return res.status(500).json({
+      message: "Error tracking product view",
+      error: error.message,
+    });
+  }
+};
+
+exports.getRecentlyViewedProducts = async (req, res) => {
+  try {
+    const userId = req.user?.id; // Get user ID from auth middleware
+    const { limit = 10 } = req.query;
+
+    // Check if user is authenticated
+    if (!userId) {
+      return res.status(401).json({ message: "User authentication required" });
+    }
+
+    // Get user with recently viewed products
+    const User = require("../models/userModel");
+    const user = await User.findById(userId).populate({
+      path: 'recentlyViewedProducts.productId',
+      populate: [
+        { path: 'category', select: 'name' },
+        { path: 'subCategory', select: 'name' }
+      ]
+    });
+
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    // Get the recently viewed products with populated data
+    const recentlyViewed = user.recentlyViewedProducts
+      .filter(item => item.productId) // Filter out any null products
+      .slice(0, parseInt(limit))
+      .map(item => ({
+        productId: item.productId._id,
+        productName: item.productId.productName,
+        description: item.productId.description,
+        price: item.productId.price,
+        mrp: item.productId.mrp,
+        discount: item.productId.discount,
+        coverImage: item.productId.coverImage,
+        variants: item.productId.variants,
+        category: item.productId.category,
+        subCategory: item.productId.subCategory,
+        averageRating: item.productId.averageRating,
+        totalRatings: item.productId.totalRatings,
+        viewedAt: item.viewedAt
+      }));
+
+    return res.status(200).json({
+      message: "Recently viewed products retrieved successfully",
+      products: recentlyViewed,
+      totalCount: recentlyViewed.length
+    });
+
+  } catch (error) {
+    console.error("Error fetching recently viewed products:", error.message);
+    return res.status(500).json({
+      message: "Error fetching recently viewed products",
+      error: error.message,
+    });
+  }
+};
+
+exports.clearRecentlyViewedProducts = async (req, res) => {
+  try {
+    const userId = req.user?.id; // Get user ID from auth middleware
+
+    // Check if user is authenticated
+    if (!userId) {
+      return res.status(401).json({ message: "User authentication required" });
+    }
+
+    // Get user and clear recently viewed products
+    const User = require("../models/userModel");
+    const user = await User.findById(userId);
+    
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    // Clear the recently viewed products array
+    user.recentlyViewedProducts = [];
+    await user.save();
+
+    return res.status(200).json({
+      message: "Recently viewed products cleared successfully"
+    });
+
+  } catch (error) {
+    console.error("Error clearing recently viewed products:", error.message);
+    return res.status(500).json({
+      message: "Error clearing recently viewed products",
+      error: error.message,
+    });
   }
 };

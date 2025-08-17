@@ -1,16 +1,25 @@
 const express = require("express");
 const router = express.Router();
 const couponController = require("../controllers/couponController");
+const { roleMiddleware } = require("../middleware/authMiddleware");
 router.get("/searchUser", couponController.searchUsers);
-router.post("/", couponController.createCoupon);
+router.post("/", roleMiddleware(["Admin"]), couponController.createCoupon);
 router.get("/", couponController.getAllCoupons);
 // router.get("/getall", couponController.getAllCouponsAll);
 router.get("/:id", couponController.getCouponById);
 
-router.put("/:id", couponController.updateCoupon);
-router.delete("/:id", couponController.deleteCoupon);
-router.post("/applyCoupon", couponController.applyCouponToCart);
-router.post("/particularUser", couponController.createCouponForParticularUser);
+router.put("/:id", roleMiddleware(["Admin"]), couponController.updateCoupon);
+router.delete("/:id", roleMiddleware(["Admin"]), couponController.deleteCoupon);
+router.post(
+  "/applyCoupon",
+  roleMiddleware(["User"]),
+  couponController.applyCouponToCart
+);
+router.post(
+  "/particularUser",
+  roleMiddleware(["Admin"]),
+  couponController.createCouponForParticularUser
+);
 router.post(
   "/createCouponForPromotion",
   couponController.createCouponForPromotion

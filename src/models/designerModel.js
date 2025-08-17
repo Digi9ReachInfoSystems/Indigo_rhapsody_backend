@@ -16,7 +16,7 @@ const designerSchema = new mongoose.Schema({
   },
   backGroundImage: {
     type: String,
-    required: true,
+    // required: true,
   },
   is_approved: {
     type: Boolean,
