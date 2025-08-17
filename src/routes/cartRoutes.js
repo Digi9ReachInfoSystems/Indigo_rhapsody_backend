@@ -5,12 +5,12 @@ const {
   authMiddleware,
   roleMiddleware,
 } = require("../middleware/authMiddleware");
-router.post("/", roleMiddleware(["User"]), cartController.createCart);
-router.put("/update", roleMiddleware(["User"]), cartController.updateQuantity);
+router.post("/", authMiddleware, cartController.createCart);
+router.put("/update", authMiddleware, cartController.updateQuantity);
 
-router.post("/addItem", roleMiddleware(["User"]), cartController.addItemToCart);
-router.post("/", roleMiddleware(["User"]), cartController.deleteItem);
-router.get("/getCart/:userId", cartController.getCartForUser);
-router.post("/CreateCart", roleMiddleware(["User"]), cartController.upsertCart);
+router.post("/addItem", authMiddleware, cartController.addItemToCart);
+router.post("/", authMiddleware, cartController.deleteItem);
+router.get("/getCart/:userId", authMiddleware, cartController.getCartForUser);
+router.post("/CreateCart", authMiddleware, cartController.upsertCart);
 
 module.exports = router;

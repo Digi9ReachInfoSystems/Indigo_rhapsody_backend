@@ -6,7 +6,7 @@ const SubCategory = require("../models/subcategoryModel");
 const { bucket } = require("../service/firebaseServices"); // Firebase storage configuration
 const axios = require("axios"); // To fetch images from URLs
 const xlsx = require("xlsx"); // Add this at the top of your file
-const { v4: uuid } = require('uuid');
+const { v4: uuid } = require("uuid");
 
 const uploadImageFromURL = async (imageUrl, filename) => {
   try {
@@ -238,38 +238,44 @@ exports.uploadSingleProduct = async (req, res) => {
   }
 };
 exports.uploadBulkProducts = async (req, res) => {
-  const reqId = uuid();                       // correlation for all logs
-  const L     = (...a) => console.log(`[bulk:${reqId}]`, ...a);
+  const reqId = uuid(); // correlation for all logs
+  const L = (...a) => console.log(`[bulk:${reqId}]`, ...a);
 
   try {
-    L('START');
+    L("START");
 
     // ─── Basic input check ─────────────────────────────────────
     const { fileUrl, designerRef } = req.body;
-    if (!fileUrl)     return res.status(400).json({ message: 'fileUrl required' });
-    if (!designerRef) return res.status(400).json({ message: 'designerRef required' });
+    if (!fileUrl) return res.status(400).json({ message: "fileUrl required" });
+    if (!designerRef)
+      return res.status(400).json({ message: "designerRef required" });
 
     // ─── Download spreadsheet ──────────────────────────────────
-    L('GET', fileUrl);
-    const { data: buf } = await axios.get(fileUrl, { responseType: 'arraybuffer' });
+    L("GET", fileUrl);
+    const { data: buf } = await axios.get(fileUrl, {
+      responseType: "arraybuffer",
+    });
 
     // ─── Parse first sheet to JSON ─────────────────────────────
-    const wb         = xlsx.read(buf, { type: 'buffer' });
-    const sheetName  = wb.SheetNames[0];
-    const rows       = xlsx.utils.sheet_to_json(wb.Sheets[sheetName]);
+    const wb = xlsx.read(buf, { type: "buffer" });
+    const sheetName = wb.SheetNames[0];
+    const rows = xlsx.utils.sheet_to_json(wb.Sheets[sheetName]);
     L(`sheet "${sheetName}" rows:`, rows.length);
-    if (!rows.length) throw new Error('Spreadsheet has no data rows');
+    if (!rows.length) throw new Error("Spreadsheet has no data rows");
 
     // ─── Build product map in memory ───────────────────────────
-    const products = {};                         // key = productName (lower)
+    const products = {}; // key = productName (lower)
     for (let i = 0; i < rows.length; i++) {
-      const r   = rows[i];
-      const tag = `row:${i + 2}`;               // +2 for 1-based Excel lines
+      const r = rows[i];
+      const tag = `row:${i + 2}`; // +2 for 1-based Excel lines
 
       try {
         // ---------- mandatory column check ----------
-        ['productName', 'category', 'subCategory', 'color', 'size']
-          .forEach(c => { if (!r[c]) throw new Error(`missing ${c}`); });
+        ["productName", "category", "subCategory", "color", "size"].forEach(
+          (c) => {
+            if (!r[c]) throw new Error(`missing ${c}`);
+          }
+        );
 
         // ---------- upsert category / subCategory ----
         const [catDoc, subDoc] = await Promise.all([
@@ -282,94 +288,99 @@ exports.uploadBulkProducts = async (req, res) => {
             { name: r.subCategory.trim() },
             { $setOnInsert: { name: r.subCategory.trim() } },
             { upsert: true, new: true }
-          )
+          ),
         ]);
         if (!subDoc.category)
-          await SubCategory.updateOne({ _id: subDoc._id }, { category: catDoc._id });
+          await SubCategory.updateOne(
+            { _id: subDoc._id },
+            { category: catDoc._id }
+          );
 
         // ---------- product skeleton -----------------
-        const key        = r.productName.trim().toLowerCase();
-        const firstSeen  = !products[key];
+        const key = r.productName.trim().toLowerCase();
+        const firstSeen = !products[key];
         if (firstSeen) {
           // collect images once per product
           const imgList = [];
           if (r.ImageList) {
-            for (const rawUrl of r.ImageList.split(',').map(s => s.trim()).filter(Boolean)) {
+            for (const rawUrl of r.ImageList.split(",")
+              .map((s) => s.trim())
+              .filter(Boolean)) {
               try {
-                const file = rawUrl.split('/').pop();
-                const upl  = await uploadImageFromURL(rawUrl, file);
+                const file = rawUrl.split("/").pop();
+                const upl = await uploadImageFromURL(rawUrl, file);
                 imgList.push(upl);
               } catch (e) {
-                L(tag, 'image upload fail', e.message);
+                L(tag, "image upload fail", e.message);
               }
             }
           }
 
           products[key] = {
-            productName : r.productName.trim(),
-            description : r.description || '',
-            price       : r.price,
-            mrp         : r.mrp,
-            sku         : r.sku,
-            fit         : r.fit,
-            fabric      : r.fabric,
-            material    : r.material,
-            category    : catDoc._id,
-            subCategory : subDoc._id,
+            productName: r.productName.trim(),
+            description: r.description || "",
+            price: r.price,
+            mrp: r.mrp,
+            sku: r.sku,
+            fit: r.fit,
+            fabric: r.fabric,
+            material: r.material,
+            category: catDoc._id,
+            subCategory: subDoc._id,
             designerRef,
-            createdDate : new Date(),
-            coverImage  : imgList[0] || '',
-            variants    : [],
-            _baseImages : imgList        // temporary for variant reuse
+            createdDate: new Date(),
+            coverImage: imgList[0] || "",
+            variants: [],
+            _baseImages: imgList, // temporary for variant reuse
           };
         }
 
         // ---------- variant by color -----------------
-        const prod   = products[key];
-        let variant  = prod.variants.find(v => v.color === r.color);
+        const prod = products[key];
+        let variant = prod.variants.find((v) => v.color === r.color);
         if (!variant) {
           variant = {
-            color     : r.color,
-            imageList : [...prod._baseImages],  // reuse, no dup upload
-            sizes     : []
+            color: r.color,
+            imageList: [...prod._baseImages], // reuse, no dup upload
+            sizes: [],
           };
           prod.variants.push(variant);
         }
 
         // size entry
-        if (!variant.sizes.some(s => s.size === r.size)) {
+        if (!variant.sizes.some((s) => s.size === r.size)) {
           variant.sizes.push({
-            size  : r.size,
-            price : r.sizePrice ?? r.price,
-            stock : r.sizeStock ?? r.stock ?? 0
+            size: r.size,
+            price: r.sizePrice ?? r.price,
+            stock: r.sizeStock ?? r.stock ?? 0,
           });
         }
 
-        L(tag, 'OK');
+        L(tag, "OK");
       } catch (err) {
-        L(tag, 'FAIL ⇒', err.message);
+        L(tag, "FAIL ⇒", err.message);
       }
     }
 
     // remove temp property before save
-    Object.values(products).forEach(p => delete p._baseImages);
+    Object.values(products).forEach((p) => delete p._baseImages);
 
     // ─── Bulk upsert to MongoDB ────────────────────────────────
-    const ops = Object.values(products).map(p => ({
+    const ops = Object.values(products).map((p) => ({
       updateOne: {
-        filter : { productName: p.productName },
-        update : { $set: p },
-        upsert : true
-      }
+        filter: { productName: p.productName },
+        update: { $set: p },
+        upsert: true,
+      },
     }));
     const bulkRes = await Product.bulkWrite(ops);
-    L('bulkWrite result:', JSON.stringify(bulkRes));
+    L("bulkWrite result:", JSON.stringify(bulkRes));
 
-    L('END ✓');
-    res.status(201).json({ message: 'Bulk import complete', counts: bulkRes });
+    L("END ✓");
+    res.status(201).json({ message: "Bulk import complete", counts: bulkRes });
   } catch (err) {
     console.error(`[bulk:${reqId}] FATAL`, err);
-    res.status(500).json({ message: 'Bulk import failed', error: err.message });
+    res.status(500).json({ message: "Bulk import failed", error: err.message });
   }
 };
 exports.updateVariantStock = async (req, res) => {
@@ -571,7 +582,7 @@ exports.getProducts = async (req, res) => {
           images: 1,
           enabled: 1,
           createdAt: 1,
-          coverImage:1,
+          coverImage: 1,
           "category.name": 1,
           "subCategory.name": 1,
           "designer.userId": 1,
@@ -758,26 +769,29 @@ exports.getProductsById = async (req, res) => {
     }
 
     // Track product view if user is authenticated (not guest)
-    if (userId && req.user?.role !== 'Guest') {
+    if (userId && req.user?.role !== "Guest") {
       try {
         const User = require("../models/userModel");
         const user = await User.findById(userId);
-        
+
         if (user) {
           // Remove existing entry for this product if it exists
           user.recentlyViewedProducts = user.recentlyViewedProducts.filter(
-            item => item.productId.toString() !== productId
+            (item) => item.productId.toString() !== productId
           );
 
           // Add the new view at the beginning (most recent first)
           user.recentlyViewedProducts.unshift({
             productId: productId,
-            viewedAt: new Date()
+            viewedAt: new Date(),
           });
 
           // Keep only the last 20 viewed products
           if (user.recentlyViewedProducts.length > 20) {
-            user.recentlyViewedProducts = user.recentlyViewedProducts.slice(0, 20);
+            user.recentlyViewedProducts = user.recentlyViewedProducts.slice(
+              0,
+              20
+            );
           }
 
           await user.save();
@@ -830,8 +844,12 @@ exports.getProductsById = async (req, res) => {
       coverImage: product.coverImage,
       availableColors: availableColors, // Now includes color and single image
       variant: selectedVariant,
-      userType: userId ? (req.user?.role === 'Guest' ? 'guest' : 'authenticated') : 'anonymous',
-      trackingEnabled: userId && req.user?.role !== 'Guest'
+      userType: userId
+        ? req.user?.role === "Guest"
+          ? "guest"
+          : "authenticated"
+        : "anonymous",
+      trackingEnabled: userId && req.user?.role !== "Guest",
     });
   } catch (error) {
     console.error("Error fetching product:", error);
@@ -980,43 +998,53 @@ exports.getProductsBySubCategory = async (req, res) => {
     }
 
     // Track product views for authenticated users (not guests)
-    if (userId && req.user?.role !== 'Guest') {
+    if (userId && req.user?.role !== "Guest") {
       try {
         const User = require("../models/userModel");
         const user = await User.findById(userId);
-        
+
         if (user) {
           // Track each product in the subcategory view
           for (const product of products) {
             // Remove existing entry for this product if it exists
             user.recentlyViewedProducts = user.recentlyViewedProducts.filter(
-              item => item.productId.toString() !== product._id.toString()
+              (item) => item.productId.toString() !== product._id.toString()
             );
 
             // Add the new view at the beginning (most recent first)
             user.recentlyViewedProducts.unshift({
               productId: product._id,
-              viewedAt: new Date()
+              viewedAt: new Date(),
             });
           }
 
           // Keep only the last 20 viewed products
           if (user.recentlyViewedProducts.length > 20) {
-            user.recentlyViewedProducts = user.recentlyViewedProducts.slice(0, 20);
+            user.recentlyViewedProducts = user.recentlyViewedProducts.slice(
+              0,
+              20
+            );
           }
 
           await user.save();
         }
       } catch (trackError) {
         // Log the error but don't fail the main request
-        console.error("Error tracking subcategory product views:", trackError.message);
+        console.error(
+          "Error tracking subcategory product views:",
+          trackError.message
+        );
       }
     }
 
-    return res.status(200).json({ 
+    return res.status(200).json({
       products,
-      userType: userId ? (req.user?.role === 'Guest' ? 'guest' : 'authenticated') : 'anonymous',
-      trackingEnabled: userId && req.user?.role !== 'Guest'
+      userType: userId
+        ? req.user?.role === "Guest"
+          ? "guest"
+          : "authenticated"
+        : "anonymous",
+      trackingEnabled: userId && req.user?.role !== "Guest",
     });
   } catch (error) {
     console.error("Error fetching products by subcategory:", error);
@@ -1310,11 +1338,11 @@ exports.getTrendingProducts = async (req, res) => {
     const { limit = 10, random = false } = req.query;
 
     // Build the query for trending products
-    let query = { isTrending: true, enabled: true };
+    let query = { isTrending: true };
 
     let products;
-    
-    if (random === 'true') {
+
+    if (random === "true") {
       // Get random trending products using MongoDB's $sample aggregation
       products = await Product.aggregate([
         { $match: query },
@@ -1324,28 +1352,28 @@ exports.getTrendingProducts = async (req, res) => {
             from: "categories",
             localField: "category",
             foreignField: "_id",
-            as: "category"
-          }
+            as: "category",
+          },
         },
         {
           $lookup: {
             from: "subcategories",
             localField: "subCategory",
             foreignField: "_id",
-            as: "subCategory"
-          }
+            as: "subCategory",
+          },
         },
         {
           $unwind: {
             path: "$category",
-            preserveNullAndEmptyArrays: true
-          }
+            preserveNullAndEmptyArrays: true,
+          },
         },
         {
           $unwind: {
             path: "$subCategory",
-            preserveNullAndEmptyArrays: true
-          }
+            preserveNullAndEmptyArrays: true,
+          },
         },
         {
           $project: {
@@ -1364,9 +1392,9 @@ exports.getTrendingProducts = async (req, res) => {
             enabled: 1,
             in_stock: 1,
             stock: 1,
-            createdDate: 1
-          }
-        }
+            createdDate: 1,
+          },
+        },
       ]);
     } else {
       // Get trending products in order (most recent first)
@@ -1378,9 +1406,9 @@ exports.getTrendingProducts = async (req, res) => {
     }
 
     if (products.length === 0) {
-      return res.status(404).json({ 
+      return res.status(404).json({
         message: "No trending products found",
-        products: []
+        products: [],
       });
     }
 
@@ -1388,9 +1416,8 @@ exports.getTrendingProducts = async (req, res) => {
       message: "Trending products retrieved successfully",
       products,
       totalCount: products.length,
-      isRandom: random === 'true'
+      isRandom: random === "true",
     });
-
   } catch (error) {
     console.error("Error fetching trending products:", error.message);
     return res.status(500).json({
@@ -1415,14 +1442,16 @@ exports.toggleTrendingStatus = async (req, res) => {
       productId,
       { $set: { isTrending: !product.isTrending } },
       { new: true }
-    ).populate("category", "name")
-     .populate("subCategory", "name");
+    )
+      .populate("category", "name")
+      .populate("subCategory", "name");
 
     return res.status(200).json({
-      message: `Product ${updatedProduct.isTrending ? 'marked as' : 'removed from'} trending successfully`,
-      product: updatedProduct
+      message: `Product ${
+        updatedProduct.isTrending ? "marked as" : "removed from"
+      } trending successfully`,
+      product: updatedProduct,
     });
-
   } catch (error) {
     console.error("Error toggling trending status:", error.message);
     return res.status(500).json({
@@ -1456,20 +1485,20 @@ exports.trackProductView = async (req, res) => {
     // Get user and update recently viewed products
     const User = require("../models/userModel");
     const user = await User.findById(userId);
-    
+
     if (!user) {
       return res.status(404).json({ message: "User not found" });
     }
 
     // Remove existing entry for this product if it exists
     user.recentlyViewedProducts = user.recentlyViewedProducts.filter(
-      item => item.productId.toString() !== productId
+      (item) => item.productId.toString() !== productId
     );
 
     // Add the new view at the beginning (most recent first)
     user.recentlyViewedProducts.unshift({
       productId: productId,
-      viewedAt: new Date()
+      viewedAt: new Date(),
     });
 
     // Keep only the last 20 viewed products
@@ -1481,9 +1510,8 @@ exports.trackProductView = async (req, res) => {
 
     return res.status(200).json({
       message: "Product view tracked successfully",
-      productId: productId
+      productId: productId,
     });
-
   } catch (error) {
     console.error("Error tracking product view:", error.message);
     return res.status(500).json({
@@ -1506,11 +1534,11 @@ exports.getRecentlyViewedProducts = async (req, res) => {
     // Get user with recently viewed products
     const User = require("../models/userModel");
     const user = await User.findById(userId).populate({
-      path: 'recentlyViewedProducts.productId',
+      path: "recentlyViewedProducts.productId",
       populate: [
-        { path: 'category', select: 'name' },
-        { path: 'subCategory', select: 'name' }
-      ]
+        { path: "category", select: "name" },
+        { path: "subCategory", select: "name" },
+      ],
     });
 
     if (!user) {
@@ -1519,9 +1547,9 @@ exports.getRecentlyViewedProducts = async (req, res) => {
 
     // Get the recently viewed products with populated data
     const recentlyViewed = user.recentlyViewedProducts
-      .filter(item => item.productId) // Filter out any null products
+      .filter((item) => item.productId) // Filter out any null products
       .slice(0, parseInt(limit))
-      .map(item => ({
+      .map((item) => ({
         productId: item.productId._id,
         productName: item.productId.productName,
         description: item.productId.description,
@@ -1534,15 +1562,14 @@ exports.getRecentlyViewedProducts = async (req, res) => {
         subCategory: item.productId.subCategory,
         averageRating: item.productId.averageRating,
         totalRatings: item.productId.totalRatings,
-        viewedAt: item.viewedAt
+        viewedAt: item.viewedAt,
       }));
 
     return res.status(200).json({
       message: "Recently viewed products retrieved successfully",
       products: recentlyViewed,
-      totalCount: recentlyViewed.length
+      totalCount: recentlyViewed.length,
     });
-
   } catch (error) {
     console.error("Error fetching recently viewed products:", error.message);
     return res.status(500).json({
@@ -1564,7 +1591,7 @@ exports.clearRecentlyViewedProducts = async (req, res) => {
     // Get user and clear recently viewed products
     const User = require("../models/userModel");
     const user = await User.findById(userId);
-    
+
     if (!user) {
       return res.status(404).json({ message: "User not found" });
     }
@@ -1574,9 +1601,8 @@ exports.clearRecentlyViewedProducts = async (req, res) => {
     await user.save();
 
     return res.status(200).json({
-      message: "Recently viewed products cleared successfully"
+      message: "Recently viewed products cleared successfully",
     });
-
   } catch (error) {
     console.error("Error clearing recently viewed products:", error.message);
     return res.status(500).json({
