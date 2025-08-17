@@ -4,9 +4,9 @@ const Comment = require("../models/commentModel");
 // Create a new video
 exports.createVideo = async (req, res) => {
   try {
-    const { userId, creatorId, videoUrl } = req.body;
+    const { userId, creatorId, videoUrl, title } = req.body;
 
-    if (!userId || !creatorId || !videoUrl) {
+    if (!userId || !creatorId || !videoUrl || !title) {
       return res
         .status(400)
         .json({ message: "User ID, Creator ID, and Video URL are required." });
@@ -14,6 +14,7 @@ exports.createVideo = async (req, res) => {
 
     const newVideo = new ContentVideo({
       userId,
+      title,
       creatorId,
       videoUrl,
     });
@@ -30,6 +31,7 @@ exports.createVideo = async (req, res) => {
       .json({ message: "Internal Server Error", error: error.message });
   }
 };
+
 exports.approveVideo = async (req, res) => {
   try {
     const { videoId } = req.params;
@@ -300,5 +302,34 @@ exports.getCommentsByVideo = async (req, res) => {
       message: "Internal Server Error",
       error: error.message,
     });
+  }
+};
+
+exports.createVideoByAdmin = async (req, res) => {
+  try {
+    const { userId, videoUrl, title } = req.body;
+    if (!userId || !videoUrl || !title) {
+      return res
+        .status(400)
+        .json({ message: "User ID, Creator ID, and Video URL are required." });
+    }
+
+    const video = new ContentVideo({
+      userId,
+      title,
+      videoUrl,
+      is_approved: true,
+    });
+
+    await video.save();
+    res.status(201).json({
+      message: "Admin video created and approved successfully",
+      video,
+    });
+  } catch (error) {
+    console.error("Error creating admin video:", error);
+    res
+      .status(500)
+      .json({ message: "Internal Server Error", error: error.message });
   }
 };

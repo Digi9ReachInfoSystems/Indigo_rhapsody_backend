@@ -41,6 +41,7 @@ exports.createVideoCreator = async (req, res) => {
       .json({ message: "Internal Server Error", error: error.message });
   }
 };
+
 exports.approveVideoCreator = async (req, res) => {
   try {
     const { videoId } = req.params;
@@ -93,6 +94,7 @@ exports.approveVideoCreator = async (req, res) => {
       .json({ message: "Internal Server Error", error: error.message });
   }
 };
+
 exports.createVideo = async (req, res) => {
   try {
     const { userId, videoUrl } = req.body;
@@ -130,9 +132,9 @@ exports.createVideo = async (req, res) => {
   }
 };
 
-exports.createVideo = async (req, res) => {
+exports.createVideoByAdmin = async (req, res) => {
   try {
-    const { userId, instagram_User, demo_url, videoUrl } = req.body;
+    const { userId, videoUrl } = req.body;
 
     if (!userId || !videoUrl) {
       return res
@@ -142,8 +144,10 @@ exports.createVideo = async (req, res) => {
 
     const newVideo = new Video({
       userId,
-      instagram_User,
-      demo_url,
+      is_approved: true, // Set to true for admin-created videos
+      instagram_User: "N/A",
+      demo_url: "N/A",
+
       videoUrl,
     });
 

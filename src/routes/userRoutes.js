@@ -8,6 +8,9 @@ router.get("/user-count-by-state", userController.getUserCountByState);
 router.get("/most-users-state", userController.getStateWithMostUsers);
 router.get("/role-user", userController.getAllUsersWithRoleUser);
 
+router.post("/check-user-exists", userController.checkUserExists);
+
+
 router.get("/getUser", userController.getUsers);
 router.get("/:userId", userController.getUserById);
 router.post("/createUser", userController.createUser);
