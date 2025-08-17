@@ -23,4 +23,22 @@ router.patch(
   videoController.approveVideo
 );
 
+// Product management routes
+router.post(
+  "/videos/:videoId/products",
+  roleMiddleware(["Admin", "Designer"]),
+  videoController.addProductsToVideo
+);
+
+router.delete(
+  "/videos/:videoId/products",
+  roleMiddleware(["Admin", "Designer"]),
+  videoController.removeProductsFromVideo
+);
+
+// Get content videos with products
+router.get("/videos-with-products", videoController.getContentVideosWithProducts);
+router.get("/videos-with-products/:videoId", videoController.getContentVideoWithProducts);
+router.get("/videos-by-product/:productId", videoController.getVideosByProduct);
+
 module.exports = router;
