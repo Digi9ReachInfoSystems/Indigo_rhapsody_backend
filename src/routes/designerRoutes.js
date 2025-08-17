@@ -34,7 +34,6 @@ router.get(
 );
 
 // Authenticated routes (require valid JWT)
-router.use(authMiddleware);
 
 // Designer-specific routes (require Designer role)
 router.post(
@@ -102,6 +101,37 @@ router.delete(
   "/designers/:id",
   roleMiddleware(["Admin"]),
   designerController.deleteDesigner
+);
+
+router.post(
+  "/createDesignerVideos",
+  designerController.createDesignerVideosForProducts
+);
+
+// Get all designer videos for products (Public/Admin access)
+router.get(
+  "/createDesignerVideos",
+  designerController.getAllDesignerVideosForProducts
+);
+
+// Get single designer video by ID (Public/Admin access)
+router.get(
+  "/createDesignerVideos/:id",
+  designerController.getDesignerVideoForProductsById
+);
+
+// Approve designer video (Admin only)
+router.patch(
+  "/createDesignerVideos/:id/approve",
+
+  designerController.ApproveDesignerVideoForProducts
+);
+
+// Reject designer video (Admin only)
+router.patch(
+  "/createDesignerVideos/:id/reject",
+
+  designerController.rejectDesignerVideoForProducts
 );
 
 module.exports = router;

@@ -1,10 +1,22 @@
 const express = require("express");
 const router = express.Router();
 const subcategoryController = require("../controllers/subcategoryController");
+const {
+  roleMiddleware,
+  authMiddleware,
+} = require("../middleware/authMiddleware");
+const { auth } = require("firebase-admin");
 
-router.post("/", subcategoryController.createSubCategory);
+router.post(
+  "/",
+  authMiddleware,
+  roleMiddleware(["Admin", "Designer4"]),
+  subcategoryController.createSubCategory
+);
 router.put(
   "/:subCategoryId",
+  authMiddleware,
+  roleMiddleware(["Admin"]),
 
   subcategoryController.updateSubCategory
 );
@@ -15,6 +27,8 @@ router.get("/getSubCategory/:id", subcategoryController.getSubCategoryById);
 
 router.patch(
   "/subcategory/:subCategoryId/approve",
+  authMiddleware,
+  roleMiddleware(["Admin"]),
   subcategoryController.approveSubCategory
 );
 

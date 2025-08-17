@@ -29,7 +29,6 @@ router.put(
 router.delete(
   "/:bannerId",
   roleMiddleware(["Admin"]),
-  bannerController.deleteBanner
 );
 
 module.exports = router;
