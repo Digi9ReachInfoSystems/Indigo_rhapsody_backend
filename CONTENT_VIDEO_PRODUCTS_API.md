@@ -33,7 +33,121 @@ This document describes the enhanced content video system that allows designers 
 
 ## API Endpoints
 
-### 1. Add Products to Content Video
+### 1. Create Video with Products
+**POST** `/content-video/videos`
+
+Create a new content video with optional product associations.
+
+**Headers:**
+```
+Authorization: Bearer jwt_token
+Content-Type: application/json
+```
+
+**Request Body:**
+```json
+{
+  "userId": "user_id",
+  "creatorId": "creator_id",
+  "videoUrl": "https://example.com/video.mp4",
+  "title": "Fashion Show 2024",
+  "productIds": ["product_id_1", "product_id_2", "product_id_3"]
+}
+```
+
+**Response:**
+```json
+{
+  "message": "Video created successfully",
+  "video": {
+    "_id": "video_id",
+    "title": "Fashion Show 2024",
+    "videoUrl": "https://example.com/video.mp4",
+    "userId": "user_id",
+    "creatorId": "creator_id",
+    "products": [
+      {
+        "productId": {
+          "_id": "product_id_1",
+          "productName": "Designer Dress",
+          "price": 299.99,
+          "coverImage": "https://example.com/dress.jpg",
+          "sku": "DRS001",
+          "category": "Dresses",
+          "subCategory": "Evening Dresses"
+        },
+        "addedAt": "2024-01-15T10:30:00.000Z"
+      },
+      {
+        "productId": {
+          "_id": "product_id_2",
+          "productName": "Stylish Shoes",
+          "price": 149.99,
+          "coverImage": "https://example.com/shoes.jpg",
+          "sku": "SHO001",
+          "category": "Footwear",
+          "subCategory": "Heels"
+        },
+        "addedAt": "2024-01-15T10:30:00.000Z"
+      }
+    ],
+    "is_approved": false,
+    "createdDate": "2024-01-15T10:00:00.000Z"
+  }
+}
+```
+
+### 2. Create Admin Video with Products
+**POST** `/content-video/createAdminVideo`
+
+Create a new content video as admin with products (automatically approved).
+
+**Headers:**
+```
+Authorization: Bearer jwt_token
+Content-Type: application/json
+```
+
+**Request Body:**
+```json
+{
+  "userId": "user_id",
+  "videoUrl": "https://example.com/video.mp4",
+  "title": "Admin Fashion Show 2024",
+  "productIds": ["product_id_1", "product_id_2"]
+}
+```
+
+**Response:**
+```json
+{
+  "message": "Admin video created and approved successfully",
+  "video": {
+    "_id": "video_id",
+    "title": "Admin Fashion Show 2024",
+    "videoUrl": "https://example.com/video.mp4",
+    "userId": "user_id",
+    "products": [
+      {
+        "productId": {
+          "_id": "product_id_1",
+          "productName": "Designer Dress",
+          "price": 299.99,
+          "coverImage": "https://example.com/dress.jpg",
+          "sku": "DRS001",
+          "category": "Dresses",
+          "subCategory": "Evening Dresses"
+        },
+        "addedAt": "2024-01-15T10:30:00.000Z"
+      }
+    ],
+    "is_approved": true,
+    "createdDate": "2024-01-15T10:00:00.000Z"
+  }
+}
+```
+
+### 3. Add Products to Content Video
 **POST** `/content-video/videos/:videoId/products`
 
 Add one or more products to a content video.
@@ -318,7 +432,30 @@ GET /content-video/videos-by-product/product_id_1?limit=5&page=1&approved=true
 
 #### React Native Example
 ```javascript
-// Add products to a video
+// Create video with products
+const createVideoWithProducts = async (videoData, productIds) => {
+  try {
+    const response = await fetch(`${API_BASE_URL}/content-video/videos`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${accessToken}`,
+      },
+      body: JSON.stringify({
+        ...videoData,
+        productIds: productIds || []
+      }),
+    });
+
+    const data = await response.json();
+    return data;
+  } catch (error) {
+    console.error('Error creating video with products:', error);
+    throw error;
+  }
+};
+
+// Add products to existing video
 const addProductsToVideo = async (videoId, productIds) => {
   try {
     const response = await fetch(`${API_BASE_URL}/content-video/videos/${videoId}/products`, {
@@ -381,7 +518,28 @@ const getVideosByProduct = async (productId, limit = 10, page = 1) => {
 
 #### Flutter Example
 ```dart
-// Add products to a video
+// Create video with products
+Future<Map<String, dynamic>> createVideoWithProducts(Map<String, dynamic> videoData, List<String> productIds) async {
+  try {
+    final requestBody = Map<String, dynamic>.from(videoData);
+    requestBody['productIds'] = productIds ?? [];
+    
+    final response = await http.post(
+      Uri.parse('$API_BASE_URL/content-video/videos'),
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer $accessToken',
+      },
+      body: json.encode(requestBody),
+    );
+
+    return json.decode(response.body);
+  } catch (e) {
+    throw Exception('Error creating video with products: $e');
+  }
+}
+
+// Add products to existing video
 Future<Map<String, dynamic>> addProductsToVideo(String videoId, List<String> productIds) async {
   try {
     final response = await http.post(
@@ -426,6 +584,74 @@ Future<Map<String, dynamic>> getVideosByProduct(String productId, {int limit = 1
     throw Exception('Error fetching videos by product: $e');
   }
 }
+```
+
+## Complete Usage Example
+
+### Video Creation Flow
+```javascript
+// Example: Creating a fashion video with products
+const createFashionVideo = async () => {
+  try {
+    // Step 1: Prepare video data
+    const videoData = {
+      userId: "user_id_123",
+      creatorId: "creator_id_456", 
+      videoUrl: "https://example.com/fashion-show-2024.mp4",
+      title: "Spring Fashion Show 2024"
+    };
+
+    // Step 2: Select products to associate
+    const selectedProductIds = [
+      "product_id_1", // Designer Dress
+      "product_id_2", // Matching Shoes
+      "product_id_3"  // Accessory Set
+    ];
+
+    // Step 3: Create video with products
+    const result = await createVideoWithProducts(videoData, selectedProductIds);
+    
+    console.log("Video created successfully:", result.video);
+    console.log("Associated products:", result.video.products.length);
+    
+    return result;
+  } catch (error) {
+    console.error("Failed to create video:", error);
+    throw error;
+  }
+};
+
+// Example: Creating admin video (automatically approved)
+const createAdminVideo = async () => {
+  try {
+    const videoData = {
+      userId: "user_id_123",
+      videoUrl: "https://example.com/admin-video.mp4",
+      title: "Official Brand Video"
+    };
+
+    const productIds = ["product_id_1", "product_id_2"];
+    
+    const response = await fetch(`${API_BASE_URL}/content-video/createAdminVideo`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${adminToken}`,
+      },
+      body: JSON.stringify({
+        ...videoData,
+        productIds
+      }),
+    });
+
+    const result = await response.json();
+    console.log("Admin video created:", result.video);
+    return result;
+  } catch (error) {
+    console.error("Failed to create admin video:", error);
+    throw error;
+  }
+};
 ```
 
 ## Business Logic

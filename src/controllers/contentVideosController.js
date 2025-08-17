@@ -1,15 +1,24 @@
 const ContentVideo = require("../models/contentVIdeosModel");
 const Comment = require("../models/commentModel");
 
-// Create a new video
+// Create a new video with products
 exports.createVideo = async (req, res) => {
   try {
-    const { userId, creatorId, videoUrl, title } = req.body;
+    const { userId, creatorId, videoUrl, title, productIds } = req.body;
 
     if (!userId || !creatorId || !videoUrl || !title) {
       return res
         .status(400)
-        .json({ message: "User ID, Creator ID, and Video URL are required." });
+        .json({ message: "User ID, Creator ID, Video URL, and title are required." });
+    }
+
+    // Prepare products array if productIds are provided
+    let products = [];
+    if (productIds && Array.isArray(productIds) && productIds.length > 0) {
+      products = productIds.map(productId => ({
+        productId,
+        addedAt: new Date()
+      }));
     }
 
     const newVideo = new ContentVideo({
@@ -17,9 +26,14 @@ exports.createVideo = async (req, res) => {
       title,
       creatorId,
       videoUrl,
+      products,
     });
 
     await newVideo.save();
+
+    // Populate the products for response
+    await newVideo.populate('products.productId', 'productName price coverImage sku category subCategory');
+
     res.status(201).json({
       message: "Video created successfully",
       video: newVideo,
@@ -307,11 +321,20 @@ exports.getCommentsByVideo = async (req, res) => {
 
 exports.createVideoByAdmin = async (req, res) => {
   try {
-    const { userId, videoUrl, title } = req.body;
+    const { userId, videoUrl, title, productIds } = req.body;
     if (!userId || !videoUrl || !title) {
       return res
         .status(400)
-        .json({ message: "User ID, Creator ID, and Video URL are required." });
+        .json({ message: "User ID, Video URL, and title are required." });
+    }
+
+    // Prepare products array if productIds are provided
+    let products = [];
+    if (productIds && Array.isArray(productIds) && productIds.length > 0) {
+      products = productIds.map(productId => ({
+        productId,
+        addedAt: new Date()
+      }));
     }
 
     const video = new ContentVideo({
@@ -319,9 +342,14 @@ exports.createVideoByAdmin = async (req, res) => {
       title,
       videoUrl,
       is_approved: true,
+      products,
     });
 
     await video.save();
+
+    // Populate the products for response
+    await video.populate('products.productId', 'productName price coverImage sku category subCategory');
+
     res.status(201).json({
       message: "Admin video created and approved successfully",
       video,
