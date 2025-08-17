@@ -44,6 +44,8 @@ router.get("/videos-by-product/:productId", videoController.getVideosByProduct);
 // Like/Dislike functionality
 router.post("/videos/:videoId/reaction", videoController.toggleVideoReaction);
 router.get("/videos/:videoId/reaction/:userId", videoController.getUserReaction);
+router.get("/videos/:videoId/liked-users", videoController.getUsersWhoLiked);
+router.get("/videos/:videoId/disliked-users", videoController.getUsersWhoDisliked);
 
 // Comment functionality
 router.post("/videos/:videoId/comments", videoController.addComment);
