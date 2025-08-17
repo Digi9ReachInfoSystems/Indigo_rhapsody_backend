@@ -41,4 +41,14 @@ router.get("/videos-with-products", videoController.getContentVideosWithProducts
 router.get("/videos-with-products/:videoId", videoController.getContentVideoWithProducts);
 router.get("/videos-by-product/:productId", videoController.getVideosByProduct);
 
+// Like/Dislike functionality
+router.post("/videos/:videoId/reaction", videoController.toggleVideoReaction);
+router.get("/videos/:videoId/reaction/:userId", videoController.getUserReaction);
+
+// Comment functionality
+router.post("/videos/:videoId/comments", videoController.addComment);
+router.get("/videos/:videoId/comments", videoController.getVideoComments);
+router.put("/videos/:videoId/comments/:commentId", videoController.updateComment);
+router.delete("/videos/:videoId/comments/:commentId", videoController.deleteComment);
+
 module.exports = router;

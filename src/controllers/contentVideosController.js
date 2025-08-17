@@ -215,79 +215,191 @@ exports.deleteVideo = async (req, res) => {
   }
 };
 
-exports.toggleLikeVideo = async (req, res) => {
+// Toggle like/dislike for a video
+exports.toggleVideoReaction = async (req, res) => {
   try {
-    const { videoId } = req.params; // Get the video ID from the request parameters
-    const { userId } = req.body; // Get the user ID from the request body
+    const { videoId } = req.params;
+    const { userId, reactionType } = req.body; // 'like' or 'dislike'
 
-    if (!videoId || !userId) {
-      return res
-        .status(400)
-        .json({ message: "Video ID and User ID are required" });
+    if (!videoId || !userId || !reactionType) {
+      return res.status(400).json({ 
+        message: "Video ID, User ID, and reaction type (like/dislike) are required" 
+      });
     }
 
-    // Find the video by ID
-    const video = await ContentVideo.findById(videoId);
+    if (!['like', 'dislike'].includes(reactionType)) {
+      return res.status(400).json({ 
+        message: "Reaction type must be either 'like' or 'dislike'" 
+      });
+    }
 
+    const video = await ContentVideo.findById(videoId);
     if (!video) {
       return res.status(404).json({ message: "Video not found" });
     }
 
-    // Check if the user has already liked the video
-    const userIndex = video.likedBy.indexOf(userId);
+    const isLike = reactionType === 'like';
+    const likedArray = isLike ? video.likedBy : video.dislikedBy;
+    const dislikedArray = isLike ? video.dislikedBy : video.likedBy;
+    const likedCount = isLike ? video.no_of_likes : video.no_of_dislikes;
+    const dislikedCount = isLike ? video.no_of_dislikes : video.no_of_likes;
+
+    // Check if user already has this reaction
+    const userIndex = likedArray.indexOf(userId);
+    const hasOppositeReaction = dislikedArray.indexOf(userId) !== -1;
+
+    let message = '';
+    let action = '';
 
     if (userIndex === -1) {
-      // User has not liked the video, so add the like
-      video.likedBy.push(userId);
-      video.no_of_likes += 1;
+      // User doesn't have this reaction, add it
+      likedArray.push(userId);
+      if (isLike) {
+        video.no_of_likes += 1;
+      } else {
+        video.no_of_dislikes += 1;
+      }
+      action = 'added';
+      message = `Video ${reactionType}d successfully`;
     } else {
-      // User has already liked the video, so remove the like
-      video.likedBy.splice(userIndex, 1);
-      video.no_of_likes -= 1;
+      // User already has this reaction, remove it
+      likedArray.splice(userIndex, 1);
+      if (isLike) {
+        video.no_of_likes -= 1;
+      } else {
+        video.no_of_dislikes -= 1;
+      }
+      action = 'removed';
+      message = `Video ${reactionType} removed successfully`;
     }
 
-    // Save the updated video in the database
+    // If user had opposite reaction, remove it
+    if (hasOppositeReaction) {
+      const oppositeIndex = dislikedArray.indexOf(userId);
+      if (oppositeIndex !== -1) {
+        dislikedArray.splice(oppositeIndex, 1);
+        if (isLike) {
+          video.no_of_dislikes -= 1;
+        } else {
+          video.no_of_likes -= 1;
+        }
+      }
+    }
+
     await video.save();
 
+    // Populate user details for response
+    await video.populate('userId', 'displayName email');
+    await video.populate('creatorId', 'displayName email');
+    await video.populate('products.productId', 'productName price coverImage sku category subCategory');
+
     res.status(200).json({
-      message:
-        userIndex === -1
-          ? "Video liked successfully"
-          : "Video unliked successfully",
-      video,
+      message,
+      action,
+      reactionType,
+      video: {
+        _id: video._id,
+        title: video.title,
+        videoUrl: video.videoUrl,
+        no_of_likes: video.no_of_likes,
+        no_of_dislikes: video.no_of_dislikes,
+        no_of_Shares: video.no_of_Shares,
+        is_approved: video.is_approved,
+        createdDate: video.createdDate,
+        userId: video.userId,
+        creatorId: video.creatorId,
+        products: video.products,
+        userReaction: userIndex === -1 ? reactionType : null
+      }
     });
   } catch (error) {
-    console.error("Error toggling like status:", error);
-    res
-      .status(500)
-      .json({ message: "Internal Server Error:", error: error.message });
+    console.error("Error toggling video reaction:", error);
+    res.status(500).json({ 
+      message: "Internal Server Error", 
+      error: error.message 
+    });
   }
 };
 
-exports.createComment = async (req, res) => {
+// Get user's reaction for a video
+exports.getUserReaction = async (req, res) => {
   try {
-    const { videoId, userId, commentText } = req.body;
+    const { videoId, userId } = req.params;
 
-    if (!videoId || !userId || !commentText) {
-      return res
-        .status(400)
-        .json({ message: "Video ID, User ID, and comment text are required." });
+    if (!videoId || !userId) {
+      return res.status(400).json({ 
+        message: "Video ID and User ID are required" 
+      });
     }
 
-    const newComment = new Comment({
+    const video = await ContentVideo.findById(videoId);
+    if (!video) {
+      return res.status(404).json({ message: "Video not found" });
+    }
+
+    const hasLiked = video.likedBy.includes(userId);
+    const hasDisliked = video.dislikedBy.includes(userId);
+
+    let userReaction = null;
+    if (hasLiked) {
+      userReaction = 'like';
+    } else if (hasDisliked) {
+      userReaction = 'dislike';
+    }
+
+    res.status(200).json({
       videoId,
       userId,
+      userReaction,
+      hasLiked,
+      hasDisliked
+    });
+  } catch (error) {
+    console.error("Error getting user reaction:", error);
+    res.status(500).json({ 
+      message: "Internal Server Error", 
+      error: error.message 
+    });
+  }
+};
+
+// Add comment to a video
+exports.addComment = async (req, res) => {
+  try {
+    const { videoId } = req.params;
+    const { userId, commentText } = req.body;
+
+    if (!userId || !commentText) {
+      return res.status(400).json({ 
+        message: "User ID and comment text are required." 
+      });
+    }
+
+    const video = await ContentVideo.findById(videoId);
+    if (!video) {
+      return res.status(404).json({ message: "Video not found." });
+    }
+
+    // Add comment to the video
+    video.comments.push({
+      userId,
       commentText,
+      createdAt: new Date()
     });
 
-    await newComment.save();
+    await video.save();
+
+    // Populate the newly added comment with user details
+    const newComment = video.comments[video.comments.length - 1];
+    await video.populate('comments.userId', 'displayName email');
 
     res.status(201).json({
       message: "Comment added successfully",
       comment: newComment,
+      totalComments: video.comments.length
     });
   } catch (error) {
-    console.error("Error creating comment:", error);
+    console.error("Error adding comment:", error);
     res.status(500).json({
       message: "Internal Server Error",
       error: error.message,
@@ -295,23 +407,125 @@ exports.createComment = async (req, res) => {
   }
 };
 
-exports.getCommentsByVideo = async (req, res) => {
+// Get comments for a video
+exports.getVideoComments = async (req, res) => {
   try {
     const { videoId } = req.params;
+    const { limit = 10, page = 1 } = req.query;
+    const skip = (parseInt(page) - 1) * parseInt(limit);
 
-    const comments = await Comment.find({ videoId })
-      .populate("userId", "displayName email") // Populate user details
-      .sort({ createdAt: -1 }); // Sort by most recent first
+    const video = await ContentVideo.findById(videoId)
+      .populate('comments.userId', 'displayName email')
+      .select('comments');
 
-    if (!comments.length) {
-      return res
-        .status(404)
-        .json({ message: "No comments found for this video." });
+    if (!video) {
+      return res.status(404).json({ message: "Video not found." });
     }
 
-    res.status(200).json({ comments });
+    // Sort comments by creation date (newest first) and apply pagination
+    const sortedComments = video.comments.sort((a, b) => b.createdAt - a.createdAt);
+    const paginatedComments = sortedComments.slice(skip, skip + parseInt(limit));
+
+    res.status(200).json({
+      comments: paginatedComments,
+      totalComments: video.comments.length,
+      currentPage: parseInt(page),
+      totalPages: Math.ceil(video.comments.length / parseInt(limit)),
+      hasNextPage: skip + paginatedComments.length < video.comments.length,
+      hasPrevPage: parseInt(page) > 1
+    });
   } catch (error) {
-    console.error("Error fetching comments:", error);
+    console.error("Error fetching video comments:", error);
+    res.status(500).json({
+      message: "Internal Server Error",
+      error: error.message,
+    });
+  }
+};
+
+// Update a comment
+exports.updateComment = async (req, res) => {
+  try {
+    const { videoId, commentId } = req.params;
+    const { userId, commentText } = req.body;
+
+    if (!commentText) {
+      return res.status(400).json({ 
+        message: "Comment text is required." 
+      });
+    }
+
+    const video = await ContentVideo.findById(videoId);
+    if (!video) {
+      return res.status(404).json({ message: "Video not found." });
+    }
+
+    // Find the comment
+    const comment = video.comments.id(commentId);
+    if (!comment) {
+      return res.status(404).json({ message: "Comment not found." });
+    }
+
+    // Check if user owns the comment
+    if (comment.userId.toString() !== userId) {
+      return res.status(403).json({ 
+        message: "You can only update your own comments." 
+      });
+    }
+
+    // Update the comment
+    comment.commentText = commentText;
+    comment.updatedAt = new Date();
+
+    await video.save();
+
+    res.status(200).json({
+      message: "Comment updated successfully",
+      comment
+    });
+  } catch (error) {
+    console.error("Error updating comment:", error);
+    res.status(500).json({
+      message: "Internal Server Error",
+      error: error.message,
+    });
+  }
+};
+
+// Delete a comment
+exports.deleteComment = async (req, res) => {
+  try {
+    const { videoId, commentId } = req.params;
+    const { userId } = req.body;
+
+    const video = await ContentVideo.findById(videoId);
+    if (!video) {
+      return res.status(404).json({ message: "Video not found." });
+    }
+
+    // Find the comment
+    const comment = video.comments.id(commentId);
+    if (!comment) {
+      return res.status(404).json({ message: "Comment not found." });
+    }
+
+    // Check if user owns the comment or is admin
+    if (comment.userId.toString() !== userId && req.user?.role !== 'Admin') {
+      return res.status(403).json({ 
+        message: "You can only delete your own comments." 
+      });
+    }
+
+    // Remove the comment
+    video.comments.pull(commentId);
+    await video.save();
+
+    res.status(200).json({
+      message: "Comment deleted successfully",
+      totalComments: video.comments.length
+    });
+  } catch (error) {
+    console.error("Error deleting comment:", error);
     res.status(500).json({
       message: "Internal Server Error",
       error: error.message,
@@ -465,7 +679,7 @@ exports.removeProductsFromVideo = async (req, res) => {
 // Get content videos with products
 exports.getContentVideosWithProducts = async (req, res) => {
   try {
-    const { limit = 10, page = 1, approved = true } = req.query;
+    const { limit = 10, page = 1, approved = true, userId } = req.query;
     const skip = (parseInt(page) - 1) * parseInt(limit);
 
     // Build query
@@ -478,6 +692,7 @@ exports.getContentVideosWithProducts = async (req, res) => {
       .populate('userId', 'displayName email')
       .populate('creatorId', 'displayName email')
       .populate('products.productId', 'productName price coverImage sku category subCategory')
+      .populate('comments.userId', 'displayName email')
       .sort({ createdDate: -1 })
       .limit(parseInt(limit))
       .skip(skip)
@@ -485,6 +700,18 @@ exports.getContentVideosWithProducts = async (req, res) => {
 
     if (!videos.length) {
       return res.status(404).json({ message: "No videos found." });
+    }
+
+    // Add user reaction information if userId is provided
+    if (userId) {
+      videos.forEach(video => {
+        video.userReaction = null;
+        if (video.likedBy && video.likedBy.includes(userId)) {
+          video.userReaction = 'like';
+        } else if (video.dislikedBy && video.dislikedBy.includes(userId)) {
+          video.userReaction = 'dislike';
+        }
+      });
     }
 
     // Get total count for pagination
@@ -513,15 +740,27 @@ exports.getContentVideosWithProducts = async (req, res) => {
 exports.getContentVideoWithProducts = async (req, res) => {
   try {
     const { videoId } = req.params;
+    const { userId } = req.query;
 
     const video = await ContentVideo.findById(videoId)
       .populate('userId', 'displayName email')
       .populate('creatorId', 'displayName email')
       .populate('products.productId', 'productName price coverImage sku category subCategory description variants')
+      .populate('comments.userId', 'displayName email')
       .lean();
 
     if (!video) {
       return res.status(404).json({ message: "Video not found." });
+    }
+
+    // Add user reaction information if userId is provided
+    if (userId) {
+      video.userReaction = null;
+      if (video.likedBy && video.likedBy.includes(userId)) {
+        video.userReaction = 'like';
+      } else if (video.dislikedBy && video.dislikedBy.includes(userId)) {
+        video.userReaction = 'dislike';
+      }
     }
 
     res.status(200).json({ video });
