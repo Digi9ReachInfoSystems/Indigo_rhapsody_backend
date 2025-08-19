@@ -83,6 +83,60 @@ const OrderSchema = new mongoose.Schema({
       reason: {
         type: String,
       },
+      returnReason: {
+        type: String,
+      },
+      returnImages: [{
+        type: String,
+      }],
+      returnRequestDate: {
+        type: Date,
+      },
+      returnWindowExpiry: {
+        type: Date,
+      },
+      inspectionResult: {
+        type: String,
+        enum: ["pending", "approved", "rejected"],
+        default: "pending",
+      },
+      inspectionDate: {
+        type: Date,
+      },
+      inspectedBy: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "User",
+      },
+      inspectionImages: [{
+        type: String,
+      }],
+      rejectionReason: {
+        type: String,
+      },
+      approvedForRefund: {
+        type: Boolean,
+        default: false,
+      },
+      refundProcessed: {
+        type: Boolean,
+        default: false,
+      },
+      refundAmount: {
+        type: Number,
+      },
+      refundMethod: {
+        type: String,
+      },
+      refundDate: {
+        type: Date,
+      },
+      processedBy: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "User",
+      },
+      adminNotes: {
+        type: String,
+      },
     },
   ],
   subtotal: {
