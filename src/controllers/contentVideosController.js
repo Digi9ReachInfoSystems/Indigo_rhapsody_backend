@@ -32,7 +32,14 @@ exports.createVideo = async (req, res) => {
     await newVideo.save();
 
     // Populate the products for response
-    await newVideo.populate('products.productId', 'productName price coverImage sku category subCategory');
+    await newVideo.populate({
+      path: 'products.productId',
+      select: 'productName price coverImage sku category subCategory designerRef',
+      populate: {
+        path: 'designerRef',
+        select: 'displayName email phoneNumber profilePicture'
+      }
+    });
 
     res.status(201).json({
       message: "Video created successfully",
@@ -291,7 +298,14 @@ exports.toggleVideoReaction = async (req, res) => {
     // Populate user details for response
     await video.populate('userId', 'displayName email phoneNumber profilePicture');
     await video.populate('creatorId', 'displayName email phoneNumber profilePicture');
-    await video.populate('products.productId', 'productName price coverImage sku category subCategory');
+    await video.populate({
+      path: 'products.productId',
+      select: 'productName price coverImage sku category subCategory designerRef',
+      populate: {
+        path: 'designerRef',
+        select: 'displayName email phoneNumber profilePicture'
+      }
+    });
 
     // Get user details for the person who reacted
     const User = require("../models/userModel");
@@ -682,7 +696,14 @@ exports.createVideoByAdmin = async (req, res) => {
     await video.save();
 
     // Populate the products for response
-    await video.populate('products.productId', 'productName price coverImage sku category subCategory');
+    await video.populate({
+      path: 'products.productId',
+      select: 'productName price coverImage sku category subCategory designerRef',
+      populate: {
+        path: 'designerRef',
+        select: 'displayName email phoneNumber profilePicture'
+      }
+    });
 
     res.status(201).json({
       message: "Admin video created and approved successfully",
@@ -733,7 +754,14 @@ exports.addProductsToVideo = async (req, res) => {
     await video.save();
 
     // Populate the products for response
-    await video.populate('products.productId', 'productName price coverImage');
+    await video.populate({
+      path: 'products.productId',
+      select: 'productName price coverImage designerRef',
+      populate: {
+        path: 'designerRef',
+        select: 'displayName email phoneNumber profilePicture'
+      }
+    });
 
     res.status(200).json({
       message: `${newProducts.length} product(s) added to video successfully`,
@@ -781,7 +809,14 @@ exports.removeProductsFromVideo = async (req, res) => {
     await video.save();
 
     // Populate the remaining products for response
-    await video.populate('products.productId', 'productName price coverImage');
+    await video.populate({
+      path: 'products.productId',
+      select: 'productName price coverImage designerRef',
+      populate: {
+        path: 'designerRef',
+        select: 'displayName email phoneNumber profilePicture'
+      }
+    });
 
     res.status(200).json({
       message: `${initialLength - video.products.length} product(s) removed from video successfully`,
@@ -811,7 +846,14 @@ exports.getContentVideosWithProducts = async (req, res) => {
     const videos = await ContentVideo.find(query)
       .populate('userId', 'displayName email phoneNumber profilePicture')
       .populate('creatorId', 'displayName email phoneNumber profilePicture')
-      .populate('products.productId', 'productName price coverImage sku category subCategory')
+      .populate({
+        path: 'products.productId',
+        select: 'productName price coverImage sku category subCategory designerRef',
+        populate: {
+          path: 'designerRef',
+          select: 'displayName email phoneNumber profilePicture'
+        }
+      })
       .populate('comments.userId', 'displayName email phoneNumber profilePicture')
       .sort({ createdDate: -1 })
       .limit(parseInt(limit))
@@ -865,7 +907,14 @@ exports.getContentVideoWithProducts = async (req, res) => {
     const video = await ContentVideo.findById(videoId)
       .populate('userId', 'displayName email phoneNumber profilePicture')
       .populate('creatorId', 'displayName email phoneNumber profilePicture')
-      .populate('products.productId', 'productName price coverImage sku category subCategory description variants')
+      .populate({
+        path: 'products.productId',
+        select: 'productName price coverImage sku category subCategory description variants designerRef',
+        populate: {
+          path: 'designerRef',
+          select: 'displayName email phoneNumber profilePicture'
+        }
+      })
       .populate('comments.userId', 'displayName email phoneNumber profilePicture')
       .lean();
 
@@ -911,7 +960,14 @@ exports.getVideosByProduct = async (req, res) => {
     const videos = await ContentVideo.find(query)
       .populate('userId', 'displayName email')
       .populate('creatorId', 'displayName email')
-      .populate('products.productId', 'productName price coverImage sku category subCategory')
+      .populate({
+        path: 'products.productId',
+        select: 'productName price coverImage sku category subCategory designerRef',
+        populate: {
+          path: 'designerRef',
+          select: 'displayName email phoneNumber profilePicture'
+        }
+      })
       .sort({ createdDate: -1 })
       .limit(parseInt(limit))
       .skip(skip)

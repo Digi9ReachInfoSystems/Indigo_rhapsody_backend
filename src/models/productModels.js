@@ -99,6 +99,10 @@ const productsSchema = new mongoose.Schema({
     type: Boolean,
     default: false,
   },
+  returnable: {
+    type: Boolean,
+    default: true,
+  },
   reviews: [
     {
       userId: {
