@@ -837,8 +837,10 @@ exports.getContentVideosWithProducts = async (req, res) => {
     const { limit = 10, page = 1, approved = true, userId } = req.query;
     const skip = (parseInt(page) - 1) * parseInt(limit);
 
-    // Build query
-    const query = {};
+    // Build query - only videos that have products
+    const query = {
+      'products.0': { $exists: true } // Ensure products array exists and has at least one element
+    };
     if (approved === 'true' || approved === true) {
       query.is_approved = true;
     }
@@ -861,7 +863,7 @@ exports.getContentVideosWithProducts = async (req, res) => {
       .lean();
 
     if (!videos.length) {
-      return res.status(404).json({ message: "No videos found." });
+      return res.status(404).json({ message: "No videos with products found." });
     }
 
     // Add user reaction information if userId is provided
@@ -876,7 +878,7 @@ exports.getContentVideosWithProducts = async (req, res) => {
       });
     }
 
-    // Get total count for pagination
+    // Get total count for pagination - only count videos with products
     const totalVideos = await ContentVideo.countDocuments(query);
 
     res.status(200).json({
