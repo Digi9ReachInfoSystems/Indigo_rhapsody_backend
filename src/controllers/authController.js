@@ -112,6 +112,7 @@ exports.register = async (req, res) => {
     const {
       displayName,
       phoneNumber,
+      email,
       firebaseIdToken,
       role = "User",
       is_creator = false,
@@ -159,6 +160,7 @@ exports.register = async (req, res) => {
     const newUser = new User({
       displayName,
       phoneNumber,
+      email,
       firebaseUid: decodedToken.uid,
       role,
       is_creator,

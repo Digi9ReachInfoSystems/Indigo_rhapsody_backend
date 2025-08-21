@@ -114,7 +114,6 @@ exports.createUser = async (req, res) => {
       });
     }
 
-    // Create a new user with the provided details, including the address array
     const newUser = new User({
       email,
       displayName,
