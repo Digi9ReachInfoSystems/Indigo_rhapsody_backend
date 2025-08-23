@@ -89,16 +89,39 @@ exports.approveVideo = async (req, res) => {
   }
 };
 
-// Get all videos (approved only)
+// Get all videos (approved only) - with optional filtering
 exports.getAllVideos = async (req, res) => {
   try {
-    const videos = await ContentVideo.find({ is_approved: true }).populate(
+    const { filter } = req.query;
+    
+    // Build base query for approved videos
+    const query = { is_approved: true };
+    
+    // Apply filter based on query parameter
+    if (filter === 'without-products') {
+      // Filter to show only videos without products (current behavior)
+      query.$or = [
+        { products: { $exists: false } },  // Videos without products field
+        { products: { $size: 0 } }         // Videos with empty products array
+      ];
+    } else if (filter === 'with-products') {
+      // Filter to show only videos with products
+      query['products.0'] = { $exists: true }; // Ensure products array exists and has at least one element
+    }
+    // If no filter or invalid filter, show all approved videos (no additional filtering)
+
+    const videos = await ContentVideo.find(query).populate(
       "userId creatorId",
       "displayName email"
     );
 
     if (!videos.length) {
-      return res.status(404).json({ message: "No videos found." });
+      const message = filter === 'without-products' 
+        ? "No videos without products found." 
+        : filter === 'with-products' 
+        ? "No videos with products found."
+        : "No videos found.";
+      return res.status(404).json({ message });
     }
 
     res.status(200).json({ videos });
@@ -944,12 +967,147 @@ exports.getContentVideoWithProducts = async (req, res) => {
   }
 };
 
-// Get videos by product (find videos that contain a specific product)
-exports.getVideosByProduct = async (req, res) => {
+// Add video with products - focused on video-product relationship
+exports.addVideoWithProducts = async (req, res) => {
+  try {
+    const { 
+      userId, 
+      creatorId, 
+      videoUrl, 
+      title, 
+      description,
+      productIds, 
+      isApproved = false 
+    } = req.body;
+
+    // Validate required fields
+    if (!userId || !videoUrl || !title) {
+      return res.status(400).json({ 
+        message: "User ID, Video URL, and title are required." 
+      });
+    }
+
+    // Validate video URL format (basic validation)
+    if (!videoUrl.startsWith('http://') && !videoUrl.startsWith('https://')) {
+      return res.status(400).json({ 
+        message: "Video URL must be a valid HTTP/HTTPS URL." 
+      });
+    }
+
+    // Validate product IDs if provided
+    if (productIds && (!Array.isArray(productIds) || productIds.length === 0)) {
+      return res.status(400).json({ 
+        message: "Product IDs must be a non-empty array." 
+      });
+    }
+
+    // Check if products exist (if productIds provided)
+    if (productIds && productIds.length > 0) {
+      const Product = require("../models/productModels");
+      const existingProducts = await Product.find({ 
+        _id: { $in: productIds } 
+      }).select('_id productName');
+      
+      if (existingProducts.length !== productIds.length) {
+        const foundIds = existingProducts.map(p => p._id.toString());
+        const missingIds = productIds.filter(id => !foundIds.includes(id));
+        return res.status(400).json({ 
+          message: `Products not found: ${missingIds.join(', ')}` 
+        });
+      }
+    }
+
+    // Prepare products array
+    const products = productIds ? productIds.map(productId => ({
+      productId,
+      addedAt: new Date()
+    })) : [];
+
+    // Create the video with products
+    const newVideo = new ContentVideo({
+      userId,
+      creatorId: creatorId || userId, // Use userId as creatorId if not provided
+      videoUrl,
+      title,
+      description,
+      is_approved: isApproved,
+      products,
+      createdDate: new Date()
+    });
+
+    await newVideo.save();
+
+    // Populate the video with all related data
+    await newVideo.populate([
+      {
+        path: 'userId',
+        select: 'displayName email phoneNumber profilePicture'
+      },
+      {
+        path: 'creatorId',
+        select: 'displayName email phoneNumber profilePicture'
+      },
+      {
+        path: 'products.productId',
+        select: 'productName price coverImage sku category subCategory designerRef description',
+        populate: {
+          path: 'designerRef',
+          select: 'displayName email phoneNumber profilePicture'
+        }
+      }
+    ]);
+
+    res.status(201).json({
+      success: true,
+      message: "Video with products created successfully",
+      video: {
+        _id: newVideo._id,
+        title: newVideo.title,
+        description: newVideo.description,
+        videoUrl: newVideo.videoUrl,
+        is_approved: newVideo.is_approved,
+        createdDate: newVideo.createdDate,
+        no_of_likes: newVideo.no_of_likes,
+        no_of_dislikes: newVideo.no_of_dislikes,
+        no_of_Shares: newVideo.no_of_Shares,
+        userId: newVideo.userId,
+        creatorId: newVideo.creatorId,
+        products: newVideo.products,
+        totalProducts: newVideo.products.length
+      }
+    });
+  } catch (error) {
+    console.error("Error creating video with products:", error);
+    res.status(500).json({
+      success: false,
+      message: "Internal Server Error",
+      error: error.message
+    });
+  }
+};
+
+// Get videos by product with enhanced details
+exports.getVideosByProductEnhanced = async (req, res) => {
   try {
     const { productId } = req.params;
-    const { limit = 10, page = 1, approved = true } = req.query;
+    const { limit = 10, page = 1, approved = true, userId } = req.query;
     const skip = (parseInt(page) - 1) * parseInt(limit);
+
+    // Validate product ID
+    if (!productId) {
+      return res.status(400).json({ 
+        message: "Product ID is required." 
+      });
+    }
+
+    // Check if product exists
+    const Product = require("../models/productModels");
+    const product = await Product.findById(productId).select('productName price coverImage');
+    if (!product) {
+      return res.status(404).json({ 
+        message: "Product not found." 
+      });
+    }
 
     // Build query
     const query = {
@@ -960,8 +1118,8 @@ exports.getVideosByProduct = async (req, res) => {
     }
 
     const videos = await ContentVideo.find(query)
-      .populate('userId', 'displayName email')
-      .populate('creatorId', 'displayName email')
+      .populate('userId', 'displayName email phoneNumber profilePicture')
+      .populate('creatorId', 'displayName email phoneNumber profilePicture')
       .populate({
         path: 'products.productId',
         select: 'productName price coverImage sku category subCategory designerRef',
@@ -970,14 +1128,21 @@ exports.getVideosByProduct = async (req, res) => {
           select: 'displayName email phoneNumber profilePicture'
         }
       })
+      .populate('comments.userId', 'displayName email phoneNumber profilePicture')
       .sort({ createdDate: -1 })
       .limit(parseInt(limit))
       .skip(skip)
       .lean();
 
-    if (!videos.length) {
-      return res.status(404).json({ 
-        message: "No videos found for this product." 
+    // Add user reaction information if userId is provided
+    if (userId) {
+      videos.forEach(video => {
+        video.userReaction = null;
+        if (video.likedBy && video.likedBy.includes(userId)) {
+          video.userReaction = 'like';
+        } else if (video.dislikedBy && video.dislikedBy.includes(userId)) {
+          video.userReaction = 'dislike';
+        }
       });
     }
 
@@ -985,6 +1150,13 @@ exports.getVideosByProduct = async (req, res) => {
     const totalVideos = await ContentVideo.countDocuments(query);
 
     res.status(200).json({
+      success: true,
+      product: {
+        _id: product._id,
+        productName: product.productName,
+        price: product.price,
+        coverImage: product.coverImage
+      },
       videos,
       pagination: {
         currentPage: parseInt(page),
@@ -997,6 +1169,7 @@ exports.getVideosByProduct = async (req, res) => {
   } catch (error) {
     console.error("Error fetching videos by product:", error);
     res.status(500).json({
+      success: false,
       message: "Internal Server Error",
       error: error.message,
     });

@@ -3,6 +3,13 @@ const router = express.Router();
 const videoController = require("../controllers/contentVideosController");
 const { roleMiddleware } = require("../middleware/authMiddleware");
 
+// Enhanced video-product routes
+router.post("/add-video-with-products", videoController.addVideoWithProducts);
+router.get(
+  "/videos-by-product-enhanced/:productId",
+  videoController.getVideosByProductEnhanced
+);
+
 router.post("/videos", videoController.createVideo);
 router.get("/videos", videoController.getAllVideos);
 router.get("/totalVideos", videoController.getAllVideosWithLikesAndComments);
@@ -45,7 +52,10 @@ router.get(
   "/videos-with-products/:videoId",
   videoController.getContentVideoWithProducts
 );
-router.get("/videos-by-product/:productId", videoController.getVideosByProduct);
+router.get(
+  "/videos-by-product/:productId",
+  videoController.getVideosByProductEnhanced
+);
 
 // Like/Dislike functionality
 router.post("/videos/:videoId/reaction", videoController.toggleVideoReaction);
