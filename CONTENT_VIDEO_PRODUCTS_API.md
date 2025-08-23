@@ -1,388 +1,236 @@
 # Content Video Products API Documentation
 
 ## Overview
-This document describes the enhanced content video system that allows designers to associate products with their content videos. This feature enables better product discovery and marketing through video content.
+This API provides enhanced functionality for managing content videos with products. The new endpoints focus on creating videos with products and retrieving videos by product relationships.
 
-## Features
-- **Product Association**: Link multiple products to content videos
-- **Product Management**: Add and remove products from videos
-- **Product Discovery**: Find videos by specific products
-- **Enhanced Queries**: Get videos with populated product information
-- **Role-based Access**: Admin and Designer permissions for product management
-
-## Database Schema Updates
-
-### Content Video Model
-```javascript
-{
-  // ... existing fields ...
-  products: [
-    {
-      productId: {
-        type: mongoose.Schema.Types.ObjectId,
-        ref: "Product",
-      },
-      addedAt: {
-        type: Date,
-        default: Date.now,
-      },
-    },
-  ],
-}
+## Base URL
+```
+POST /api/content-videos
+GET /api/content-videos
 ```
 
-## API Endpoints
-
-### 1. Create Video with Products
-**POST** `/content-video/videos`
-
-Create a new content video with optional product associations.
-
-**Headers:**
+## Authentication
+Most endpoints require authentication. Include the JWT token in the Authorization header:
 ```
-Authorization: Bearer jwt_token
-Content-Type: application/json
+Authorization: Bearer <your-jwt-token>
 ```
 
-**Request Body:**
+---
+
+## 1. Add Video with Products
+
+### Endpoint
+```
+POST /api/content-videos/add-video-with-products
+```
+
+### Description
+Creates a new content video with associated products in a single request. This endpoint validates product existence and provides comprehensive error handling.
+
+### Request Body
 ```json
 {
-  "userId": "user_id",
-  "creatorId": "creator_id",
+  "userId": "64f8a1b2c3d4e5f6a7b8c9d0",
+  "creatorId": "64f8a1b2c3d4e5f6a7b8c9d1", // Optional, defaults to userId
   "videoUrl": "https://example.com/video.mp4",
-  "title": "Fashion Show 2024",
-  "productIds": ["product_id_1", "product_id_2", "product_id_3"]
+  "title": "Product Showcase Video",
+  "description": "A detailed showcase of our latest products",
+  "productIds": [
+    "64f8a1b2c3d4e5f6a7b8c9d2",
+    "64f8a1b2c3d4e5f6a7b8c9d3"
+  ],
+  "isApproved": false // Optional, defaults to false
 }
 ```
 
-**Response:**
+### Required Fields
+- `userId`: User ID who is creating the video
+- `videoUrl`: Valid HTTP/HTTPS URL of the video
+- `title`: Title of the video
+
+### Optional Fields
+- `creatorId`: Creator ID (defaults to userId if not provided)
+- `description`: Video description
+- `productIds`: Array of product IDs to associate with the video
+- `isApproved`: Boolean to set approval status (defaults to false)
+
+### Response (Success - 201)
 ```json
 {
-  "message": "Video created successfully",
+  "success": true,
+  "message": "Video with products created successfully",
   "video": {
-    "_id": "video_id",
-    "title": "Fashion Show 2024",
+    "_id": "64f8a1b2c3d4e5f6a7b8c9d4",
+    "title": "Product Showcase Video",
+    "description": "A detailed showcase of our latest products",
     "videoUrl": "https://example.com/video.mp4",
-    "userId": "user_id",
-    "creatorId": "creator_id",
-    "products": [
-      {
-        "productId": {
-          "_id": "product_id_1",
-          "productName": "Designer Dress",
-          "price": 299.99,
-          "coverImage": "https://example.com/dress.jpg",
-          "sku": "DRS001",
-          "category": "Dresses",
-          "subCategory": "Evening Dresses"
-        },
-        "addedAt": "2024-01-15T10:30:00.000Z"
-      },
-      {
-        "productId": {
-          "_id": "product_id_2",
-          "productName": "Stylish Shoes",
-          "price": 149.99,
-          "coverImage": "https://example.com/shoes.jpg",
-          "sku": "SHO001",
-          "category": "Footwear",
-          "subCategory": "Heels"
-        },
-        "addedAt": "2024-01-15T10:30:00.000Z"
-      }
-    ],
     "is_approved": false,
-    "createdDate": "2024-01-15T10:00:00.000Z"
-  }
-}
-```
-
-### 2. Create Admin Video with Products
-**POST** `/content-video/createAdminVideo`
-
-Create a new content video as admin with products (automatically approved).
-
-**Headers:**
-```
-Authorization: Bearer jwt_token
-Content-Type: application/json
-```
-
-**Request Body:**
-```json
-{
-  "userId": "user_id",
-  "videoUrl": "https://example.com/video.mp4",
-  "title": "Admin Fashion Show 2024",
-  "productIds": ["product_id_1", "product_id_2"]
-}
-```
-
-**Response:**
-```json
-{
-  "message": "Admin video created and approved successfully",
-  "video": {
-    "_id": "video_id",
-    "title": "Admin Fashion Show 2024",
-    "videoUrl": "https://example.com/video.mp4",
-    "userId": "user_id",
-    "products": [
-      {
-        "productId": {
-          "_id": "product_id_1",
-          "productName": "Designer Dress",
-          "price": 299.99,
-          "coverImage": "https://example.com/dress.jpg",
-          "sku": "DRS001",
-          "category": "Dresses",
-          "subCategory": "Evening Dresses"
-        },
-        "addedAt": "2024-01-15T10:30:00.000Z"
-      }
-    ],
-    "is_approved": true,
-    "createdDate": "2024-01-15T10:00:00.000Z"
-  }
-}
-```
-
-### 3. Add Products to Content Video
-**POST** `/content-video/videos/:videoId/products`
-
-Add one or more products to a content video.
-
-**Headers:**
-```
-Authorization: Bearer jwt_token
-Content-Type: application/json
-```
-
-**Request Body:**
-```json
-{
-  "productIds": ["product_id_1", "product_id_2", "product_id_3"]
-}
-```
-
-**Response:**
-```json
-{
-  "message": "2 product(s) added to video successfully",
-  "video": {
-    "_id": "video_id",
-    "title": "Fashion Show 2024",
-    "videoUrl": "https://example.com/video.mp4",
-    "products": [
-      {
-        "productId": {
-          "_id": "product_id_1",
-          "productName": "Designer Dress",
-          "price": 299.99,
-          "coverImage": "https://example.com/dress.jpg"
-        },
-        "addedAt": "2024-01-15T10:30:00.000Z"
-      },
-      {
-        "productId": {
-          "_id": "product_id_2",
-          "productName": "Stylish Shoes",
-          "price": 149.99,
-          "coverImage": "https://example.com/shoes.jpg"
-        },
-        "addedAt": "2024-01-15T10:30:00.000Z"
-      }
-    ]
-  }
-}
-```
-
-### 2. Remove Products from Content Video
-**DELETE** `/content-video/videos/:videoId/products`
-
-Remove one or more products from a content video.
-
-**Headers:**
-```
-Authorization: Bearer jwt_token
-Content-Type: application/json
-```
-
-**Request Body:**
-```json
-{
-  "productIds": ["product_id_1", "product_id_2"]
-}
-```
-
-**Response:**
-```json
-{
-  "message": "2 product(s) removed from video successfully",
-  "video": {
-    "_id": "video_id",
-    "title": "Fashion Show 2024",
-    "videoUrl": "https://example.com/video.mp4",
-    "products": [
-      {
-        "productId": {
-          "_id": "product_id_3",
-          "productName": "Accessory Set",
-          "price": 79.99,
-          "coverImage": "https://example.com/accessory.jpg"
-        },
-        "addedAt": "2024-01-15T10:30:00.000Z"
-      }
-    ]
-  }
-}
-```
-
-### 3. Get Content Videos with Products
-**GET** `/content-video/videos-with-products`
-
-Get all content videos with their associated products.
-
-**Query Parameters:**
-- `limit` (optional): Number of videos per page (default: 10)
-- `page` (optional): Page number (default: 1)
-- `approved` (optional): Filter by approval status (default: true)
-
-**Example Request:**
-```
-GET /content-video/videos-with-products?limit=5&page=1&approved=true
-```
-
-**Response:**
-```json
-{
-  "videos": [
-    {
-      "_id": "video_id_1",
-      "title": "Fashion Show 2024",
-      "videoUrl": "https://example.com/video1.mp4",
-      "userId": {
-        "_id": "user_id",
-        "displayName": "Designer Name",
-        "email": "designer@example.com"
-      },
-      "products": [
-        {
-          "productId": {
-            "_id": "product_id_1",
-            "productName": "Designer Dress",
-            "price": 299.99,
-            "coverImage": "https://example.com/dress.jpg",
-            "sku": "DRS001",
-            "category": "Dresses",
-            "subCategory": "Evening Dresses"
-          },
-          "addedAt": "2024-01-15T10:30:00.000Z"
-        }
-      ],
-      "no_of_likes": 150,
-      "no_of_Shares": 25,
-      "is_approved": true,
-      "createdDate": "2024-01-15T10:00:00.000Z"
-    }
-  ],
-  "pagination": {
-    "currentPage": 1,
-    "totalPages": 5,
-    "totalVideos": 50,
-    "hasNextPage": true,
-    "hasPrevPage": false
-  }
-}
-```
-
-### 4. Get Single Content Video with Products
-**GET** `/content-video/videos-with-products/:videoId`
-
-Get a specific content video with its associated products.
-
-**Response:**
-```json
-{
-  "video": {
-    "_id": "video_id",
-    "title": "Fashion Show 2024",
-    "videoUrl": "https://example.com/video.mp4",
+    "createdDate": "2024-01-15T10:30:00.000Z",
+    "no_of_likes": 0,
+    "no_of_dislikes": 0,
+    "no_of_Shares": 0,
     "userId": {
-      "_id": "user_id",
-      "displayName": "Designer Name",
-      "email": "designer@example.com"
+      "_id": "64f8a1b2c3d4e5f6a7b8c9d0",
+      "displayName": "John Doe",
+      "email": "john@example.com",
+      "phoneNumber": "+1234567890",
+      "profilePicture": "https://example.com/profile.jpg"
+    },
+    "creatorId": {
+      "_id": "64f8a1b2c3d4e5f6a7b8c9d1",
+      "displayName": "Jane Smith",
+      "email": "jane@example.com",
+      "phoneNumber": "+1234567891",
+      "profilePicture": "https://example.com/jane.jpg"
     },
     "products": [
       {
         "productId": {
-          "_id": "product_id_1",
-          "productName": "Designer Dress",
-          "price": 299.99,
-          "coverImage": "https://example.com/dress.jpg",
-          "sku": "DRS001",
-          "category": "Dresses",
-          "subCategory": "Evening Dresses",
-          "description": "Beautiful evening dress",
-          "variants": [...]
+          "_id": "64f8a1b2c3d4e5f6a7b8c9d2",
+          "productName": "Designer T-Shirt",
+          "price": 29.99,
+          "coverImage": "https://example.com/tshirt.jpg",
+          "sku": "TSH001",
+          "category": "Clothing",
+          "subCategory": "T-Shirts",
+          "description": "Premium cotton t-shirt",
+          "designerRef": {
+            "_id": "64f8a1b2c3d4e5f6a7b8c9d5",
+            "displayName": "Fashion Designer",
+            "email": "designer@example.com",
+            "phoneNumber": "+1234567892",
+            "profilePicture": "https://example.com/designer.jpg"
+          }
         },
         "addedAt": "2024-01-15T10:30:00.000Z"
       }
     ],
-    "no_of_likes": 150,
-    "no_of_Shares": 25,
-    "is_approved": true,
-    "createdDate": "2024-01-15T10:00:00.000Z"
+    "totalProducts": 1
   }
 }
 ```
 
-### 5. Get Videos by Product
-**GET** `/content-video/videos-by-product/:productId`
-
-Find all videos that contain a specific product.
-
-**Query Parameters:**
-- `limit` (optional): Number of videos per page (default: 10)
-- `page` (optional): Page number (default: 1)
-- `approved` (optional): Filter by approval status (default: true)
-
-**Example Request:**
-```
-GET /content-video/videos-by-product/product_id_1?limit=5&page=1&approved=true
-```
-
-**Response:**
+### Response (Error - 400)
 ```json
 {
+  "success": false,
+  "message": "User ID, Video URL, and title are required."
+}
+```
+
+### Response (Error - 400 - Invalid URL)
+```json
+{
+  "success": false,
+  "message": "Video URL must be a valid HTTP/HTTPS URL."
+}
+```
+
+### Response (Error - 400 - Products Not Found)
+```json
+{
+  "success": false,
+  "message": "Products not found: 64f8a1b2c3d4e5f6a7b8c9d9"
+}
+```
+
+---
+
+## 2. Get Videos by Product (Enhanced)
+
+### Endpoint
+```
+GET /api/content-videos/videos-by-product-enhanced/:productId
+```
+
+### Description
+Retrieves all videos that contain a specific product with enhanced details including user reactions and comprehensive product information.
+
+### URL Parameters
+- `productId`: ID of the product to search videos for
+
+### Query Parameters
+- `limit`: Number of videos per page (default: 10)
+- `page`: Page number (default: 1)
+- `approved`: Filter by approval status (default: true)
+- `userId`: User ID to include user reaction information
+
+### Example Request
+```
+GET /api/content-videos/videos-by-product-enhanced/64f8a1b2c3d4e5f6a7b8c9d2?limit=5&page=1&approved=true&userId=64f8a1b2c3d4e5f6a7b8c9d0
+```
+
+### Response (Success - 200)
+```json
+{
+  "success": true,
+  "product": {
+    "_id": "64f8a1b2c3d4e5f6a7b8c9d2",
+    "productName": "Designer T-Shirt",
+    "price": 29.99,
+    "coverImage": "https://example.com/tshirt.jpg"
+  },
   "videos": [
     {
-      "_id": "video_id_1",
-      "title": "Fashion Show 2024",
-      "videoUrl": "https://example.com/video1.mp4",
+      "_id": "64f8a1b2c3d4e5f6a7b8c9d4",
+      "title": "Product Showcase Video",
+      "description": "A detailed showcase of our latest products",
+      "videoUrl": "https://example.com/video.mp4",
+      "is_approved": true,
+      "createdDate": "2024-01-15T10:30:00.000Z",
+      "no_of_likes": 15,
+      "no_of_dislikes": 2,
+      "no_of_Shares": 5,
       "userId": {
-        "_id": "user_id",
-        "displayName": "Designer Name",
-        "email": "designer@example.com"
+        "_id": "64f8a1b2c3d4e5f6a7b8c9d0",
+        "displayName": "John Doe",
+        "email": "john@example.com",
+        "phoneNumber": "+1234567890",
+        "profilePicture": "https://example.com/profile.jpg"
+      },
+      "creatorId": {
+        "_id": "64f8a1b2c3d4e5f6a7b8c9d1",
+        "displayName": "Jane Smith",
+        "email": "jane@example.com",
+        "phoneNumber": "+1234567891",
+        "profilePicture": "https://example.com/jane.jpg"
       },
       "products": [
         {
           "productId": {
-            "_id": "product_id_1",
-            "productName": "Designer Dress",
-            "price": 299.99,
-            "coverImage": "https://example.com/dress.jpg",
-            "sku": "DRS001",
-            "category": "Dresses",
-            "subCategory": "Evening Dresses"
+            "_id": "64f8a1b2c3d4e5f6a7b8c9d2",
+            "productName": "Designer T-Shirt",
+            "price": 29.99,
+            "coverImage": "https://example.com/tshirt.jpg",
+            "sku": "TSH001",
+            "category": "Clothing",
+            "subCategory": "T-Shirts",
+            "designerRef": {
+              "_id": "64f8a1b2c3d4e5f6a7b8c9d5",
+              "displayName": "Fashion Designer",
+              "email": "designer@example.com",
+              "phoneNumber": "+1234567892",
+              "profilePicture": "https://example.com/designer.jpg"
+            }
           },
           "addedAt": "2024-01-15T10:30:00.000Z"
         }
       ],
-      "no_of_likes": 150,
-      "no_of_Shares": 25,
-      "is_approved": true,
-      "createdDate": "2024-01-15T10:00:00.000Z"
+      "comments": [
+        {
+          "_id": "64f8a1b2c3d4e5f6a7b8c9d6",
+          "userId": {
+            "_id": "64f8a1b2c3d4e5f6a7b8c9d7",
+            "displayName": "Commenter",
+            "email": "commenter@example.com",
+            "phoneNumber": "+1234567893",
+            "profilePicture": "https://example.com/commenter.jpg"
+          },
+          "commentText": "Great video! Love the product.",
+          "createdAt": "2024-01-15T11:00:00.000Z"
+        }
+      ],
+      "userReaction": "like"
     }
   ],
   "pagination": {
@@ -395,370 +243,136 @@ GET /content-video/videos-by-product/product_id_1?limit=5&page=1&approved=true
 }
 ```
 
-## Error Responses
-
-### 400 Bad Request
+### Response (Error - 400)
 ```json
 {
-  "message": "Product IDs array is required and must not be empty."
+  "success": false,
+  "message": "Product ID is required."
 }
 ```
 
-### 401 Unauthorized
+### Response (Error - 404)
 ```json
 {
-  "message": "Access denied. Admin or Designer role required."
+  "success": false,
+  "message": "Product not found."
 }
 ```
 
-### 404 Not Found
-```json
-{
-  "message": "Video not found."
-}
+---
+
+## 3. Existing Endpoints (Updated)
+
+### Create Video (Original)
+```
+POST /api/content-videos/videos
 ```
 
-### 500 Internal Server Error
-```json
-{
-  "message": "Internal Server Error",
-  "error": "Error details"
-}
+### Get Videos with Products
 ```
+GET /api/content-videos/videos-with-products
+```
+
+### Get Single Video with Products
+```
+GET /api/content-videos/videos-with-products/:videoId
+```
+
+### Add Products to Existing Video
+```
+POST /api/content-videos/videos/:videoId/products
+```
+
+### Remove Products from Video
+```
+DELETE /api/content-videos/videos/:videoId/products
+```
+
+---
+
+## Error Handling
+
+### Common Error Responses
+
+#### 400 Bad Request
+- Missing required fields
+- Invalid data format
+- Product validation errors
+
+#### 401 Unauthorized
+- Missing or invalid JWT token
+- Expired token
+
+#### 403 Forbidden
+- Insufficient permissions
+- Role-based access restrictions
+
+#### 404 Not Found
+- Video not found
+- Product not found
+- User not found
+
+#### 500 Internal Server Error
+- Database connection issues
+- Server errors
+
+---
 
 ## Usage Examples
 
-### Mobile App Integration
-
-#### React Native Example
+### Example 1: Create a Video with Multiple Products
 ```javascript
-// Create video with products
-const createVideoWithProducts = async (videoData, productIds) => {
-  try {
-    const response = await fetch(`${API_BASE_URL}/content-video/videos`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${accessToken}`,
-      },
-      body: JSON.stringify({
-        ...videoData,
-        productIds: productIds || []
-      }),
-    });
-
-    const data = await response.json();
-    return data;
-  } catch (error) {
-    console.error('Error creating video with products:', error);
-    throw error;
-  }
-};
-
-// Add products to existing video
-const addProductsToVideo = async (videoId, productIds) => {
-  try {
-    const response = await fetch(`${API_BASE_URL}/content-video/videos/${videoId}/products`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${accessToken}`,
-      },
-      body: JSON.stringify({ productIds }),
-    });
-
-    const data = await response.json();
-    return data;
-  } catch (error) {
-    console.error('Error adding products to video:', error);
-    throw error;
-  }
-};
-
-// Get videos with products
-const getVideosWithProducts = async (limit = 10, page = 1) => {
-  try {
-    const response = await fetch(
-      `${API_BASE_URL}/content-video/videos-with-products?limit=${limit}&page=${page}`,
-      {
-        headers: {
-          'Authorization': `Bearer ${accessToken}`,
-        },
-      }
-    );
-
-    const data = await response.json();
-    return data;
-  } catch (error) {
-    console.error('Error fetching videos with products:', error);
-    throw error;
-  }
-};
-
-// Get videos by product
-const getVideosByProduct = async (productId, limit = 10, page = 1) => {
-  try {
-    const response = await fetch(
-      `${API_BASE_URL}/content-video/videos-by-product/${productId}?limit=${limit}&page=${page}`,
-      {
-        headers: {
-          'Authorization': `Bearer ${accessToken}`,
-        },
-      }
-    );
-
-    const data = await response.json();
-    return data;
-  } catch (error) {
-    console.error('Error fetching videos by product:', error);
-    throw error;
-  }
-};
-```
-
-#### Flutter Example
-```dart
-// Create video with products
-Future<Map<String, dynamic>> createVideoWithProducts(Map<String, dynamic> videoData, List<String> productIds) async {
-  try {
-    final requestBody = Map<String, dynamic>.from(videoData);
-    requestBody['productIds'] = productIds ?? [];
-    
-    final response = await http.post(
-      Uri.parse('$API_BASE_URL/content-video/videos'),
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': 'Bearer $accessToken',
-      },
-      body: json.encode(requestBody),
-    );
-
-    return json.decode(response.body);
-  } catch (e) {
-    throw Exception('Error creating video with products: $e');
-  }
-}
-
-// Add products to existing video
-Future<Map<String, dynamic>> addProductsToVideo(String videoId, List<String> productIds) async {
-  try {
-    final response = await http.post(
-      Uri.parse('$API_BASE_URL/content-video/videos/$videoId/products'),
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': 'Bearer $accessToken',
-      },
-      body: json.encode({'productIds': productIds}),
-    );
-
-    return json.decode(response.body);
-  } catch (e) {
-    throw Exception('Error adding products to video: $e');
-  }
-}
-
-// Get videos with products
-Future<Map<String, dynamic>> getVideosWithProducts({int limit = 10, int page = 1}) async {
-  try {
-    final response = await http.get(
-      Uri.parse('$API_BASE_URL/content-video/videos-with-products?limit=$limit&page=$page'),
-      headers: {'Authorization': 'Bearer $accessToken'},
-    );
-
-    return json.decode(response.body);
-  } catch (e) {
-    throw Exception('Error fetching videos with products: $e');
-  }
-}
-
-// Get videos by product
-Future<Map<String, dynamic>> getVideosByProduct(String productId, {int limit = 10, int page = 1}) async {
-  try {
-    final response = await http.get(
-      Uri.parse('$API_BASE_URL/content-video/videos-by-product/$productId?limit=$limit&page=$page'),
-      headers: {'Authorization': 'Bearer $accessToken'},
-    );
-
-    return json.decode(response.body);
-  } catch (e) {
-    throw Exception('Error fetching videos by product: $e');
-  }
-}
-```
-
-## Complete Usage Example
-
-### Video Creation Flow
-```javascript
-// Example: Creating a fashion video with products
-const createFashionVideo = async () => {
-  try {
-    // Step 1: Prepare video data
-    const videoData = {
-      userId: "user_id_123",
-      creatorId: "creator_id_456", 
-      videoUrl: "https://example.com/fashion-show-2024.mp4",
-      title: "Spring Fashion Show 2024"
-    };
-
-    // Step 2: Select products to associate
-    const selectedProductIds = [
-      "product_id_1", // Designer Dress
-      "product_id_2", // Matching Shoes
-      "product_id_3"  // Accessory Set
-    ];
-
-    // Step 3: Create video with products
-    const result = await createVideoWithProducts(videoData, selectedProductIds);
-    
-    console.log("Video created successfully:", result.video);
-    console.log("Associated products:", result.video.products.length);
-    
-    return result;
-  } catch (error) {
-    console.error("Failed to create video:", error);
-    throw error;
-  }
-};
-
-// Example: Creating admin video (automatically approved)
-const createAdminVideo = async () => {
-  try {
-    const videoData = {
-      userId: "user_id_123",
-      videoUrl: "https://example.com/admin-video.mp4",
-      title: "Official Brand Video"
-    };
-
-    const productIds = ["product_id_1", "product_id_2"];
-    
-    const response = await fetch(`${API_BASE_URL}/content-video/createAdminVideo`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${adminToken}`,
-      },
-      body: JSON.stringify({
-        ...videoData,
-        productIds
-      }),
-    });
-
-    const result = await response.json();
-    console.log("Admin video created:", result.video);
-    return result;
-  } catch (error) {
-    console.error("Failed to create admin video:", error);
-    throw error;
-  }
-};
-```
-
-## Business Logic
-
-### Product Association Rules
-1. **Duplicate Prevention**: The system prevents adding the same product multiple times to a video
-2. **Role-based Access**: Only Admins and Designers can add/remove products from videos
-3. **Product Validation**: The system validates that products exist before association
-4. **Timestamp Tracking**: Each product association includes a timestamp for tracking
-
-### Use Cases
-1. **Designer Marketing**: Designers can showcase their products in video content
-2. **Product Discovery**: Users can discover products through video content
-3. **Cross-selling**: Related products can be featured together in videos
-4. **Analytics**: Track which products perform well in video content
-
-## Performance Considerations
-
-### Database Optimization
-- Indexes on `products.productId` for efficient queries
-- Pagination support for large datasets
-- Lean queries for read operations to reduce memory usage
-
-### Caching Strategy
-- Cache frequently accessed video-product associations
-- Implement Redis caching for popular videos with products
-- Cache product details to reduce database queries
-
-## Security Considerations
-
-### Access Control
-- Role-based middleware for product management
-- JWT token validation for all endpoints
-- Input validation for product IDs
-
-### Data Validation
-- Validate product IDs before association
-- Sanitize input data
-- Prevent SQL injection through proper query building
-
-## Testing
-
-### Test Cases
-1. **Add Products**: Test adding single and multiple products
-2. **Remove Products**: Test removing products from videos
-3. **Duplicate Prevention**: Test adding the same product twice
-4. **Invalid Product IDs**: Test with non-existent product IDs
-5. **Authorization**: Test access control for different user roles
-6. **Pagination**: Test pagination functionality
-7. **Product Queries**: Test finding videos by product
-
-### Test Data
-```javascript
-// Sample test data
-const testVideo = {
-  _id: 'video_id_1',
-  title: 'Test Fashion Video',
-  videoUrl: 'https://example.com/test.mp4',
-  userId: 'user_id_1',
-  products: []
-};
-
-const testProducts = [
-  {
-    _id: 'product_id_1',
-    productName: 'Test Dress',
-    price: 199.99,
-    coverImage: 'https://example.com/dress.jpg'
+const response = await fetch('/api/content-videos/add-video-with-products', {
+  method: 'POST',
+  headers: {
+    'Content-Type': 'application/json',
+    'Authorization': 'Bearer ' + token
   },
-  {
-    _id: 'product_id_2',
-    productName: 'Test Shoes',
-    price: 99.99,
-    coverImage: 'https://example.com/shoes.jpg'
-  }
-];
+  body: JSON.stringify({
+    userId: '64f8a1b2c3d4e5f6a7b8c9d0',
+    videoUrl: 'https://example.com/showcase.mp4',
+    title: 'Summer Collection Showcase',
+    description: 'Showcasing our latest summer fashion collection',
+    productIds: [
+      '64f8a1b2c3d4e5f6a7b8c9d2',
+      '64f8a1b2c3d4e5f6a7b8c9d3',
+      '64f8a1b2c3d4e5f6a7b8c9d4'
+    ],
+    isApproved: true
+  })
+});
 ```
 
-## Migration Guide
-
-### Database Migration
-If you have existing content videos, you can migrate them to include the products field:
-
+### Example 2: Get Videos for a Specific Product
 ```javascript
-// Migration script
-const migrateContentVideos = async () => {
-  const videos = await ContentVideo.find({ products: { $exists: false } });
-  
-  for (const video of videos) {
-    video.products = [];
-    await video.save();
+const response = await fetch('/api/content-videos/videos-by-product-enhanced/64f8a1b2c3d4e5f6a7b8c9d2?limit=10&page=1&approved=true&userId=64f8a1b2c3d4e5f6a7b8c9d0', {
+  headers: {
+    'Authorization': 'Bearer ' + token
   }
-  
-  console.log(`Migrated ${videos.length} videos`);
-};
+});
 ```
 
-### API Migration
-1. Update existing video endpoints to include product population
-2. Add new product management endpoints
-3. Update frontend to handle product associations
-4. Test all existing functionality
+---
+
+## Best Practices
+
+1. **Validation**: Always validate product IDs before creating videos
+2. **Pagination**: Use pagination for large result sets
+3. **Error Handling**: Implement proper error handling for all API calls
+4. **Authentication**: Include JWT tokens for protected endpoints
+5. **URL Validation**: Ensure video URLs are valid HTTP/HTTPS URLs
+6. **Product Verification**: Verify products exist before associating them with videos
+
+---
+
+## Rate Limiting
+
+- Standard rate limiting applies to all endpoints
+- Video creation: 10 requests per minute per user
+- Video retrieval: 100 requests per minute per user
+
+---
 
 ## Support
 
-For issues and questions:
-1. Check API documentation
-2. Review error logs
-3. Test with sample data
-4. Contact development team
+For technical support or questions about the API, please contact the development team or refer to the main API documentation.
