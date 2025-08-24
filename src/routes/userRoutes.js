@@ -6,7 +6,12 @@ const {
   roleMiddleware,
 } = require("../middleware/authMiddleware");
 
-router.get("/total-count", authMiddleware, userController.getTotalUserCount);
+router.get(
+  "/total-count",
+  authMiddleware,
+  roleMiddleware(["Admin"]),
+  userController.getTotalUserCount
+);
 router.get(
   "/new-users-month",
   authMiddleware,

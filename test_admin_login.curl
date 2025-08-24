@@ -1,0 +1,122 @@
+# Admin Login API Tests
+# Base URL - Update this to match your server URL
+BASE_URL="http://localhost:3000"
+
+echo "🧪 Testing Admin Login API Endpoints"
+echo "====================================="
+echo ""
+
+# Test 1: Successful Admin Login
+echo "✅ Test 1: Successful Admin Login"
+echo "--------------------------------"
+curl -X POST "${BASE_URL}/api/auth/admin-login" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "email": "admin@indigorhapsody.com",
+    "password": "AdminPassword123!"
+  }' \
+  -w "\n\nHTTP Status: %{http_code}\nResponse Time: %{time_total}s\n" \
+  -s
+echo ""
+
+# Test 2: Invalid Email
+echo "❌ Test 2: Invalid Email"
+echo "----------------------"
+curl -X POST "${BASE_URL}/api/auth/admin-login" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "email": "wrong@email.com",
+    "password": "AdminPassword123!"
+  }' \
+  -w "\n\nHTTP Status: %{http_code}\nResponse Time: %{time_total}s\n" \
+  -s
+echo ""
+
+# Test 3: Invalid Password
+echo "❌ Test 3: Invalid Password"
+echo "-------------------------"
+curl -X POST "${BASE_URL}/api/auth/admin-login" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "email": "admin@indigorhapsody.com",
+    "password": "WrongPassword123!"
+  }' \
+  -w "\n\nHTTP Status: %{http_code}\nResponse Time: %{time_total}s\n" \
+  -s
+echo ""
+
+# Test 4: Missing Email
+echo "❌ Test 4: Missing Email"
+echo "----------------------"
+curl -X POST "${BASE_URL}/api/auth/admin-login" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "password": "AdminPassword123!"
+  }' \
+  -w "\n\nHTTP Status: %{http_code}\nResponse Time: %{time_total}s\n" \
+  -s
+echo ""
+
+# Test 5: Missing Password
+echo "❌ Test 5: Missing Password"
+echo "-------------------------"
+curl -X POST "${BASE_URL}/api/auth/admin-login" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "email": "admin@indigorhapsody.com"
+  }' \
+  -w "\n\nHTTP Status: %{http_code}\nResponse Time: %{time_total}s\n" \
+  -s
+echo ""
+
+# Test 6: Empty Body
+echo "❌ Test 6: Empty Body"
+echo "-------------------"
+curl -X POST "${BASE_URL}/api/auth/admin-login" \
+  -H "Content-Type: application/json" \
+  -d '{}' \
+  -w "\n\nHTTP Status: %{http_code}\nResponse Time: %{time_total}s\n" \
+  -s
+echo ""
+
+# Test 7: Create Admin User (if needed)
+echo "🔧 Test 7: Create Admin User"
+echo "---------------------------"
+curl -X POST "${BASE_URL}/api/auth/create-admin" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "displayName": "Test Admin",
+    "email": "testadmin@indigorhapsody.com",
+    "phoneNumber": "+1234567890",
+    "password": "TestAdmin123!",
+    "role": "Admin"
+  }' \
+  -w "\n\nHTTP Status: %{http_code}\nResponse Time: %{time_total}s\n" \
+  -s
+echo ""
+
+# Test 8: Login with Newly Created Admin
+echo "✅ Test 8: Login with Newly Created Admin"
+echo "----------------------------------------"
+curl -X POST "${BASE_URL}/api/auth/admin-login" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "email": "testadmin@indigorhapsody.com",
+    "password": "TestAdmin123!"
+  }' \
+  -w "\n\nHTTP Status: %{http_code}\nResponse Time: %{time_total}s\n" \
+  -s
+echo ""
+
+echo "🎯 Test Summary:"
+echo "================"
+echo "✅ Test 1: Should return 200 with JWT token"
+echo "❌ Test 2: Should return 401 (Invalid email)"
+echo "❌ Test 3: Should return 401 (Invalid password)"
+echo "❌ Test 4: Should return 400 (Missing email)"
+echo "❌ Test 5: Should return 400 (Missing password)"
+echo "❌ Test 6: Should return 400 (Empty body)"
+echo "🔧 Test 7: Should return 201 (Admin created)"
+echo "✅ Test 8: Should return 200 with JWT token"
+echo ""
+echo "📝 Note: Update BASE_URL variable if your server runs on a different port/URL"

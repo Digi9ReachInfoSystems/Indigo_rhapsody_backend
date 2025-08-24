@@ -1,0 +1,62 @@
+# Test Total User Count Endpoint
+# This endpoint requires authentication (JWT token)
+
+# Base URL - Update this to match your server URL
+BASE_URL="http://localhost:3000"
+
+# JWT Token - Replace this with your actual JWT token from admin login
+JWT_TOKEN="your_jwt_token_here"
+
+echo "🧪 Testing Total User Count Endpoint"
+echo "===================================="
+echo ""
+
+# Test 1: With Valid JWT Token
+echo "✅ Test 1: Get Total User Count (with valid token)"
+echo "------------------------------------------------"
+curl -X GET "${BASE_URL}/api/users/total-count" \
+  -H "Authorization: Bearer ${JWT_TOKEN}" \
+  -H "Content-Type: application/json" \
+  -w "\n\nHTTP Status: %{http_code}\nResponse Time: %{time_total}s\n" \
+  -s
+echo ""
+
+# Test 2: Without JWT Token (should fail)
+echo "❌ Test 2: Get Total User Count (without token)"
+echo "----------------------------------------------"
+curl -X GET "${BASE_URL}/api/users/total-count" \
+  -H "Content-Type: application/json" \
+  -w "\n\nHTTP Status: %{http_code}\nResponse Time: %{time_total}s\n" \
+  -s
+echo ""
+
+# Test 3: With Invalid JWT Token (should fail)
+echo "❌ Test 3: Get Total User Count (with invalid token)"
+echo "-------------------------------------------------"
+curl -X GET "${BASE_URL}/api/users/total-count" \
+  -H "Authorization: Bearer invalid_token_here" \
+  -H "Content-Type: application/json" \
+  -w "\n\nHTTP Status: %{http_code}\nResponse Time: %{time_total}s\n" \
+  -s
+echo ""
+
+echo "🎯 Test Summary:"
+echo "================"
+echo "✅ Test 1: Should return 200 with total count (if token is valid)"
+echo "❌ Test 2: Should return 401 (No authorization header)"
+echo "❌ Test 3: Should return 401 (Invalid token)"
+echo ""
+echo "📝 Instructions:"
+echo "==============="
+echo "1. First, get a JWT token by logging in as admin:"
+echo "   curl -X POST \"${BASE_URL}/api/auth/admin-login\" \\"
+echo "     -H \"Content-Type: application/json\" \\"
+echo "     -d '{\"email\": \"admin@indigorhapsody.com\", \"password\": \"AdminPassword123!\"}'"
+echo ""
+echo "2. Copy the JWT token from the response"
+echo "3. Replace 'your_jwt_token_here' in this file with your actual token"
+echo "4. Run this test file again"
+echo ""
+echo "💡 Quick Test (replace TOKEN_HERE with your actual token):"
+echo "curl -X GET \"${BASE_URL}/api/users/total-count\" \\"
+echo "  -H \"Authorization: Bearer TOKEN_HERE\""

@@ -1,0 +1,21 @@
+# Simple Admin Login Test
+# Update the URL and credentials as needed
+
+# Test Admin Login
+curl -X POST "http://localhost:3000/api/auth/admin-login" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "email": "admin@indigorhapsody.com",
+    "password": "AdminPassword123!"
+  }'
+
+# Alternative: Create Admin User
+curl -X POST "http://localhost:3000/api/auth/create-admin" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "displayName": "Super Admin",
+    "email": "admin@indigorhapsody.com",
+    "phoneNumber": "+1234567890",
+    "password": "AdminPassword123!",
+    "role": "Admin"
+  }'
