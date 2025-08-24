@@ -1611,3 +1611,348 @@ exports.clearRecentlyViewedProducts = async (req, res) => {
     });
   }
 };
+
+// Get all products with complete information
+exports.getAllProductsWithCompleteInfo = async (req, res) => {
+  try {
+    const {
+      page = 1,
+      limit = 20,
+      sort = "newest",
+      enabled = true,
+      includeDisabled = false,
+      designerId,
+      categoryId,
+      subCategoryId,
+      isTrending,
+      inStock,
+      minPrice,
+      maxPrice,
+      search
+    } = req.query;
+
+    // Build base query
+    let query = {};
+    
+    // Filter by enabled status
+    if (!includeDisabled) {
+      query.enabled = enabled === 'true' || enabled === true;
+    }
+
+    // Filter by designer
+    if (designerId) {
+      query.designerRef = new mongoose.Types.ObjectId(designerId);
+    }
+
+    // Filter by category
+    if (categoryId) {
+      query.category = new mongoose.Types.ObjectId(categoryId);
+    }
+
+    // Filter by subcategory
+    if (subCategoryId) {
+      query.subCategory = new mongoose.Types.ObjectId(subCategoryId);
+    }
+
+    // Filter by trending status
+    if (isTrending !== undefined) {
+      query.isTrending = isTrending === 'true' || isTrending === true;
+    }
+
+    // Filter by stock status
+    if (inStock !== undefined) {
+      query.in_stock = inStock === 'true' || inStock === true;
+    }
+
+    // Filter by price range
+    if (minPrice || maxPrice) {
+      query.price = {};
+      if (minPrice) query.price.$gte = Number(minPrice);
+      if (maxPrice) query.price.$lte = Number(maxPrice);
+    }
+
+    // Search by product name
+    if (search) {
+      query.productName = { $regex: search, $options: 'i' };
+    }
+
+    // Build sort options
+    let sortOptions = {};
+    switch (sort) {
+      case 'newest':
+        sortOptions.createdDate = -1;
+        break;
+      case 'oldest':
+        sortOptions.createdDate = 1;
+        break;
+      case 'price_low_to_high':
+        sortOptions.price = 1;
+        break;
+      case 'price_high_to_low':
+        sortOptions.price = -1;
+        break;
+      case 'name_asc':
+        sortOptions.productName = 1;
+        break;
+      case 'name_desc':
+        sortOptions.productName = -1;
+        break;
+      case 'rating':
+        sortOptions.averageRating = -1;
+        break;
+      case 'trending':
+        sortOptions.isTrending = -1;
+        break;
+      default:
+        sortOptions.createdDate = -1;
+    }
+
+    // Pagination
+    const pageNumber = parseInt(page);
+    const limitNumber = parseInt(limit);
+    const skip = (pageNumber - 1) * limitNumber;
+
+    // Main aggregation pipeline
+    const products = await Product.aggregate([
+      { $match: query },
+      {
+        $lookup: {
+          from: "designers",
+          localField: "designerRef",
+          foreignField: "_id",
+          as: "designer"
+        }
+      },
+      { $unwind: { path: "$designer", preserveNullAndEmptyArrays: true } },
+      {
+        $lookup: {
+          from: "categories",
+          localField: "category",
+          foreignField: "_id",
+          as: "category"
+        }
+      },
+      { $unwind: { path: "$category", preserveNullAndEmptyArrays: true } },
+      {
+        $lookup: {
+          from: "subcategories",
+          localField: "subCategory",
+          foreignField: "_id",
+          as: "subCategory"
+        }
+      },
+      { $unwind: { path: "$subCategory", preserveNullAndEmptyArrays: true } },
+      {
+        $lookup: {
+          from: "users",
+          localField: "reviews.userId",
+          foreignField: "_id",
+          as: "reviewUsers"
+        }
+      },
+      {
+        $lookup: {
+          from: "users",
+          localField: "wishlistedBy",
+          foreignField: "_id",
+          as: "wishlistUsers"
+        }
+      },
+      { $sort: sortOptions },
+      { $skip: skip },
+      { $limit: limitNumber },
+      {
+        $project: {
+          // Basic product information
+          productName: 1,
+          description: 1,
+          price: 1,
+          mrp: 1,
+          sku: 1,
+          enabled: 1,
+          in_stock: 1,
+          stock: 1,
+          coverImage: 1,
+          createdDate: 1,
+          updatedAt: 1,
+          
+          // Product details
+          fit: 1,
+          productDetails: 1,
+          material: 1,
+          fabric: 1,
+          is_customizable: 1,
+          is_sustainable: 1,
+          
+          // Business logic
+          discount: 1,
+          isTrending: 1,
+          returnable: 1,
+          
+          // Variants and sizes
+          variants: 1,
+          
+          // Reviews and ratings
+          reviews: 1,
+          totalRatings: 1,
+          averageRating: 1,
+          
+          // Wishlist
+          wishlistedBy: 1,
+          wishlistCount: { $size: "$wishlistedBy" },
+          
+          // Populated references
+          designer: {
+            _id: "$designer._id",
+            displayName: "$designer.displayName",
+            email: "$designer.email",
+            phoneNumber: "$designer.phoneNumber",
+            logo: "$designer.logo",
+            backGroundImage: "$designer.backGroundImage",
+            is_approved: "$designer.is_approved",
+            address: "$designer.address",
+            pickupLocation: "$designer.pickupLocation"
+          },
+          category: {
+            _id: "$category._id",
+            name: "$category.name",
+            description: "$category.description",
+            image: "$category.image"
+          },
+          subCategory: {
+            _id: "$subCategory._id",
+            name: "$subCategory.name",
+            description: "$subCategory.description",
+            image: "$subCategory.image"
+          },
+          
+          // Computed fields
+          discountPercentage: {
+            $cond: {
+              if: { $gt: ["$mrp", 0] },
+              then: {
+                $round: [
+                  { $multiply: [{ $divide: [{ $subtract: ["$mrp", "$price"] }, "$mrp"] }, 100] },
+                  2
+                ]
+              },
+              else: 0
+            }
+          },
+          
+          // Review details with user information
+          reviewDetails: {
+            $map: {
+              input: "$reviews",
+              as: "review",
+              in: {
+                _id: "$$review._id",
+                rating: "$$review.rating",
+                comment: "$$review.comment",
+                createdDate: "$$review.createdDate",
+                user: {
+                  $arrayElemAt: [
+                    {
+                      $filter: {
+                        input: "$reviewUsers",
+                        as: "user",
+                        cond: { $eq: ["$$user._id", "$$review.userId"] }
+                      }
+                    },
+                    0
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    ]);
+
+    // Get total count for pagination
+    const totalCount = await Product.countDocuments(query);
+
+    // Calculate additional statistics
+    const stats = await Product.aggregate([
+      { $match: query },
+      {
+        $group: {
+          _id: null,
+          totalProducts: { $sum: 1 },
+          averagePrice: { $avg: "$price" },
+          minPrice: { $min: "$price" },
+          maxPrice: { $max: "$price" },
+          totalStock: { $sum: "$stock" },
+          trendingProducts: {
+            $sum: { $cond: ["$isTrending", 1, 0] }
+          },
+          inStockProducts: {
+            $sum: { $cond: ["$in_stock", 1, 0] }
+          }
+        }
+      }
+    ]);
+
+    // Handle empty results
+    if (products.length === 0) {
+      return res.status(200).json({
+        success: true,
+        message: "No products found matching the criteria",
+        data: {
+          products: [],
+          pagination: {
+            total: 0,
+            page: pageNumber,
+            pages: 0,
+            limit: limitNumber,
+            hasNext: false,
+            hasPrev: false
+          },
+          stats: {
+            totalProducts: 0,
+            averagePrice: 0,
+            minPrice: 0,
+            maxPrice: 0,
+            totalStock: 0,
+            trendingProducts: 0,
+            inStockProducts: 0
+          }
+        }
+      });
+    }
+
+    // Return successful response
+    return res.status(200).json({
+      success: true,
+      message: "Products retrieved successfully",
+      data: {
+        products,
+        pagination: {
+          total: totalCount,
+          page: pageNumber,
+          pages: Math.ceil(totalCount / limitNumber),
+          limit: limitNumber,
+          hasNext: pageNumber < Math.ceil(totalCount / limitNumber),
+          hasPrev: pageNumber > 1
+        },
+        stats: stats[0] || {
+          totalProducts: 0,
+          averagePrice: 0,
+          minPrice: 0,
+          maxPrice: 0,
+          totalStock: 0,
+          trendingProducts: 0,
+          inStockProducts: 0
+        }
+      }
+    });
+
+  } catch (error) {
+    console.error("Error fetching products with complete info:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Internal server error",
+      error: error.message
+    });
+  }
+};
