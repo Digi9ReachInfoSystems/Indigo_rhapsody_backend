@@ -10,7 +10,7 @@ const {
   getAllBroadcastNotifications,
   sendNotificationToAllUsers,
 } = require("../controllers/notificationController");
-const { roleMiddleware } = require("../middleware/authMiddleware");
+const { authMiddleware, roleMiddleware } = require("../middleware/authMiddleware");
 
 router.put("/update-fcm-token", updateFcmToken);
 
@@ -18,10 +18,11 @@ router.post("/create-order-notification", createOrderNotification);
 router.get("/broadcast/latest", getLatestBroadcastNotification);
 
 router.get("/broadcast/all", getAllBroadcastNotifications);
-router.get("/all", roleMiddleware(["Admin"]), getAllNotifications);
+router.get("/all", authMiddleware, roleMiddleware(["Admin"]), getAllNotifications);
 
 router.get(
   "/designer/:designerId",
+  authMiddleware,
   roleMiddleware(["Admin"]),
   getNotificationByDesigner
 );

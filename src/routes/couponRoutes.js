@@ -1,15 +1,15 @@
 const express = require("express");
 const router = express.Router();
 const couponController = require("../controllers/couponController");
-const { roleMiddleware } = require("../middleware/authMiddleware");
+const { authMiddleware, roleMiddleware } = require("../middleware/authMiddleware");
 router.get("/searchUser", couponController.searchUsers);
-router.post("/", roleMiddleware(["Admin"]), couponController.createCoupon);
+router.post("/", authMiddleware, roleMiddleware(["Admin"]), couponController.createCoupon);
 router.get("/", couponController.getAllCoupons);
 // router.get("/getall", couponController.getAllCouponsAll);
 router.get("/:id", couponController.getCouponById);
 
-router.put("/:id", roleMiddleware(["Admin"]), couponController.updateCoupon);
-router.delete("/:id", roleMiddleware(["Admin"]), couponController.deleteCoupon);
+router.put("/:id", authMiddleware, roleMiddleware(["Admin"]), couponController.updateCoupon);
+router.delete("/:id", authMiddleware, roleMiddleware(["Admin"]), couponController.deleteCoupon);
 router.post(
   "/applyCoupon",
   roleMiddleware(["User"]),
@@ -17,6 +17,7 @@ router.post(
 );
 router.post(
   "/particularUser",
+  authMiddleware,
   roleMiddleware(["Admin"]),
   couponController.createCouponForParticularUser
 );

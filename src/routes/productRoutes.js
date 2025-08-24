@@ -10,18 +10,21 @@ router.options("*", cors());
 
 router.post(
   "/uploadBulk",
+  authMiddleware,
   roleMiddleware(["Admin", "Designer"]),
 
   productController.uploadBulkProducts
 );
 router.post(
   "/updateId",
+  authMiddleware,
   roleMiddleware(["Admin", "Designer"]),
 
   productController.updateVariantStock
 );
 router.post(
   "/createProduct",
+  authMiddleware,
   roleMiddleware(["Admin", "Designer"]),
   productController.createProduct
 );
@@ -34,12 +37,14 @@ router.get("/latestProducts", productController.getLatestProducts);
 router.put("/products/:id", productController.updateProduct);
 router.put(
   "/:productId/toggle-status",
+  authMiddleware,
   roleMiddleware(["Admin", "Designer"]),
   productController.toggleProductStatus
 );
 
 router.get(
   "/total-count",
+  authMiddleware,
   roleMiddleware(["Admin"]),
   productController.getTotalProductCount
 );
@@ -65,6 +70,7 @@ router.get(
 router.get("/trending", productController.getTrendingProducts);
 router.put(
   "/:productId/toggle-trending",
+  authMiddleware,
   roleMiddleware(["Admin", "Designer"]),
   productController.toggleTrendingStatus
 );

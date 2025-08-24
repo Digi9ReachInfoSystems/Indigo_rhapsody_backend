@@ -38,6 +38,6 @@ router.post(
 
   shippingController.declineReturnRequestForDesigner
 );
-router.post("/createReturn", shippingController.createReturnRequestForDesigner);
+router.post("/createReturn", authMiddleware, roleMiddleware(["Designer"]), shippingController.createReturnRequestForDesigner);
 router.post("/shipping-webhook", shippingController.shippingWebhook);
 module.exports = router;

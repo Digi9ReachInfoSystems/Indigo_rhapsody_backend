@@ -12,6 +12,7 @@ const upload = multer({ storage });
 
 router.post(
   "/",
+  authMiddleware,
   roleMiddleware(["Admin"]),
   upload.single("file"),
   bannerController.createBanner
@@ -21,6 +22,7 @@ router.get("/", bannerController.getBanners);
 
 router.put(
   "/:bannerId",
+  authMiddleware,
   upload.single("file"),
   roleMiddleware(["Admin"]),
   bannerController.updateBanner
@@ -28,6 +30,7 @@ router.put(
 
 router.delete(
   "/:bannerId",
+  authMiddleware,
   roleMiddleware(["Admin"]),
 );
 

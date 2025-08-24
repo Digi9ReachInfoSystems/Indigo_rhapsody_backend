@@ -1,7 +1,7 @@
 const express = require("express");
 const router = express.Router();
 const videoController = require("../controllers/contentVideosController");
-const { roleMiddleware } = require("../middleware/authMiddleware");
+const { authMiddleware, roleMiddleware } = require("../middleware/authMiddleware");
 
 // Enhanced video-product routes
 router.post("/add-video-with-products", videoController.addVideoWithProducts);
@@ -20,12 +20,14 @@ router.delete("/videos/:videoId", videoController.deleteVideo);
 // router.post("/comments", videoController.createComment); // Create a comment
 router.post(
   "/createAdminVideo",
+  authMiddleware,
   roleMiddleware(["Admin"]),
   videoController.createVideoByAdmin
 );
 // router.get("/videos/:videoId/comments", videoController.getCommentsByVideo);
 router.patch(
   "/videos/:videoId/approve",
+  authMiddleware,
   roleMiddleware(["Admin"]),
   videoController.approveVideo
 );
@@ -33,12 +35,14 @@ router.patch(
 // Product management routes
 router.post(
   "/videos/:videoId/products",
+  authMiddleware,
   roleMiddleware(["Admin", "Designer"]),
   videoController.addProductsToVideo
 );
 
 router.delete(
   "/videos/:videoId/products",
+  authMiddleware,
   roleMiddleware(["Admin", "Designer"]),
   videoController.removeProductsFromVideo
 );

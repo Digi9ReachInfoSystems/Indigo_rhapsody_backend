@@ -42,6 +42,8 @@ router.get(
 
 router.delete(
   "/delete/:subCategoryId",
+  authMiddleware,
+  roleMiddleware(["Admin"]),
   subcategoryController.deleteSubCategory
 );
 
