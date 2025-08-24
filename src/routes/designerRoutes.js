@@ -14,16 +14,19 @@ router.get("/designers/:id", designerController.getDesignerById);
 router.get("/:designerId/details", designerController.getDesignerDetailsById);
 router.get(
   "/total-count",
+  authMiddleware,
   roleMiddleware(["Admin"]),
   designerController.getTotalDesignerCount
 );
 router.get(
   "/approved-count",
+  authMiddleware,
   roleMiddleware(["Admin"]),
   designerController.getApprovedDesignerCount
 );
 router.get(
   "/pending-count",
+  authMiddleware,
   roleMiddleware(["Admin"]),
   designerController.getPendingDesignerCount
 );
@@ -38,6 +41,7 @@ router.get(
 // Designer-specific routes (require Designer role)
 router.post(
   "/designers",
+  authMiddleware,
   roleMiddleware(["Designer"]),
   upload.fields([
     { name: "logo", maxCount: 1 },
@@ -48,6 +52,7 @@ router.post(
 
 router.put(
   "/designers/:id",
+  authMiddleware,
   roleMiddleware(["Designer"]),
   upload.fields([{ name: "logo" }, { name: "backGroundImage" }]),
   designerController.updateDesigner
@@ -55,12 +60,14 @@ router.put(
 
 router.post(
   "/:designerId/request-update",
+  authMiddleware,
   roleMiddleware(["Designer"]),
   designerController.requestUpdateDesignerInfo
 );
 
 router.post(
   "/:designerId/update-request",
+  authMiddleware,
   roleMiddleware(["Designer"]),
   designerController.updateProfileRequest
 );
@@ -68,30 +75,35 @@ router.post(
 // Admin-only routes (require Admin role)
 router.get(
   "/designersDashboard",
+  authMiddleware,
   roleMiddleware(["Admin"]),
   designerController.getAllDesignersForAdmin
 );
 
 router.get(
   "/update-requests/latest",
+  authMiddleware,
   roleMiddleware(["Admin"]),
   designerController.getLatestUpdateRequests
 );
 
 router.patch(
   "/:designerId/status",
+  authMiddleware,
   roleMiddleware(["Admin"]),
   designerController.updateDesignerApprovalStatus
 );
 
 router.patch(
   "/disable/:id",
+  authMiddleware,
   roleMiddleware(["Admin"]),
   designerController.toggleDesignerApproval
 );
 
 router.put(
   "/review/:requestId",
+  authMiddleware,
   roleMiddleware(["Admin"]),
   designerController.reviewUpdateRequests
 );

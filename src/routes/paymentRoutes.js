@@ -3,7 +3,7 @@ const router = express.Router();
 const cartController = require("../controllers/cartController");
 const orderController = require("../controllers/orderController");
 const paymentController = require("../controllers/paymentController");
-const { roleMiddleware } = require("../middleware/authMiddleware");
+const { authMiddleware, roleMiddleware } = require("../middleware/authMiddleware");
 
 router.post("/createPayment", paymentController.createPaymentDetails);
 router.get(
@@ -17,6 +17,7 @@ router.get(
 );
 router.get(
   "/payments",
+  authMiddleware,
   roleMiddleware(["Admin"]),
   paymentController.getAllPayments
 );
