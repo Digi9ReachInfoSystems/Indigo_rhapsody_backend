@@ -92,4 +92,10 @@ router.delete(
   productController.clearRecentlyViewedProducts
 );
 
+// Get all products with complete information
+router.get(
+  "/all-complete",
+  productController.getAllProductsWithCompleteInfo
+);
+
 module.exports = router;
