@@ -628,3 +628,168 @@ exports.verifyPhone = async (req, res) => {
     });
   }
 };
+
+// POST /auth/admin-login - Admin login with email and password
+exports.adminLogin = async (req, res) => {
+  try {
+    const { email, password } = req.body;
+
+    // Validate required fields
+    if (!email || !password) {
+      return res.status(400).json({
+        success: false,
+        message: "Email and password are required",
+      });
+    }
+
+    // Find user by email
+    const user = await User.findOne({ email });
+    if (!user) {
+      return res.status(401).json({
+        success: false,
+        message: "Invalid email or password",
+      });
+    }
+
+    // Check if user is an admin
+    if (user.role !== "Admin") {
+      return res.status(403).json({
+        success: false,
+        message: "Access denied. Admin privileges required.",
+      });
+    }
+
+    // Check if user has a password (for admin users)
+    if (!user.password) {
+      return res.status(401).json({
+        success: false,
+        message: "Admin account not properly configured. Please contact system administrator.",
+      });
+    }
+
+    // Verify password (assuming bcrypt is used for password hashing)
+    const bcrypt = require("bcryptjs");
+    const isPasswordValid = await bcrypt.compare(password, user.password);
+    
+    if (!isPasswordValid) {
+      return res.status(401).json({
+        success: false,
+        message: "Invalid email or password",
+      });
+    }
+
+    // Update last login time
+    user.last_logged_in = new Date();
+    await user.save();
+
+    // Generate tokens
+    const tokenPayload = {
+      id: user._id,
+      email: user.email,
+      role: user.role,
+      is_creator: user.is_creator,
+    };
+
+    const accessToken = generateToken(tokenPayload);
+    const refreshToken = generateRefreshToken(tokenPayload);
+
+    // Store refresh token
+    refreshTokens.add(refreshToken);
+
+    // Return admin data and tokens
+    const adminResponse = {
+      _id: user._id,
+      displayName: user.displayName,
+      email: user.email,
+      role: user.role,
+      is_creator: user.is_creator,
+      last_logged_in: user.last_logged_in,
+      createdAt: user.createdAt,
+    };
+
+    return res.status(200).json({
+      success: true,
+      message: "Admin login successful",
+      user: adminResponse,
+      accessToken,
+      refreshToken,
+      tokenType: "Bearer",
+      expiresIn: JWT_EXPIRES_IN,
+    });
+  } catch (error) {
+    console.error("Admin login error:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Admin login failed",
+      error: error.message,
+    });
+  }
+};
+
+// POST /auth/create-admin - Create admin user (protected, only super admin can access)
+exports.createAdmin = async (req, res) => {
+  try {
+    const { displayName, email, password, phoneNumber } = req.body;
+
+    // Validate required fields
+    if (!displayName || !email || !password || !phoneNumber) {
+      return res.status(400).json({
+        success: false,
+        message: "Display name, email, password, and phone number are required",
+      });
+    }
+
+    // Check if user already exists by email or phone
+    const existingUser = await User.findOne({
+      $or: [{ email }, { phoneNumber }]
+    });
+    
+    if (existingUser) {
+      return res.status(400).json({
+        success: false,
+        message: "User already exists with this email or phone number",
+      });
+    }
+
+    // Hash password
+    const bcrypt = require("bcryptjs");
+    const saltRounds = 12;
+    const hashedPassword = await bcrypt.hash(password, saltRounds);
+
+    // Create new admin user
+    const newAdmin = new User({
+      displayName,
+      email,
+      phoneNumber,
+      password: hashedPassword,
+      role: "Admin",
+      is_creator: false,
+    });
+
+    await newAdmin.save();
+
+    // Return admin data (without password)
+    const adminResponse = {
+      _id: newAdmin._id,
+      displayName: newAdmin.displayName,
+      email: newAdmin.email,
+      phoneNumber: newAdmin.phoneNumber,
+      role: newAdmin.role,
+      is_creator: newAdmin.is_creator,
+      createdAt: newAdmin.createdAt,
+    };
+
+    return res.status(201).json({
+      success: true,
+      message: "Admin user created successfully",
+      user: adminResponse,
+    });
+  } catch (error) {
+    console.error("Create admin error:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Failed to create admin user",
+      error: error.message,
+    });
+  }
+};
