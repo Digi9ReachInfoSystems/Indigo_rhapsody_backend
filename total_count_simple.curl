@@ -1,0 +1,11 @@
+# Simple Total User Count Test
+# Replace TOKEN_HERE with your actual JWT token
+
+# Test Total User Count (with authentication)
+curl -X GET "http://localhost:3000/api/users/total-count" \
+  -H "Authorization: Bearer TOKEN_HERE" \
+  -H "Content-Type: application/json"
+
+# Alternative: Test without token (should fail)
+curl -X GET "http://localhost:3000/api/users/total-count" \
+  -H "Content-Type: application/json"
