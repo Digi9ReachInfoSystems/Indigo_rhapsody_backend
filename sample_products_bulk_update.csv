@@ -1,0 +1,11 @@
+Product ID SKU,Product Name,Category,Sub Category,Designer,Designer Price,MRP,Discount %,Fit,Fabric,Material,Status,In Stock,Returnable,Trending,Description,Total Stock
+SKU001,Classic Cotton Shirt,Clothing,Shirts,Indigo Amour,1500,2000,25,Regular,Cotton,Cotton,enabled,true,true,false,Comfortable cotton shirt for everyday wear,50
+SKU002,Denim Jacket,Clothing,Jackets,DIORAMA DESIGNS,2500,3000,17,Regular,Denim,Denim,enabled,true,true,true,Stylish denim jacket with sustainable materials,30
+SKU003,Silk Saree,Clothing,Sarees,Vasudhaa Vastrram,3500,4000,13,Regular,Silk,Silk,enabled,true,true,false,Traditional silk saree with modern touch,25
+SKU004,Organic Cotton Kurta,Clothing,Kurtas,ECOSHI,1200,1500,20,Regular,Cotton,Organic Cotton,enabled,true,true,true,Sustainable organic cotton kurta,40
+SKU005,Wool Sweater,Clothing,Sweaters,UNITY TRAILS,1800,2200,18,Regular,Wool,Wool,enabled,true,true,false,Warm wool sweater for winter,35
+SKU006,Handloom Dress,Clothing,Dresses,Nisha Gaikwad,2800,3200,13,Regular,Cotton,Handloom Cotton,enabled,true,true,true,Beautiful handloom cotton dress,20
+SKU007,Linen Shirt,Clothing,Shirts,ADIVTIYA,1600,2000,20,Regular,Linen,Linen,enabled,true,true,false,Comfortable linen shirt,45
+SKU008,Block Print Kurta,Clothing,Kurtas,Indigo Amour,2200,2800,21,Regular,Cotton,Cotton,enabled,true,true,true,Traditional block print kurta,30
+SKU009,Silk Dupatta,Clothing,Dupattas,DIORAMA DESIGNS,800,1000,20,Regular,Silk,Silk,enabled,true,true,false,Elegant silk dupatta,60
+SKU010,Cotton Trousers,Clothing,Trousers,Vasudhaa Vastrram,1400,1800,22,Regular,Cotton,Cotton,enabled,true,true,false,Comfortable cotton trousers,40

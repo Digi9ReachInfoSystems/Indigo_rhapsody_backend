@@ -846,3 +846,56 @@ exports.rejectDesignerVideoForProducts = async (req, res) => {
     });
   }
 };
+
+// Get designers for dropdown filters
+exports.getDesignersForDropdown = async (req, res) => {
+  try {
+    const { approved = true, search } = req.query;
+
+    // Build query
+    let query = {};
+    
+    if (approved === 'true' || approved === true) {
+      query.is_approved = true;
+    }
+
+    // Add search filter if provided
+    if (search) {
+      query.$or = [
+        { 'userId.displayName': { $regex: search, $options: 'i' } },
+        { shortDescription: { $regex: search, $options: 'i' } }
+      ];
+    }
+
+    // Get designers with populated userId for displayName
+    const designers = await Designer.find(query)
+      .populate('userId', 'displayName')
+      .select('_id userId shortDescription is_approved')
+      .sort({ 'userId.displayName': 1 }); // Sort alphabetically by display name
+
+    // Transform the data to match your frontend expectations
+    const dropdownDesigners = designers.map(designer => ({
+      _id: designer._id,
+      displayName: designer.userId?.displayName || 'Unknown Designer',
+      shortDescription: designer.shortDescription,
+      is_approved: designer.is_approved
+    }));
+
+    return res.status(200).json({
+      success: true,
+      message: "Designers retrieved successfully for dropdown",
+      data: {
+        designers: dropdownDesigners,
+        total: dropdownDesigners.length
+      }
+    });
+
+  } catch (error) {
+    console.error("Error fetching designers for dropdown:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Error fetching designers for dropdown",
+      error: error.message
+    });
+  }
+};
