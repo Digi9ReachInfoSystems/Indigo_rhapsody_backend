@@ -1996,14 +1996,14 @@ exports.bulkUpdateProducts = async (req, res) => {
     }
 
     // Validate required headers
-    const requiredHeaders = ['Product ID SKU'];
+    const requiredHeaders = ['Product ID'];
     const firstRow = csvData[0];
     const headers = Object.keys(firstRow);
     
-    if (!headers.includes('Product ID SKU')) {
+    if (!headers.includes('Product ID')) {
       return res.status(400).json({
         success: false,
-        message: "CSV must contain 'Product ID SKU' column for matching products"
+        message: "CSV must contain 'Product ID' column for matching products"
       });
     }
 
@@ -2021,24 +2021,34 @@ exports.bulkUpdateProducts = async (req, res) => {
       const rowNumber = i + 2; // +2 because CSV is 1-indexed and we skip header
 
       try {
-        const sku = row['Product ID SKU'];
+        const productId = row['Product ID'];
         
-        if (!sku) {
+        if (!productId) {
           results.errors.push({
             row: rowNumber,
-            error: "Product ID SKU is missing"
+            error: "Product ID is missing"
           });
           continue;
         }
 
-        // Find product by SKU
-        const product = await Product.findOne({ sku: sku });
+        // Validate Product ID format (MongoDB ObjectId)
+        if (!mongoose.Types.ObjectId.isValid(productId)) {
+          results.errors.push({
+            row: rowNumber,
+            productId: productId,
+            error: "Invalid Product ID format"
+          });
+          continue;
+        }
+
+        // Find product by Product ID (MongoDB _id)
+        const product = await Product.findById(productId);
         
         if (!product) {
           results.notFound++;
           results.errors.push({
             row: rowNumber,
-            sku: sku,
+            productId: productId,
             error: "Product not found"
           });
           continue;
@@ -2049,6 +2059,7 @@ exports.bulkUpdateProducts = async (req, res) => {
 
         // Map CSV columns to product fields
         if (row['Product Name'] !== undefined) updateData.productName = row['Product Name'];
+        if (row['SKU'] !== undefined) updateData.sku = row['SKU'];
         if (row['Description'] !== undefined) updateData.description = row['Description'];
         if (row['Designer Price'] !== undefined) updateData.price = parseFloat(row['Designer Price']) || 0;
         if (row['MRP'] !== undefined) updateData.mrp = parseFloat(row['MRP']) || 0;
@@ -2103,7 +2114,8 @@ exports.bulkUpdateProducts = async (req, res) => {
           results.updated++;
           results.success.push({
             row: rowNumber,
-            sku: sku,
+            productId: productId,
+            sku: updatedProduct.sku,
             productName: updatedProduct.productName,
             message: "Product updated successfully"
           });
@@ -2112,7 +2124,7 @@ exports.bulkUpdateProducts = async (req, res) => {
       } catch (error) {
         results.errors.push({
           row: rowNumber,
-          sku: row['Product ID SKU'] || 'Unknown',
+          productId: row['Product ID'] || 'Unknown',
           error: error.message
         });
       }
