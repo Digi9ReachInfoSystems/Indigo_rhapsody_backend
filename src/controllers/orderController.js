@@ -1050,3 +1050,195 @@ exports.getTotalSalesForDesigner = async (req, res) => {
 };
 
 exports.createReturnRequestForDesigner = async (req, res) => {};
+
+// Cancel order
+exports.cancelOrder = async (req, res) => {
+  try {
+    const { orderId } = req.params;
+    const { reason, cancelBy } = req.body; // cancelBy can be 'user', 'admin', 'system'
+
+    // Validate order ID
+    if (!orderId) {
+      return res.status(400).json({
+        success: false,
+        message: "Order ID is required"
+      });
+    }
+
+    // Find the order
+    const order = await Order.findById(orderId)
+      .populate('userId', 'displayName email phoneNumber')
+      .populate('products.productId', 'productName sku stock');
+
+    if (!order) {
+      return res.status(404).json({
+        success: false,
+        message: "Order not found"
+      });
+    }
+
+    // Check if order can be cancelled
+    const cancellableStatuses = ["Order Placed", "Processing"];
+    if (!cancellableStatuses.includes(order.status)) {
+      return res.status(400).json({
+        success: false,
+        message: `Order cannot be cancelled in current status: ${order.status}. Only orders with status 'Order Placed' or 'Processing' can be cancelled.`
+      });
+    }
+
+    // Check if payment has been processed
+    if (order.paymentStatus === "Completed") {
+      return res.status(400).json({
+        success: false,
+        message: "Order with completed payment cannot be cancelled. Please contact support for refund processing."
+      });
+    }
+
+    // Update order status to cancelled
+    const updateData = {
+      status: "Cancelled",
+      "statusTimestamps.cancelled": new Date(),
+      notes: reason ? `Cancelled: ${reason}` : "Order cancelled"
+    };
+
+    // Add cancellation details
+    if (reason) {
+      updateData.cancellationReason = reason;
+    }
+    if (cancelBy) {
+      updateData.cancelledBy = cancelBy;
+    }
+
+    const updatedOrder = await Order.findByIdAndUpdate(
+      orderId,
+      updateData,
+      { new: true }
+    ).populate('userId', 'displayName email phoneNumber');
+
+    // Restore product stock
+    for (const product of order.products) {
+      try {
+        await Product.findByIdAndUpdate(
+          product.productId,
+          { $inc: { stock: product.quantity } }
+        );
+      } catch (error) {
+        console.error(`Error restoring stock for product ${product.productId}:`, error);
+      }
+    }
+
+    // Send notification to user
+    try {
+      const notificationData = {
+        userId: order.userId._id,
+        title: "Order Cancelled",
+        message: `Your order #${order.orderId} has been cancelled successfully.`,
+        type: "order_cancelled",
+        data: {
+          orderId: order.orderId,
+          orderAmount: order.amount,
+          cancellationReason: reason || "No reason provided"
+        }
+      };
+
+      await createNotification(notificationData);
+      await sendFcmNotification(notificationData);
+    } catch (error) {
+      console.error("Error sending cancellation notification:", error);
+    }
+
+    // Send email notification to user
+    try {
+      const mailOptions = {
+        from: "orders@indigorhapsody.com",
+        to: order.userId.email,
+        subject: `Order Cancelled - #${order.orderId}`,
+        html: `
+          <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+            <h2 style="color: #d32f2f;">Order Cancelled</h2>
+            <p>Dear ${order.userId.displayName},</p>
+            <p>Your order has been cancelled successfully.</p>
+            
+            <div style="background-color: #f5f5f5; padding: 15px; border-radius: 5px; margin: 20px 0;">
+              <h3>Order Details:</h3>
+              <p><strong>Order ID:</strong> ${order.orderId}</p>
+              <p><strong>Order Date:</strong> ${new Date(order.createdDate).toLocaleDateString()}</p>
+              <p><strong>Total Amount:</strong> ₹${order.amount}</p>
+              <p><strong>Cancellation Reason:</strong> ${reason || "No reason provided"}</p>
+            </div>
+
+            <div style="background-color: #e8f5e8; padding: 15px; border-radius: 5px; margin: 20px 0;">
+              <h3>Refund Information:</h3>
+              ${order.paymentStatus === "Completed" 
+                ? "<p>Since payment was completed, a refund will be processed within 5-7 business days.</p>"
+                : "<p>No payment was processed, so no refund is required.</p>"
+              }
+            </div>
+
+            <p>If you have any questions, please contact our support team.</p>
+            <p>Thank you for choosing Indigo Rhapsody.</p>
+          </div>
+        `
+      };
+
+      await transporter.sendMail(mailOptions);
+    } catch (error) {
+      console.error("Error sending cancellation email:", error);
+    }
+
+    return res.status(200).json({
+      success: true,
+      message: "Order cancelled successfully",
+      data: {
+        orderId: updatedOrder.orderId,
+        status: updatedOrder.status,
+        cancelledAt: updatedOrder.statusTimestamps.cancelled,
+        cancellationReason: reason,
+        cancelledBy: cancelBy,
+        refundRequired: order.paymentStatus === "Completed"
+      }
+    });
+
+  } catch (error) {
+    console.error("Error cancelling order:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Error cancelling order",
+      error: error.message
+    });
+  }
+};
+
+// Get cancellation reasons (for dropdown)
+exports.getCancellationReasons = async (req, res) => {
+  try {
+    const reasons = [
+      "Changed my mind",
+      "Found better price elsewhere",
+      "Ordered by mistake",
+      "Item no longer needed",
+      "Shipping time too long",
+      "Payment issues",
+      "Duplicate order",
+      "Wrong size/color selected",
+      "Product out of stock",
+      "Other"
+    ];
+
+    return res.status(200).json({
+      success: true,
+      message: "Cancellation reasons retrieved successfully",
+      data: {
+        reasons: reasons
+      }
+    });
+
+  } catch (error) {
+    console.error("Error getting cancellation reasons:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Error retrieving cancellation reasons",
+      error: error.message
+    });
+  }
+};

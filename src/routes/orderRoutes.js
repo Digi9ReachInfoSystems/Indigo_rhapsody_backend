@@ -11,6 +11,7 @@ router.post("/", orderController.createOrder);
 router.get("/getOrders/:userId", orderController.getOrders);
 router.get(
   "/getAllOrders",
+  authMiddleware,
   roleMiddleware(["Admin"]),
   orderController.getAllOrders
 );
@@ -31,8 +32,6 @@ router.get(
   orderController.getMonthlyOrderStats
 );
 router.get(
-
-  
   "/total-orders-by-designers",
   authMiddleware,
   roleMiddleware(["Admin", "Designer"]),
@@ -65,6 +64,27 @@ router.get(
   authMiddleware,
   roleMiddleware(["Designer", "Admin"]),
   orderController.getTotalSalesForDesigner
+);
+
+// Cancel order routes
+router.post(
+  "/cancel/:orderId",
+  authMiddleware,
+  orderController.cancelOrder
+);
+
+// Admin can cancel any order
+router.post(
+  "/admin/cancel/:orderId",
+  authMiddleware,
+  roleMiddleware(["Admin"]),
+  orderController.cancelOrder
+);
+
+// Get cancellation reasons
+router.get(
+  "/cancellation-reasons",
+  orderController.getCancellationReasons
 );
 
 module.exports = router;
