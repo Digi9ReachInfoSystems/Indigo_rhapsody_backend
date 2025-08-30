@@ -4,6 +4,7 @@ const cors = require("cors");
 const productController = require("../controllers/productsController");
 const multer = require("multer");
 const { roleMiddleware, authMiddleware } = require("../middleware/authMiddleware");
+const csvUpload = require("../middleware/csvUploadMiddleware");
 
 router.use(cors());
 router.options("*", cors());
@@ -96,6 +97,15 @@ router.delete(
 router.get(
   "/all-complete",
   productController.getAllProductsWithCompleteInfo
+);
+
+// Bulk update products via CSV
+router.post(
+  "/bulk-update",
+  authMiddleware,
+  roleMiddleware(["Admin"]),
+  csvUpload.single('csvFile'),
+  productController.bulkUpdateProducts
 );
 
 module.exports = router;

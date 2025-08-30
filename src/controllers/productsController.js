@@ -1726,6 +1726,15 @@ exports.getAllProductsWithCompleteInfo = async (req, res) => {
       { $unwind: { path: "$designer", preserveNullAndEmptyArrays: true } },
       {
         $lookup: {
+          from: "users",
+          localField: "designer.userId",
+          foreignField: "_id",
+          as: "designer.userId"
+        }
+      },
+      { $unwind: { path: "$designer.userId", preserveNullAndEmptyArrays: true } },
+      {
+        $lookup: {
           from: "categories",
           localField: "category",
           foreignField: "_id",
@@ -1804,14 +1813,20 @@ exports.getAllProductsWithCompleteInfo = async (req, res) => {
           // Populated references
           designer: {
             _id: "$designer._id",
-            displayName: "$designer.displayName",
-            email: "$designer.email",
-            phoneNumber: "$designer.phoneNumber",
-            logo: "$designer.logo",
+            displayName: "$designer.userId.displayName",
+            userId: {
+              _id: "$designer.userId._id",
+              displayName: "$designer.userId.displayName"
+            },
+            logoUrl: "$designer.logoUrl",
             backGroundImage: "$designer.backGroundImage",
             is_approved: "$designer.is_approved",
-            address: "$designer.address",
-            pickupLocation: "$designer.pickupLocation"
+            pickup_location_name: "$designer.pickup_location_name",
+            shortDescription: "$designer.shortDescription",
+            about: "$designer.about",
+            status: "$designer.status",
+            createdTime: "$designer.createdTime",
+            updatedTime: "$designer.updatedTime"
           },
           category: {
             _id: "$category._id",
@@ -1952,6 +1967,168 @@ exports.getAllProductsWithCompleteInfo = async (req, res) => {
     return res.status(500).json({
       success: false,
       message: "Internal server error",
+      error: error.message
+    });
+  }
+};
+
+// Bulk update products via CSV
+exports.bulkUpdateProducts = async (req, res) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({
+        success: false,
+        message: "No CSV file uploaded"
+      });
+    }
+
+    const XLSX = require('xlsx');
+    const workbook = XLSX.read(req.file.buffer, { type: 'buffer' });
+    const sheetName = workbook.SheetNames[0];
+    const worksheet = workbook.Sheets[sheetName];
+    const csvData = XLSX.utils.sheet_to_json(worksheet);
+
+    if (!csvData || csvData.length === 0) {
+      return res.status(400).json({
+        success: false,
+        message: "CSV file is empty or invalid"
+      });
+    }
+
+    // Validate required headers
+    const requiredHeaders = ['Product ID SKU'];
+    const firstRow = csvData[0];
+    const headers = Object.keys(firstRow);
+    
+    if (!headers.includes('Product ID SKU')) {
+      return res.status(400).json({
+        success: false,
+        message: "CSV must contain 'Product ID SKU' column for matching products"
+      });
+    }
+
+    const results = {
+      total: csvData.length,
+      updated: 0,
+      notFound: 0,
+      errors: [],
+      success: []
+    };
+
+    // Process each row
+    for (let i = 0; i < csvData.length; i++) {
+      const row = csvData[i];
+      const rowNumber = i + 2; // +2 because CSV is 1-indexed and we skip header
+
+      try {
+        const sku = row['Product ID SKU'];
+        
+        if (!sku) {
+          results.errors.push({
+            row: rowNumber,
+            error: "Product ID SKU is missing"
+          });
+          continue;
+        }
+
+        // Find product by SKU
+        const product = await Product.findOne({ sku: sku });
+        
+        if (!product) {
+          results.notFound++;
+          results.errors.push({
+            row: rowNumber,
+            sku: sku,
+            error: "Product not found"
+          });
+          continue;
+        }
+
+        // Prepare update object
+        const updateData = {};
+
+        // Map CSV columns to product fields
+        if (row['Product Name'] !== undefined) updateData.productName = row['Product Name'];
+        if (row['Description'] !== undefined) updateData.description = row['Description'];
+        if (row['Designer Price'] !== undefined) updateData.price = parseFloat(row['Designer Price']) || 0;
+        if (row['MRP'] !== undefined) updateData.mrp = parseFloat(row['MRP']) || 0;
+        if (row['Discount %'] !== undefined) updateData.discount = parseFloat(row['Discount %']) || 0;
+        if (row['Fit'] !== undefined) updateData.fit = row['Fit'];
+        if (row['Fabric'] !== undefined) updateData.fabric = row['Fabric'];
+        if (row['Material'] !== undefined) updateData.material = row['Material'];
+        if (row['Status'] !== undefined) updateData.enabled = row['Status'].toLowerCase() === 'enabled' || row['Status'].toLowerCase() === 'true';
+        if (row['In Stock'] !== undefined) updateData.in_stock = row['In Stock'].toLowerCase() === 'true' || row['In Stock'].toLowerCase() === 'yes';
+        if (row['Returnable'] !== undefined) updateData.returnable = row['Returnable'].toLowerCase() === 'true' || row['Returnable'].toLowerCase() === 'yes';
+        if (row['Trending'] !== undefined) updateData.isTrending = row['Trending'].toLowerCase() === 'true' || row['Trending'].toLowerCase() === 'yes';
+        if (row['Total Stock'] !== undefined) updateData.stock = parseInt(row['Total Stock']) || 0;
+
+        // Handle category and subcategory by name (if provided)
+        if (row['Category'] !== undefined) {
+          const category = await mongoose.model('Category').findOne({ 
+            name: { $regex: new RegExp(row['Category'], 'i') } 
+          });
+          if (category) {
+            updateData.category = category._id;
+          }
+        }
+
+        if (row['Sub Category'] !== undefined) {
+          const subCategory = await mongoose.model('SubCategory').findOne({ 
+            name: { $regex: new RegExp(row['Sub Category'], 'i') } 
+          });
+          if (subCategory) {
+            updateData.subCategory = subCategory._id;
+          }
+        }
+
+        // Handle designer by name (if provided)
+        if (row['Designer'] !== undefined) {
+          const designer = await mongoose.model('Designer').findOne({
+            'userId.displayName': { $regex: new RegExp(row['Designer'], 'i') }
+          }).populate('userId');
+          
+          if (designer) {
+            updateData.designerRef = designer._id;
+          }
+        }
+
+        // Update product
+        const updatedProduct = await Product.findByIdAndUpdate(
+          product._id,
+          updateData,
+          { new: true, runValidators: true }
+        );
+
+        if (updatedProduct) {
+          results.updated++;
+          results.success.push({
+            row: rowNumber,
+            sku: sku,
+            productName: updatedProduct.productName,
+            message: "Product updated successfully"
+          });
+        }
+
+      } catch (error) {
+        results.errors.push({
+          row: rowNumber,
+          sku: row['Product ID SKU'] || 'Unknown',
+          error: error.message
+        });
+      }
+    }
+
+    return res.status(200).json({
+      success: true,
+      message: "Bulk update completed",
+      data: results
+    });
+
+  } catch (error) {
+    console.error("Error in bulk update:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Error processing bulk update",
       error: error.message
     });
   }

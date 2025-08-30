@@ -1,0 +1,119 @@
+# Test Bulk Product Update Endpoint
+# This endpoint allows bulk updating products via CSV file upload
+
+# Base URL - Update this to match your server URL
+BASE_URL="http://localhost:3000"
+
+# Admin token - Replace with your actual admin token
+ADMIN_TOKEN="your_admin_jwt_token_here"
+
+echo "🧪 Testing Bulk Product Update Endpoint"
+echo "======================================"
+echo ""
+
+# Test 1: Upload CSV file for bulk update
+echo "✅ Test 1: Upload CSV file for bulk update"
+echo "------------------------------------------"
+echo "Note: You need to create a CSV file with the following headers:"
+echo "Product ID SKU, Product Name, Category, Sub Category, Designer, Designer Price, MRP, Discount %, Fit, Fabric, Material, Status, In Stock, Returnable, Trending, Description, Total Stock"
+echo ""
+
+# Example curl command (you'll need to create the CSV file first)
+curl -X POST "${BASE_URL}/api/products/bulk-update" \
+  -H "Authorization: Bearer ${ADMIN_TOKEN}" \
+  -F "csvFile=@products_bulk_update.csv" \
+  -w "\n\nHTTP Status: %{http_code}\nResponse Time: %{time_total}s\n" \
+  -s
+echo ""
+
+# Test 2: Test without file
+echo "✅ Test 2: Test without file upload"
+echo "----------------------------------"
+curl -X POST "${BASE_URL}/api/products/bulk-update" \
+  -H "Authorization: Bearer ${ADMIN_TOKEN}" \
+  -H "Content-Type: application/json" \
+  -w "\n\nHTTP Status: %{http_code}\nResponse Time: %{time_total}s\n" \
+  -s
+echo ""
+
+# Test 3: Test without authentication
+echo "✅ Test 3: Test without authentication"
+echo "------------------------------------"
+curl -X POST "${BASE_URL}/api/products/bulk-update" \
+  -H "Content-Type: application/json" \
+  -w "\n\nHTTP Status: %{http_code}\nResponse Time: %{time_total}s\n" \
+  -s
+echo ""
+
+# Test 4: Test with invalid token
+echo "✅ Test 4: Test with invalid token"
+echo "--------------------------------"
+curl -X POST "${BASE_URL}/api/products/bulk-update" \
+  -H "Authorization: Bearer invalid_token" \
+  -H "Content-Type: application/json" \
+  -w "\n\nHTTP Status: %{http_code}\nResponse Time: %{time_total}s\n" \
+  -s
+echo ""
+
+echo "🎯 Test Summary:"
+echo "================"
+echo "✅ Test 1: Should upload CSV and update products (requires valid CSV file)"
+echo "✅ Test 2: Should return error for missing file"
+echo "✅ Test 3: Should return unauthorized error"
+echo "✅ Test 4: Should return invalid token error"
+echo ""
+echo "📝 CSV File Requirements:"
+echo "========================"
+echo "• Required column: 'Product ID SKU' (for matching products)"
+echo "• Supported formats: .csv, .xlsx, .xls"
+echo "• Maximum file size: 10MB"
+echo "• File field name: 'csvFile'"
+echo ""
+echo "📊 Supported CSV Columns:"
+echo "========================"
+echo "• Product ID SKU (required) - Matches product.sku field"
+echo "• Product Name - Updates product.productName"
+echo "• Category - Updates product.category (searches by name)"
+echo "• Sub Category - Updates product.subCategory (searches by name)"
+echo "• Designer - Updates product.designerRef (searches by displayName)"
+echo "• Designer Price - Updates product.price"
+echo "• MRP - Updates product.mrp"
+echo "• Discount % - Updates product.discount"
+echo "• Fit - Updates product.fit"
+echo "• Fabric - Updates product.fabric"
+echo "• Material - Updates product.material"
+echo "• Status - Updates product.enabled (true/false, enabled/disabled)"
+echo "• In Stock - Updates product.in_stock (true/false, yes/no)"
+echo "• Returnable - Updates product.returnable (true/false, yes/no)"
+echo "• Trending - Updates product.isTrending (true/false, yes/no)"
+echo "• Description - Updates product.description"
+echo "• Total Stock - Updates product.stock"
+echo ""
+echo "📊 Response Structure:"
+echo "====================="
+echo "• success: Boolean indicating success"
+echo "• message: Response message"
+echo "• data.total: Total number of rows processed"
+echo "• data.updated: Number of products successfully updated"
+echo "• data.notFound: Number of products not found"
+echo "• data.errors: Array of error details with row numbers"
+echo "• data.success: Array of successful updates with details"
+echo ""
+echo "💡 Usage Examples:"
+echo "=================="
+echo "• Basic upload: curl -X POST /api/products/bulk-update -H 'Authorization: Bearer TOKEN' -F 'csvFile=@file.csv'"
+echo "• With progress: Use multipart/form-data with 'csvFile' field"
+echo ""
+echo "🔧 CSV File Creation Tips:"
+echo "========================="
+echo "1. Use Excel or Google Sheets to create your CSV"
+echo "2. Ensure 'Product ID SKU' column matches existing product SKUs"
+echo "3. Use consistent boolean values (true/false, yes/no, enabled/disabled)"
+echo "4. For categories/designers, use exact names as in database"
+echo "5. Save as CSV format (.csv extension)"
+echo ""
+echo "📋 Sample CSV Content:"
+echo "====================="
+echo "Product ID SKU,Product Name,Category,Sub Category,Designer,Designer Price,MRP,Discount %,Fit,Fabric,Material,Status,In Stock,Returnable,Trending,Description,Total Stock"
+echo "SKU001,Classic Cotton Shirt,Clothing,Shirts,Indigo Amour,1500,2000,25,Regular,Cotton,Cotton,enabled,true,true,false,Comfortable cotton shirt,50"
+echo "SKU002,Denim Jacket,Clothing,Jackets,DIORAMA DESIGNS,2500,3000,17,Regular,Denim,Denim,enabled,true,true,true,Stylish denim jacket,30"

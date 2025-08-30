@@ -146,4 +146,10 @@ router.patch(
   designerController.rejectDesignerVideoForProducts
 );
 
+// Get designers for dropdown filters
+router.get(
+  "/dropdown",
+  designerController.getDesignersForDropdown
+);
+
 module.exports = router;
