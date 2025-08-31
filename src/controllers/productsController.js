@@ -2057,35 +2057,100 @@ exports.bulkUpdateProducts = async (req, res) => {
         // Prepare update object
         const updateData = {};
 
-        // Map CSV columns to product fields
-        if (row['Product Name'] !== undefined) updateData.productName = row['Product Name'];
-        if (row['SKU'] !== undefined) updateData.sku = row['SKU'];
-        if (row['Description'] !== undefined) updateData.description = row['Description'];
-        if (row['Designer Price'] !== undefined) updateData.price = parseFloat(row['Designer Price']) || 0;
-        if (row['MRP'] !== undefined) updateData.mrp = parseFloat(row['MRP']) || 0;
-        if (row['Discount %'] !== undefined) updateData.discount = parseFloat(row['Discount %']) || 0;
-        if (row['Fit'] !== undefined) updateData.fit = row['Fit'];
-        if (row['Fabric'] !== undefined) updateData.fabric = row['Fabric'];
-        if (row['Material'] !== undefined) updateData.material = row['Material'];
-        if (row['Status'] !== undefined) updateData.enabled = row['Status'].toLowerCase() === 'enabled' || row['Status'].toLowerCase() === 'true';
-        if (row['In Stock'] !== undefined) updateData.in_stock = row['In Stock'].toLowerCase() === 'true' || row['In Stock'].toLowerCase() === 'yes';
-        if (row['Returnable'] !== undefined) updateData.returnable = row['Returnable'].toLowerCase() === 'true' || row['Returnable'].toLowerCase() === 'yes';
-        if (row['Trending'] !== undefined) updateData.isTrending = row['Trending'].toLowerCase() === 'true' || row['Trending'].toLowerCase() === 'yes';
-        if (row['Total Stock'] !== undefined) updateData.stock = parseInt(row['Total Stock']) || 0;
+        // Map CSV columns to product fields - only update if value is provided and not empty
+        if (row['Product Name'] !== undefined && row['Product Name'] !== null && row['Product Name'].toString().trim() !== '') {
+          updateData.productName = row['Product Name'].toString().trim();
+        }
+        
+        if (row['SKU'] !== undefined && row['SKU'] !== null && row['SKU'].toString().trim() !== '') {
+          updateData.sku = row['SKU'].toString().trim();
+        }
+        
+        if (row['Description'] !== undefined && row['Description'] !== null && row['Description'].toString().trim() !== '') {
+          updateData.description = row['Description'].toString().trim();
+        }
+        
+        if (row['Designer Price'] !== undefined && row['Designer Price'] !== null && row['Designer Price'].toString().trim() !== '') {
+          const price = parseFloat(row['Designer Price']);
+          if (!isNaN(price) && price >= 0) {
+            updateData.price = price;
+          }
+        }
+        
+        if (row['MRP'] !== undefined && row['MRP'] !== null && row['MRP'].toString().trim() !== '') {
+          const mrp = parseFloat(row['MRP']);
+          if (!isNaN(mrp) && mrp >= 0) {
+            updateData.mrp = mrp;
+          }
+        }
+        
+        if (row['Discount %'] !== undefined && row['Discount %'] !== null && row['Discount %'].toString().trim() !== '') {
+          const discount = parseFloat(row['Discount %']);
+          if (!isNaN(discount) && discount >= 0) {
+            updateData.discount = discount;
+          }
+        }
+        
+        if (row['Fit'] !== undefined && row['Fit'] !== null && row['Fit'].toString().trim() !== '') {
+          updateData.fit = row['Fit'].toString().trim();
+        }
+        
+        if (row['Fabric'] !== undefined && row['Fabric'] !== null && row['Fabric'].toString().trim() !== '') {
+          updateData.fabric = row['Fabric'].toString().trim();
+        }
+        
+        if (row['Material'] !== undefined && row['Material'] !== null && row['Material'].toString().trim() !== '') {
+          updateData.material = row['Material'].toString().trim();
+        }
+        
+        if (row['Status'] !== undefined && row['Status'] !== null && row['Status'].toString().trim() !== '') {
+          const status = row['Status'].toString().trim().toLowerCase();
+          if (status === 'enabled' || status === 'true' || status === 'disabled' || status === 'false') {
+            updateData.enabled = status === 'enabled' || status === 'true';
+          }
+        }
+        
+        if (row['In Stock'] !== undefined && row['In Stock'] !== null && row['In Stock'].toString().trim() !== '') {
+          const inStock = row['In Stock'].toString().trim().toLowerCase();
+          if (inStock === 'true' || inStock === 'yes' || inStock === 'false' || inStock === 'no') {
+            updateData.in_stock = inStock === 'true' || inStock === 'yes';
+          }
+        }
+        
+        if (row['Returnable'] !== undefined && row['Returnable'] !== null && row['Returnable'].toString().trim() !== '') {
+          const returnable = row['Returnable'].toString().trim().toLowerCase();
+          if (returnable === 'true' || returnable === 'yes' || returnable === 'false' || returnable === 'no') {
+            updateData.returnable = returnable === 'true' || returnable === 'yes';
+          }
+        }
+        
+        if (row['Trending'] !== undefined && row['Trending'] !== null && row['Trending'].toString().trim() !== '') {
+          const trending = row['Trending'].toString().trim().toLowerCase();
+          if (trending === 'true' || trending === 'yes' || trending === 'false' || trending === 'no') {
+            updateData.isTrending = trending === 'true' || trending === 'yes';
+          }
+        }
+        
+        if (row['Total Stock'] !== undefined && row['Total Stock'] !== null && row['Total Stock'].toString().trim() !== '') {
+          const stock = parseInt(row['Total Stock']);
+          if (!isNaN(stock) && stock >= 0) {
+            updateData.stock = stock;
+          }
+        }
 
         // Handle category and subcategory by name (if provided)
-        if (row['Category'] !== undefined) {
+        if (row['Category'] !== undefined && row['Category'] !== null && row['Category'].toString().trim() !== '') {
           const category = await mongoose.model('Category').findOne({ 
-            name: { $regex: new RegExp(row['Category'], 'i') } 
+            name: { $regex: new RegExp(row['Category'].toString().trim(), 'i') } 
           });
           if (category) {
             updateData.category = category._id;
           }
         }
 
-        if (row['Sub Category'] !== undefined) {
+        if (row['Sub Category'] !== undefined && row['Sub Category'] !== null && row['Sub Category'].toString().trim() !== '') {
           const subCategory = await mongoose.model('SubCategory').findOne({ 
-            name: { $regex: new RegExp(row['Sub Category'], 'i') } 
+            name: { $regex: new RegExp(row['Sub Category'].toString().trim(), 'i') } 
           });
           if (subCategory) {
             updateData.subCategory = subCategory._id;
@@ -2093,9 +2158,9 @@ exports.bulkUpdateProducts = async (req, res) => {
         }
 
         // Handle designer by name (if provided)
-        if (row['Designer'] !== undefined) {
+        if (row['Designer'] !== undefined && row['Designer'] !== null && row['Designer'].toString().trim() !== '') {
           const designer = await mongoose.model('Designer').findOne({
-            'userId.displayName': { $regex: new RegExp(row['Designer'], 'i') }
+            'userId.displayName': { $regex: new RegExp(row['Designer'].toString().trim(), 'i') }
           }).populate('userId');
           
           if (designer) {
@@ -2103,22 +2168,34 @@ exports.bulkUpdateProducts = async (req, res) => {
           }
         }
 
-        // Update product
-        const updatedProduct = await Product.findByIdAndUpdate(
-          product._id,
-          updateData,
-          { new: true, runValidators: true }
-        );
-
-        if (updatedProduct) {
-          results.updated++;
+        // Only update if there are fields to update
+        if (Object.keys(updateData).length === 0) {
           results.success.push({
             row: rowNumber,
             productId: productId,
-            sku: updatedProduct.sku,
-            productName: updatedProduct.productName,
-            message: "Product updated successfully"
+            sku: product.sku,
+            productName: product.productName,
+            message: "No fields to update - product unchanged"
           });
+        } else {
+          // Update product
+          const updatedProduct = await Product.findByIdAndUpdate(
+            product._id,
+            updateData,
+            { new: true, runValidators: true }
+          );
+
+          if (updatedProduct) {
+            results.updated++;
+            results.success.push({
+              row: rowNumber,
+              productId: productId,
+              sku: updatedProduct.sku,
+              productName: updatedProduct.productName,
+              message: "Product updated successfully",
+              updatedFields: Object.keys(updateData)
+            });
+          }
         }
 
       } catch (error) {
