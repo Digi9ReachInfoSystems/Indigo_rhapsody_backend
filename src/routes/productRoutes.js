@@ -102,7 +102,6 @@ router.get(
 // Bulk update products via CSV
 router.post(
   "/bulk-update",
-  authMiddleware,
   csvUpload.single('csvFile'),
   productController.bulkUpdateProducts
 );
