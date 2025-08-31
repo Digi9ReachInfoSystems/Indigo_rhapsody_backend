@@ -103,7 +103,6 @@ router.get(
 router.post(
   "/bulk-update",
   authMiddleware,
-  roleMiddleware(["Admin"]),
   csvUpload.single('csvFile'),
   productController.bulkUpdateProducts
 );
