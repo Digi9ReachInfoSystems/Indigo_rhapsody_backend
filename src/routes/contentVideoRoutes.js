@@ -60,6 +60,10 @@ router.get(
   "/videos-by-product/:productId",
   videoController.getVideosByProductEnhanced
 );
+router.get(
+  "/videos-by-user/:userId",
+  videoController.getVideosByUser
+);
 
 // Like/Dislike functionality
 router.post("/videos/:videoId/reaction", videoController.toggleVideoReaction);

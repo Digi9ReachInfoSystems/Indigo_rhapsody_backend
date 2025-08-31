@@ -1,0 +1,344 @@
+# Test Add Video With Products Endpoint
+# This endpoint allows creating videos with associated products
+
+# Base URL - Update this to match your server URL
+BASE_URL="http://localhost:3000"
+
+echo "🧪 Testing Add Video With Products Endpoint"
+echo "==========================================="
+echo ""
+
+# Test 1: Create video with designerId (valid data)
+echo "✅ Test 1: Create video with designerId (valid data)"
+echo "---------------------------------------------------"
+curl -X POST "${BASE_URL}/api/content-videos/add-video-with-products" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "userId": "507f1f77bcf86cd799439011",
+    "designerId": "507f1f77bcf86cd799439012",
+    "videoUrl": "https://example.com/video.mp4",
+    "title": "Fashion Showcase Video",
+    "description": "A beautiful showcase of sustainable fashion products",
+    "productIds": ["507f1f77bcf86cd799439013", "507f1f77bcf86cd799439014"],
+    "isApproved": false
+  }' \
+  -w "\n\nHTTP Status: %{http_code}\nResponse Time: %{time_total}s\n" \
+  -s
+echo ""
+
+# Test 2: Create video with creatorId (valid data)
+echo "✅ Test 2: Create video with creatorId (valid data)"
+echo "--------------------------------------------------"
+curl -X POST "${BASE_URL}/api/content-videos/add-video-with-products" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "userId": "507f1f77bcf86cd799439011",
+    "creatorId": "507f1f77bcf86cd799439012",
+    "videoUrl": "https://example.com/video2.mp4",
+    "title": "Creator Introduction Video",
+    "description": "Introduction to our content creator"
+  }' \
+  -w "\n\nHTTP Status: %{http_code}\nResponse Time: %{time_total}s\n" \
+  -s
+echo ""
+
+# Test 3: Create video with both creatorId and designerId
+echo "✅ Test 3: Create video with both creatorId and designerId"
+echo "--------------------------------------------------------"
+curl -X POST "${BASE_URL}/api/content-videos/add-video-with-products" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "userId": "507f1f77bcf86cd799439011",
+    "creatorId": "507f1f77bcf86cd799439012",
+    "designerId": "507f1f77bcf86cd799439013",
+    "videoUrl": "https://example.com/video3.mp4",
+    "title": "Collaboration Video",
+    "description": "Video created by creator featuring designer products",
+    "productIds": ["507f1f77bcf86cd799439014"]
+  }' \
+  -w "\n\nHTTP Status: %{http_code}\nResponse Time: %{time_total}s\n" \
+  -s
+echo ""
+
+# Test 4: Missing both creatorId and designerId
+echo "✅ Test 4: Missing both creatorId and designerId"
+echo "------------------------------------------------"
+curl -X POST "${BASE_URL}/api/content-videos/add-video-with-products" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "userId": "507f1f77bcf86cd799439011",
+    "videoUrl": "https://example.com/video4.mp4",
+    "title": "Video without creator/designer"
+  }' \
+  -w "\n\nHTTP Status: %{http_code}\nResponse Time: %{time_total}s\n" \
+  -s
+echo ""
+
+# Test 5: Missing required fields (title)
+echo "✅ Test 5: Missing required fields (title)"
+echo "------------------------------------------"
+curl -X POST "${BASE_URL}/api/content-videos/add-video-with-products" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "userId": "507f1f77bcf86cd799439011",
+    "creatorId": "507f1f77bcf86cd799439012",
+    "videoUrl": "https://example.com/video5.mp4",
+    "description": "Video without title"
+  }' \
+  -w "\n\nHTTP Status: %{http_code}\nResponse Time: %{time_total}s\n" \
+  -s
+echo ""
+
+# Test 6: Invalid userId format
+echo "✅ Test 6: Invalid userId format"
+echo "-------------------------------"
+curl -X POST "${BASE_URL}/api/content-videos/add-video-with-products" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "userId": "invalid-user-id",
+    "creatorId": "507f1f77bcf86cd799439012",
+    "videoUrl": "https://example.com/video6.mp4",
+    "title": "Test Video"
+  }' \
+  -w "\n\nHTTP Status: %{http_code}\nResponse Time: %{time_total}s\n" \
+  -s
+echo ""
+
+# Test 7: Invalid creatorId format
+echo "✅ Test 7: Invalid creatorId format"
+echo "----------------------------------"
+curl -X POST "${BASE_URL}/api/content-videos/add-video-with-products" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "userId": "507f1f77bcf86cd799439011",
+    "creatorId": "invalid-creator-id",
+    "videoUrl": "https://example.com/video7.mp4",
+    "title": "Test Video"
+  }' \
+  -w "\n\nHTTP Status: %{http_code}\nResponse Time: %{time_total}s\n" \
+  -s
+echo ""
+
+# Test 8: Invalid designerId format
+echo "✅ Test 8: Invalid designerId format"
+echo "-----------------------------------"
+curl -X POST "${BASE_URL}/api/content-videos/add-video-with-products" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "userId": "507f1f77bcf86cd799439011",
+    "designerId": "invalid-designer-id",
+    "videoUrl": "https://example.com/video8.mp4",
+    "title": "Test Video"
+  }' \
+  -w "\n\nHTTP Status: %{http_code}\nResponse Time: %{time_total}s\n" \
+  -s
+echo ""
+
+# Test 9: Invalid video URL
+echo "✅ Test 9: Invalid video URL"
+echo "---------------------------"
+curl -X POST "${BASE_URL}/api/content-videos/add-video-with-products" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "userId": "507f1f77bcf86cd799439011",
+    "creatorId": "507f1f77bcf86cd799439012",
+    "videoUrl": "ftp://example.com/video9.mp4",
+    "title": "Test Video"
+  }' \
+  -w "\n\nHTTP Status: %{http_code}\nResponse Time: %{time_total}s\n" \
+  -s
+echo ""
+
+# Test 10: Invalid product ID format
+echo "✅ Test 10: Invalid product ID format"
+echo "------------------------------------"
+curl -X POST "${BASE_URL}/api/content-videos/add-video-with-products" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "userId": "507f1f77bcf86cd799439011",
+    "creatorId": "507f1f77bcf86cd799439012",
+    "videoUrl": "https://example.com/video10.mp4",
+    "title": "Test Video",
+    "productIds": ["invalid-product-id", "507f1f77bcf86cd799439013"]
+  }' \
+  -w "\n\nHTTP Status: %{http_code}\nResponse Time: %{time_total}s\n" \
+  -s
+echo ""
+
+# Test 11: Non-existent user
+echo "✅ Test 11: Non-existent user"
+echo "----------------------------"
+curl -X POST "${BASE_URL}/api/content-videos/add-video-with-products" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "userId": "507f1f77bcf86cd799439999",
+    "creatorId": "507f1f77bcf86cd799439012",
+    "videoUrl": "https://example.com/video11.mp4",
+    "title": "Test Video"
+  }' \
+  -w "\n\nHTTP Status: %{http_code}\nResponse Time: %{time_total}s\n" \
+  -s
+echo ""
+
+# Test 12: Non-existent creator
+echo "✅ Test 12: Non-existent creator"
+echo "-------------------------------"
+curl -X POST "${BASE_URL}/api/content-videos/add-video-with-products" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "userId": "507f1f77bcf86cd799439011",
+    "creatorId": "507f1f77bcf86cd799439999",
+    "videoUrl": "https://example.com/video12.mp4",
+    "title": "Test Video"
+  }' \
+  -w "\n\nHTTP Status: %{http_code}\nResponse Time: %{time_total}s\n" \
+  -s
+echo ""
+
+echo "🎯 Test Summary:"
+echo "================"
+echo "✅ Test 1: Should create video with designerId successfully"
+echo "✅ Test 2: Should create video with creatorId successfully"
+echo "✅ Test 3: Should create video with both creatorId and designerId"
+echo "✅ Test 4: Should return error for missing both creatorId and designerId"
+echo "✅ Test 5: Should return error for missing required fields (title)"
+echo "✅ Test 6: Should return error for invalid userId format"
+echo "✅ Test 7: Should return error for invalid creatorId format"
+echo "✅ Test 8: Should return error for invalid designerId format"
+echo "✅ Test 9: Should return error for invalid video URL"
+echo "✅ Test 10: Should return error for invalid product ID format"
+echo "✅ Test 11: Should return error for non-existent user"
+echo "✅ Test 12: Should return error for non-existent creator"
+echo ""
+echo "📝 Endpoint Details:"
+echo "==================="
+echo "• POST /api/content-videos/add-video-with-products - Create video with products"
+echo ""
+echo "📊 Request Body Parameters:"
+echo "=========================="
+echo "• userId (required): Valid MongoDB ObjectId of the user"
+echo "• creatorId (optional): Valid MongoDB ObjectId of the creator"
+echo "• designerId (optional): Valid MongoDB ObjectId of the designer"
+echo "• videoUrl (required): Valid HTTP/HTTPS URL"
+echo "• title (required): Video title"
+echo "• description (optional): Video description"
+echo "• productIds (optional): Array of valid MongoDB ObjectIds"
+echo "• isApproved (optional): Boolean, defaults to false"
+echo ""
+echo "⚠️  Note: Either creatorId OR designerId (or both) must be provided"
+echo ""
+echo "📊 Response Structure (Success):"
+echo "==============================="
+echo "• success: Boolean indicating success"
+echo "• message: Response message"
+echo "• video._id: Video ID"
+echo "• video.title: Video title"
+echo "• video.description: Video description"
+echo "• video.videoUrl: Video URL"
+echo "• video.is_approved: Approval status"
+echo "• video.createdDate: Creation timestamp"
+echo "• video.userId: User information"
+echo "• video.creatorId: Creator information (final creatorId used)"
+echo "• video.designerId: Designer ID if provided, null otherwise"
+echo "• video.products: Array of associated products"
+echo "• video.totalProducts: Number of products"
+echo ""
+echo "🔒 Validation Rules:"
+echo "==================="
+echo "• userId must be a valid MongoDB ObjectId"
+echo "• Either creatorId OR designerId (or both) must be provided"
+echo "• creatorId must be a valid MongoDB ObjectId (if provided)"
+echo "• designerId must be a valid MongoDB ObjectId (if provided)"
+echo "• videoUrl must be a valid HTTP/HTTPS URL"
+echo "• title is required and cannot be empty"
+echo "• All productIds must be valid MongoDB ObjectIds"
+echo "• User must exist in database"
+echo "• Creator must exist in database (if provided)"
+echo "• Designer must exist in database (if provided)"
+echo "• All products must exist in database"
+echo ""
+echo "💡 Usage Examples:"
+echo "=================="
+echo "• With designerId: Include designerId parameter"
+echo "• With creatorId: Include creatorId parameter"
+echo "• With both: Include both creatorId and designerId"
+echo "• With products: Include productIds array"
+echo "• Pre-approved: Set isApproved to true"
+echo ""
+echo "📋 Sample Request Bodies:"
+echo "========================"
+echo ""
+echo "With designerId:"
+echo '{
+  "userId": "507f1f77bcf86cd799439011",
+  "designerId": "507f1f77bcf86cd799439012",
+  "videoUrl": "https://example.com/video.mp4",
+  "title": "Fashion Showcase Video",
+  "description": "A beautiful showcase of sustainable fashion products",
+  "productIds": ["507f1f77bcf86cd799439013", "507f1f77bcf86cd799439014"],
+  "isApproved": false
+}'
+echo ""
+echo "With creatorId:"
+echo '{
+  "userId": "507f1f77bcf86cd799439011",
+  "creatorId": "507f1f77bcf86cd799439012",
+  "videoUrl": "https://example.com/video.mp4",
+  "title": "Creator Content Video",
+  "description": "Content created by a user",
+  "productIds": ["507f1f77bcf86cd799439013"],
+  "isApproved": false
+}'
+echo ""
+echo "With both creatorId and designerId:"
+echo '{
+  "userId": "507f1f77bcf86cd799439011",
+  "creatorId": "507f1f77bcf86cd799439012",
+  "designerId": "507f1f77bcf86cd799439013",
+  "videoUrl": "https://example.com/video.mp4",
+  "title": "Collaboration Video",
+  "description": "Video created by creator featuring designer products",
+  "productIds": ["507f1f77bcf86cd799439014"],
+  "isApproved": false
+}'
+echo ""
+echo "📋 Sample Response (Success):"
+echo "============================="
+echo '{
+  "success": true,
+  "message": "Video with products created successfully",
+  "video": {
+    "_id": "507f1f77bcf86cd799439015",
+    "title": "Fashion Showcase Video",
+    "description": "A beautiful showcase of sustainable fashion products",
+    "videoUrl": "https://example.com/video.mp4",
+    "is_approved": false,
+    "createdDate": "2024-01-15T10:30:00.000Z",
+    "no_of_likes": 0,
+    "no_of_dislikes": 0,
+    "no_of_Shares": 0,
+    "userId": {
+      "_id": "507f1f77bcf86cd799439011",
+      "displayName": "John Doe",
+      "email": "john@example.com"
+    },
+    "creatorId": {
+      "_id": "507f1f77bcf86cd799439012",
+      "displayName": "Fashion Designer",
+      "shortDescription": "Sustainable fashion designer"
+    },
+    "designerId": "507f1f77bcf86cd799439012",
+    "products": [
+      {
+        "productId": {
+          "_id": "507f1f77bcf86cd799439013",
+          "productName": "Eco-Friendly Dress",
+          "price": 1500,
+          "sku": "EFD001"
+        },
+        "addedAt": "2024-01-15T10:30:00.000Z"
+      }
+    ],
+    "totalProducts": 1
+  }
+}'
