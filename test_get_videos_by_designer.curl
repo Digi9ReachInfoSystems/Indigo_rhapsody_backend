@@ -1,0 +1,238 @@
+# Test Get Videos By User Endpoint
+# This endpoint allows retrieving videos created by a specific user
+
+# Base URL - Update this to match your server URL
+BASE_URL="http://localhost:3000"
+
+echo "🧪 Testing Get Videos By User Endpoint"
+echo "======================================"
+echo ""
+
+# Test 1: Get videos by valid user ID (first page)
+echo "✅ Test 1: Get videos by valid user ID (first page)"
+echo "--------------------------------------------------"
+curl -X GET "${BASE_URL}/api/content-videos/videos-by-user/507f1f77bcf86cd799439011" \
+  -H "Content-Type: application/json" \
+  -w "\n\nHTTP Status: %{http_code}\nResponse Time: %{time_total}s\n" \
+  -s
+echo ""
+
+# Test 2: Get videos by user with pagination
+echo "✅ Test 2: Get videos by user with pagination"
+echo "--------------------------------------------"
+curl -X GET "${BASE_URL}/api/content-videos/videos-by-user/507f1f77bcf86cd799439011?page=2&limit=5" \
+  -H "Content-Type: application/json" \
+  -w "\n\nHTTP Status: %{http_code}\nResponse Time: %{time_total}s\n" \
+  -s
+echo ""
+
+# Test 3: Get videos by user with current user reaction info
+echo "✅ Test 3: Get videos by user with current user reaction info"
+echo "------------------------------------------------------------"
+curl -X GET "${BASE_URL}/api/content-videos/videos-by-user/507f1f77bcf86cd799439011?currentUserId=507f1f77bcf86cd799439012" \
+  -H "Content-Type: application/json" \
+  -w "\n\nHTTP Status: %{http_code}\nResponse Time: %{time_total}s\n" \
+  -s
+echo ""
+
+# Test 4: Get all videos (including unapproved) by user
+echo "✅ Test 4: Get all videos (including unapproved) by user"
+echo "-------------------------------------------------------"
+curl -X GET "${BASE_URL}/api/content-videos/videos-by-user/507f1f77bcf86cd799439011?approved=false" \
+  -H "Content-Type: application/json" \
+  -w "\n\nHTTP Status: %{http_code}\nResponse Time: %{time_total}s\n" \
+  -s
+echo ""
+
+# Test 5: Get videos with custom limit
+echo "✅ Test 5: Get videos with custom limit"
+echo "--------------------------------------"
+curl -X GET "${BASE_URL}/api/content-videos/videos-by-user/507f1f77bcf86cd799439011?limit=3" \
+  -H "Content-Type: application/json" \
+  -w "\n\nHTTP Status: %{http_code}\nResponse Time: %{time_total}s\n" \
+  -s
+echo ""
+
+# Test 6: Missing user ID
+echo "✅ Test 6: Missing user ID"
+echo "-------------------------"
+curl -X GET "${BASE_URL}/api/content-videos/videos-by-user/" \
+  -H "Content-Type: application/json" \
+  -w "\n\nHTTP Status: %{http_code}\nResponse Time: %{time_total}s\n" \
+  -s
+echo ""
+
+# Test 7: Invalid user ID format
+echo "✅ Test 7: Invalid user ID format"
+echo "-------------------------------"
+curl -X GET "${BASE_URL}/api/content-videos/videos-by-user/invalid-user-id" \
+  -H "Content-Type: application/json" \
+  -w "\n\nHTTP Status: %{http_code}\nResponse Time: %{time_total}s\n" \
+  -s
+echo ""
+
+# Test 8: Non-existent user ID
+echo "✅ Test 8: Non-existent user ID"
+echo "------------------------------"
+curl -X GET "${BASE_URL}/api/content-videos/videos-by-user/507f1f77bcf86cd799439999" \
+  -H "Content-Type: application/json" \
+  -w "\n\nHTTP Status: %{http_code}\nResponse Time: %{time_total}s\n" \
+  -s
+echo ""
+
+# Test 9: Invalid pagination parameters
+echo "✅ Test 9: Invalid pagination parameters"
+echo "---------------------------------------"
+curl -X GET "${BASE_URL}/api/content-videos/videos-by-user/507f1f77bcf86cd799439011?page=0&limit=-5" \
+  -H "Content-Type: application/json" \
+  -w "\n\nHTTP Status: %{http_code}\nResponse Time: %{time_total}s\n" \
+  -s
+echo ""
+
+# Test 10: User with no videos
+echo "✅ Test 10: User with no videos"
+echo "------------------------------"
+curl -X GET "${BASE_URL}/api/content-videos/videos-by-user/507f1f77bcf86cd799439013" \
+  -H "Content-Type: application/json" \
+  -w "\n\nHTTP Status: %{http_code}\nResponse Time: %{time_total}s\n" \
+  -s
+echo ""
+
+echo "🎯 Test Summary:"
+echo "================"
+echo "✅ Test 1: Should get videos by valid user ID (first page)"
+echo "✅ Test 2: Should get videos by user with pagination"
+echo "✅ Test 3: Should get videos by user with current user reaction info"
+echo "✅ Test 4: Should get all videos (including unapproved) by user"
+echo "✅ Test 5: Should get videos with custom limit"
+echo "✅ Test 6: Should return error for missing user ID"
+echo "✅ Test 7: Should return error for invalid user ID format"
+echo "✅ Test 8: Should return error for non-existent user ID"
+echo "✅ Test 9: Should handle invalid pagination parameters gracefully"
+echo "✅ Test 10: Should return empty videos array for user with no videos"
+echo ""
+echo "📝 Endpoint Details:"
+echo "==================="
+echo "• GET /api/content-videos/videos-by-user/:userId - Get videos by user"
+echo ""
+echo "📊 URL Parameters:"
+echo "=================="
+echo "• userId (required): Valid MongoDB ObjectId of the user"
+echo ""
+echo "📊 Query Parameters:"
+echo "===================="
+echo "• limit (optional): Number of videos per page, defaults to 10"
+echo "• page (optional): Page number, defaults to 1"
+echo "• approved (optional): Filter by approval status, defaults to true"
+echo "• currentUserId (optional): Current user ID to include reaction information"
+echo ""
+echo "📊 Response Structure (Success):"
+echo "==============================="
+echo "• success: Boolean indicating success"
+echo "• user: User information"
+echo "  - _id: User ID"
+echo "  - displayName: User display name"
+echo "  - email: User email"
+echo "  - phoneNumber: User phone number"
+echo "  - profilePicture: User profile picture"
+echo "  - role: User role (User, Designer, Admin)"
+echo "• videos: Array of videos created by the user"
+echo "• pagination: Pagination information"
+echo "  - currentPage: Current page number"
+echo "  - totalPages: Total number of pages"
+echo "  - totalVideos: Total number of videos"
+echo "  - hasNextPage: Whether there's a next page"
+echo "  - hasPrevPage: Whether there's a previous page"
+echo ""
+echo "🔒 Validation Rules:"
+echo "==================="
+echo "• userId must be provided in URL"
+echo "• userId must be a valid MongoDB ObjectId"
+echo "• User must exist in database"
+echo "• limit must be a positive integer (if provided)"
+echo "• page must be a positive integer (if provided)"
+echo "• approved must be a boolean string (if provided)"
+echo ""
+echo "💡 Usage Examples:"
+echo "=================="
+echo "• Basic: GET /api/content-videos/videos-by-user/507f1f77bcf86cd799439011"
+echo "• With pagination: GET /api/content-videos/videos-by-user/507f1f77bcf86cd799439011?page=2&limit=5"
+echo "• With user reactions: GET /api/content-videos/videos-by-user/507f1f77bcf86cd799439011?currentUserId=507f1f77bcf86cd799439012"
+echo "• All videos: GET /api/content-videos/videos-by-user/507f1f77bcf86cd799439011?approved=false"
+echo ""
+echo "📋 Sample Request URLs:"
+echo "======================"
+echo "• Basic request: ${BASE_URL}/api/content-videos/videos-by-user/507f1f77bcf86cd799439011"
+echo "• With pagination: ${BASE_URL}/api/content-videos/videos-by-user/507f1f77bcf86cd799439011?page=2&limit=5"
+echo "• With user reactions: ${BASE_URL}/api/content-videos/videos-by-user/507f1f77bcf86cd799439011?currentUserId=507f1f77bcf86cd799439012"
+echo "• All videos: ${BASE_URL}/api/content-videos/videos-by-user/507f1f77bcf86cd799439011?approved=false"
+echo ""
+echo "📋 Sample Response (Success):"
+echo "============================="
+echo '{
+  "success": true,
+  "user": {
+    "_id": "507f1f77bcf86cd799439011",
+    "displayName": "John Doe",
+    "email": "john@example.com",
+    "phoneNumber": "+1234567890",
+    "profilePicture": "https://example.com/profile.jpg",
+    "role": "User"
+  },
+  "videos": [
+    {
+      "_id": "507f1f77bcf86cd799439015",
+      "title": "My Fashion Video",
+      "description": "A beautiful showcase of fashion products",
+      "videoUrl": "https://example.com/video.mp4",
+      "is_approved": true,
+      "createdDate": "2024-01-15T10:30:00.000Z",
+      "no_of_likes": 25,
+      "no_of_dislikes": 2,
+      "no_of_Shares": 5,
+      "userId": {
+        "_id": "507f1f77bcf86cd799439011",
+        "displayName": "John Doe",
+        "email": "john@example.com"
+      },
+      "creatorId": {
+        "_id": "507f1f77bcf86cd799439012",
+        "displayName": "Fashion Designer",
+        "shortDescription": "Sustainable fashion designer"
+      },
+      "products": [
+        {
+          "productId": {
+            "_id": "507f1f77bcf86cd799439013",
+            "productName": "Eco-Friendly Dress",
+            "price": 1500,
+            "sku": "EFD001"
+          },
+          "addedAt": "2024-01-15T10:30:00.000Z"
+        }
+      ],
+      "userReaction": "like"
+    }
+  ],
+  "pagination": {
+    "currentPage": 1,
+    "totalPages": 3,
+    "totalVideos": 25,
+    "hasNextPage": true,
+    "hasPrevPage": false
+  }
+}'
+echo ""
+echo "📋 Sample Response (Error - User Not Found):"
+echo "==========================================="
+echo '{
+  "success": false,
+  "message": "User not found."
+}'
+echo ""
+echo "📋 Sample Response (Error - Invalid ID):"
+echo "======================================="
+echo '{
+  "success": false,
+  "message": "Invalid User ID format."
+}'

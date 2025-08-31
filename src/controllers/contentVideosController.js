@@ -967,12 +967,13 @@ exports.getContentVideoWithProducts = async (req, res) => {
   }
 };
 
-// Add video with products - focused on video-product relationship
+// Add video with products - enhanced version with creatorId or designerId support
 exports.addVideoWithProducts = async (req, res) => {
   try {
     const { 
       userId, 
-      creatorId, 
+      creatorId,
+      designerId, 
       videoUrl, 
       title, 
       description,
@@ -983,13 +984,47 @@ exports.addVideoWithProducts = async (req, res) => {
     // Validate required fields
     if (!userId || !videoUrl || !title) {
       return res.status(400).json({ 
+        success: false,
         message: "User ID, Video URL, and title are required." 
+      });
+    }
+
+    // Validate that at least one of creatorId or designerId is provided
+    if (!creatorId && !designerId) {
+      return res.status(400).json({ 
+        success: false,
+        message: "Either creatorId or designerId (or both) must be provided." 
+      });
+    }
+
+    // Validate ObjectId format for userId
+    if (!require('mongoose').Types.ObjectId.isValid(userId)) {
+      return res.status(400).json({ 
+        success: false,
+        message: "Invalid User ID format." 
+      });
+    }
+
+    // Validate ObjectId format for creatorId if provided
+    if (creatorId && !require('mongoose').Types.ObjectId.isValid(creatorId)) {
+      return res.status(400).json({ 
+        success: false,
+        message: "Invalid Creator ID format." 
+      });
+    }
+
+    // Validate ObjectId format for designerId if provided
+    if (designerId && !require('mongoose').Types.ObjectId.isValid(designerId)) {
+      return res.status(400).json({ 
+        success: false,
+        message: "Invalid Designer ID format." 
       });
     }
 
     // Validate video URL format (basic validation)
     if (!videoUrl.startsWith('http://') && !videoUrl.startsWith('https://')) {
       return res.status(400).json({ 
+        success: false,
         message: "Video URL must be a valid HTTP/HTTPS URL." 
       });
     }
@@ -997,8 +1032,57 @@ exports.addVideoWithProducts = async (req, res) => {
     // Validate product IDs if provided
     if (productIds && (!Array.isArray(productIds) || productIds.length === 0)) {
       return res.status(400).json({ 
+        success: false,
         message: "Product IDs must be a non-empty array." 
       });
+    }
+
+    // Validate each product ID format
+    if (productIds && productIds.length > 0) {
+      for (const productId of productIds) {
+        if (!require('mongoose').Types.ObjectId.isValid(productId)) {
+          return res.status(400).json({ 
+            success: false,
+            message: `Invalid Product ID format: ${productId}` 
+          });
+        }
+      }
+    }
+
+    // Check if user exists
+    const User = require("../models/userModel");
+    const user = await User.findById(userId).select('_id displayName email');
+    if (!user) {
+      return res.status(404).json({ 
+        success: false,
+        message: "User not found." 
+      });
+    }
+
+    // Check if creator exists (if creatorId provided)
+    let creator = null;
+    if (creatorId) {
+      const creatorUser = await User.findById(creatorId).select('_id displayName email');
+      if (!creatorUser) {
+        return res.status(404).json({ 
+          success: false,
+          message: "Creator not found." 
+        });
+      }
+      creator = creatorUser;
+    }
+
+    // Check if designer exists (if designerId provided)
+    let designer = null;
+    if (designerId) {
+      const Designer = require("../models/designerModel");
+      designer = await Designer.findById(designerId).select('_id shortDescription about');
+      if (!designer) {
+        return res.status(404).json({ 
+          success: false,
+          message: "Designer not found." 
+        });
+      }
     }
 
     // Check if products exist (if productIds provided)
@@ -1006,12 +1090,13 @@ exports.addVideoWithProducts = async (req, res) => {
       const Product = require("../models/productModels");
       const existingProducts = await Product.find({ 
         _id: { $in: productIds } 
-      }).select('_id productName');
+      }).select('_id productName sku price');
       
       if (existingProducts.length !== productIds.length) {
         const foundIds = existingProducts.map(p => p._id.toString());
         const missingIds = productIds.filter(id => !foundIds.includes(id));
-        return res.status(400).json({ 
+        return res.status(404).json({ 
+          success: false,
           message: `Products not found: ${missingIds.join(', ')}` 
         });
       }
@@ -1023,13 +1108,17 @@ exports.addVideoWithProducts = async (req, res) => {
       addedAt: new Date()
     })) : [];
 
+    // Determine the creatorId for the video
+    // Priority: designerId > creatorId > userId (fallback)
+    const finalCreatorId = designerId || creatorId || userId;
+
     // Create the video with products
     const newVideo = new ContentVideo({
       userId,
-      creatorId: creatorId || userId, // Use userId as creatorId if not provided
+      creatorId: finalCreatorId,
       videoUrl,
       title,
-      description,
+      description: description || '',
       is_approved: isApproved,
       products,
       createdDate: new Date()
@@ -1045,14 +1134,14 @@ exports.addVideoWithProducts = async (req, res) => {
       },
       {
         path: 'creatorId',
-        select: 'displayName email phoneNumber profilePicture'
+        select: 'displayName email phoneNumber profilePicture shortDescription about'
       },
       {
         path: 'products.productId',
         select: 'productName price coverImage sku category subCategory designerRef description',
         populate: {
           path: 'designerRef',
-          select: 'displayName email phoneNumber profilePicture'
+          select: 'displayName email phoneNumber profilePicture shortDescription'
         }
       }
     ]);
@@ -1072,6 +1161,7 @@ exports.addVideoWithProducts = async (req, res) => {
         no_of_Shares: newVideo.no_of_Shares,
         userId: newVideo.userId,
         creatorId: newVideo.creatorId,
+        designerId: designerId || null, // Return the designerId if provided
         products: newVideo.products,
         totalProducts: newVideo.products.length
       }
@@ -1168,6 +1258,110 @@ exports.getVideosByProductEnhanced = async (req, res) => {
     });
   } catch (error) {
     console.error("Error fetching videos by product:", error);
+    res.status(500).json({
+      success: false,
+      message: "Internal Server Error",
+      error: error.message,
+    });
+  }
+};
+
+// Get videos by user ID with enhanced details
+exports.getVideosByUser = async (req, res) => {
+  try {
+    const { userId } = req.params;
+    const { limit = 10, page = 1, approved = true, currentUserId } = req.query;
+    const skip = (parseInt(page) - 1) * parseInt(limit);
+
+    // Validate user ID
+    if (!userId) {
+      return res.status(400).json({ 
+        success: false,
+        message: "User ID is required." 
+      });
+    }
+
+    // Validate ObjectId format
+    if (!require('mongoose').Types.ObjectId.isValid(userId)) {
+      return res.status(400).json({ 
+        success: false,
+        message: "Invalid User ID format." 
+      });
+    }
+
+    // Check if user exists
+    const User = require("../models/userModel");
+    const user = await User.findById(userId)
+      .select('_id displayName email phoneNumber profilePicture role');
+    
+    if (!user) {
+      return res.status(404).json({ 
+        success: false,
+        message: "User not found." 
+      });
+    }
+
+    // Build query - videos where userId matches the requested userId
+    const query = {
+      userId: userId
+    };
+    if (approved === 'true' || approved === true) {
+      query.is_approved = true;
+    }
+
+    const videos = await ContentVideo.find(query)
+      .populate('userId', 'displayName email phoneNumber profilePicture')
+      .populate('creatorId', 'displayName email phoneNumber profilePicture shortDescription about')
+      .populate({
+        path: 'products.productId',
+        select: 'productName price coverImage sku category subCategory designerRef description',
+        populate: {
+          path: 'designerRef',
+          select: 'displayName email phoneNumber profilePicture shortDescription'
+        }
+      })
+      .populate('comments.userId', 'displayName email phoneNumber profilePicture')
+      .sort({ createdDate: -1 })
+      .limit(parseInt(limit))
+      .skip(skip)
+      .lean();
+
+    // Add user reaction information if currentUserId is provided
+    if (currentUserId) {
+      videos.forEach(video => {
+        video.userReaction = null;
+        if (video.likedBy && video.likedBy.includes(currentUserId)) {
+          video.userReaction = 'like';
+        } else if (video.dislikedBy && video.dislikedBy.includes(currentUserId)) {
+          video.userReaction = 'dislike';
+        }
+      });
+    }
+
+    // Get total count for pagination
+    const totalVideos = await ContentVideo.countDocuments(query);
+
+    res.status(200).json({
+      success: true,
+      user: {
+        _id: user._id,
+        displayName: user.displayName,
+        email: user.email,
+        phoneNumber: user.phoneNumber,
+        profilePicture: user.profilePicture,
+        role: user.role
+      },
+      videos,
+      pagination: {
+        currentPage: parseInt(page),
+        totalPages: Math.ceil(totalVideos / parseInt(limit)),
+        totalVideos,
+        hasNextPage: skip + videos.length < totalVideos,
+        hasPrevPage: parseInt(page) > 1,
+      },
+    });
+  } catch (error) {
+    console.error("Error fetching videos by user:", error);
     res.status(500).json({
       success: false,
       message: "Internal Server Error",
