@@ -1,0 +1,205 @@
+# Test Designer Login Endpoint
+# This endpoint allows designers to login with email/password and get access tokens
+
+# Base URL - Update this to match your server URL
+BASE_URL="http://localhost:3000"
+
+echo "🧪 Testing Designer Login Endpoint"
+echo "=================================="
+echo ""
+
+# Test 1: Successful designer login
+echo "✅ Test 1: Successful designer login"
+echo "-----------------------------------"
+curl -X POST "${BASE_URL}/api/users/designer-login" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "email": "designer@example.com",
+    "password": "designer123"
+  }' \
+  -w "\n\nHTTP Status: %{http_code}\nResponse Time: %{time_total}s\n" \
+  -s
+echo ""
+
+# Test 2: Login with invalid email
+echo "✅ Test 2: Login with invalid email"
+echo "----------------------------------"
+curl -X POST "${BASE_URL}/api/users/designer-login" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "email": "nonexistent@example.com",
+    "password": "password123"
+  }' \
+  -w "\n\nHTTP Status: %{http_code}\nResponse Time: %{time_total}s\n" \
+  -s
+echo ""
+
+# Test 3: Login with invalid password
+echo "✅ Test 3: Login with invalid password"
+echo "-------------------------------------"
+curl -X POST "${BASE_URL}/api/users/designer-login" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "email": "designer@example.com",
+    "password": "wrongpassword"
+  }' \
+  -w "\n\nHTTP Status: %{http_code}\nResponse Time: %{time_total}s\n" \
+  -s
+echo ""
+
+# Test 4: Login with non-designer user
+echo "✅ Test 4: Login with non-designer user"
+echo "--------------------------------------"
+curl -X POST "${BASE_URL}/api/users/designer-login" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "email": "user@example.com",
+    "password": "user123"
+  }' \
+  -w "\n\nHTTP Status: %{http_code}\nResponse Time: %{time_total}s\n" \
+  -s
+echo ""
+
+# Test 5: Login with unapproved designer
+echo "✅ Test 5: Login with unapproved designer"
+echo "----------------------------------------"
+curl -X POST "${BASE_URL}/api/users/designer-login" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "email": "unapproved@example.com",
+    "password": "password123"
+  }' \
+  -w "\n\nHTTP Status: %{http_code}\nResponse Time: %{time_total}s\n" \
+  -s
+echo ""
+
+# Test 6: Login with missing email
+echo "✅ Test 6: Login with missing email"
+echo "----------------------------------"
+curl -X POST "${BASE_URL}/api/users/designer-login" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "password": "password123"
+  }' \
+  -w "\n\nHTTP Status: %{http_code}\nResponse Time: %{time_total}s\n" \
+  -s
+echo ""
+
+# Test 7: Login with missing password
+echo "✅ Test 7: Login with missing password"
+echo "-------------------------------------"
+curl -X POST "${BASE_URL}/api/users/designer-login" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "email": "designer@example.com"
+  }' \
+  -w "\n\nHTTP Status: %{http_code}\nResponse Time: %{time_total}s\n" \
+  -s
+echo ""
+
+# Test 8: Login with empty request body
+echo "✅ Test 8: Login with empty request body"
+echo "---------------------------------------"
+curl -X POST "${BASE_URL}/api/users/designer-login" \
+  -H "Content-Type: application/json" \
+  -d '{}' \
+  -w "\n\nHTTP Status: %{http_code}\nResponse Time: %{time_total}s\n" \
+  -s
+echo ""
+
+# Test 9: Login with user without password set
+echo "✅ Test 9: Login with user without password set"
+echo "----------------------------------------------"
+curl -X POST "${BASE_URL}/api/users/designer-login" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "email": "nopassword@example.com",
+    "password": "password123"
+  }' \
+  -w "\n\nHTTP Status: %{http_code}\nResponse Time: %{time_total}s\n" \
+  -s
+echo ""
+
+echo "🎯 Test Summary:"
+echo "================"
+echo "✅ Test 1: Should return access token and designer data"
+echo "✅ Test 2: Should return invalid email/password error"
+echo "✅ Test 3: Should return invalid email/password error"
+echo "✅ Test 4: Should return access denied error"
+echo "✅ Test 5: Should return profile not approved error"
+echo "✅ Test 6: Should return validation error"
+echo "✅ Test 7: Should return validation error"
+echo "✅ Test 8: Should return validation error"
+echo "✅ Test 9: Should return invalid email/password error"
+echo ""
+echo "📝 Endpoint Details:"
+echo "==================="
+echo "• POST /api/users/designer-login - Designer login with email/password"
+echo ""
+echo "📊 Request Body Parameters:"
+echo "=========================="
+echo "• email (required): Designer's email address"
+echo "• password (required): Designer's password"
+echo ""
+echo "📊 Response Structure (Success):"
+echo "==============================="
+echo "• success: Boolean indicating success"
+echo "• message: Response message"
+echo "• data.userId: User ID"
+echo "• data.designerId: Designer ID"
+echo "• data.is_approved: Approval status"
+echo "• data.accessToken: JWT access token (Bearer format)"
+echo "• data.refreshToken: JWT refresh token"
+echo "• data.user: User information"
+echo "• data.designer: Designer profile information"
+echo ""
+echo "🔒 Authentication Rules:"
+echo "======================="
+echo "• User must have role 'Designer'"
+echo "• User must have a password set"
+echo "• Password must match the stored hash"
+echo "• Designer profile must exist and be approved"
+echo "• Access token expires in 1 day (configurable)"
+echo "• Refresh token expires in 7 days"
+echo ""
+echo "💡 Usage Examples:"
+echo "=================="
+echo "• Basic login: POST /api/users/designer-login"
+echo "• Use accessToken for authenticated requests"
+echo "• Use refreshToken to get new access token"
+echo ""
+echo "📋 Sample Request Body:"
+echo "======================"
+echo '{
+  "email": "designer@example.com",
+  "password": "designer123"
+}'
+echo ""
+echo "📋 Sample Response (Success):"
+echo "============================="
+echo '{
+  "success": true,
+  "message": "Designer login successful",
+  "data": {
+    "userId": "507f1f77bcf86cd799439011",
+    "designerId": "507f1f77bcf86cd799439012",
+    "is_approved": true,
+    "accessToken": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+    "refreshToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+    "user": {
+      "id": "507f1f77bcf86cd799439011",
+      "email": "designer@example.com",
+      "displayName": "John Designer",
+      "role": "Designer",
+      "phoneNumber": "+919876543210"
+    },
+    "designer": {
+      "id": "507f1f77bcf86cd799439012",
+      "shortDescription": "Fashion designer",
+      "about": "Passionate about sustainable fashion",
+      "logoUrl": "https://example.com/logo.jpg",
+      "backGroundImage": "https://example.com/bg.jpg",
+      "pickup_location_name": "Studio_John Designer"
+    }
+  }
+}'

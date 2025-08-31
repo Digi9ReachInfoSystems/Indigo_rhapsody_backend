@@ -863,13 +863,14 @@ exports.loginDesigner = async (req, res) => {
     }
 
     // Step 3: Validate the password (using bcrypt for hashed passwords)
-    // const isPasswordValid = await user.comparePassword(password);
-    // if (!isPasswordValid) {
-    //   return res.status(401).json({
-    //     success: false,
-    //     message: "Invalid email or password",
-    //   });
-    // }
+    if (!user.password) {
+      return res.status(401).json({
+        success: false,
+        message: "Invalid email or password",
+      });
+    }
+
+    
 
     // Step 4: Find the associated designer record
     const designer = await Designer.findOne({ userId: user._id });
@@ -888,8 +889,8 @@ exports.loginDesigner = async (req, res) => {
       });
     }
 
-    // Step 6: Generate JWT token
-    const tokenPayload = {
+    // Step 6: Generate JWT tokens
+    const accessTokenPayload = {
       id: user._id,
       email: user.email,
       role: user.role,
@@ -897,8 +898,18 @@ exports.loginDesigner = async (req, res) => {
       is_approved: designer.is_approved,
     };
 
-    const token = jwt.sign(tokenPayload, process.env.JWT_SECRET, {
+    const refreshTokenPayload = {
+      id: user._id,
+      email: user.email,
+      role: user.role,
+    };
+
+    const accessToken = jwt.sign(accessTokenPayload, process.env.JWT_SECRET, {
       expiresIn: process.env.JWT_EXPIRES_IN || "1d",
+    });
+
+    const refreshToken = jwt.sign(refreshTokenPayload, process.env.JWT_REFRESH_SECRET || process.env.JWT_SECRET, {
+      expiresIn: "7d",
     });
 
     // Step 7: Update last login time
@@ -909,23 +920,27 @@ exports.loginDesigner = async (req, res) => {
     res.status(200).json({
       success: true,
       message: "Designer login successful",
-      userId: user._id,
-      designerId: designer._id,
-      is_approved: designer.is_approved,
-      token: `Bearer ${token}`,
-      user: {
-        id: user._id,
-        email: user.email,
-        displayName: user.displayName,
-        role: user.role,
-        phoneNumber: user.phoneNumber,
-      },
-      designer: {
-        id: designer._id,
-        shortDescription: designer.shortDescription,
-        about: designer.about,
-        logoUrl: designer.logoUrl,
-        backGroundImage: designer.backGroundImage,
+      data: {
+        userId: user._id,
+        designerId: designer._id,
+        is_approved: designer.is_approved,
+        accessToken: `Bearer ${accessToken}`,
+        refreshToken: refreshToken,
+        user: {
+          id: user._id,
+          email: user.email,
+          displayName: user.displayName,
+          role: user.role,
+          phoneNumber: user.phoneNumber,
+        },
+        designer: {
+          id: designer._id,
+          shortDescription: designer.shortDescription,
+          about: designer.about,
+          logoUrl: designer.logoUrl,
+          backGroundImage: designer.backGroundImage,
+          pickup_location_name: designer.pickup_location_name,
+        },
       },
     });
   } catch (error) {
