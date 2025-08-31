@@ -1270,7 +1270,7 @@ exports.getVideosByProductEnhanced = async (req, res) => {
 exports.getVideosByUser = async (req, res) => {
   try {
     const { userId } = req.params;
-    const { limit = 10, page = 1, approved = true, currentUserId } = req.query;
+    const { limit = 10, page = 1, approved, currentUserId } = req.query;
     const skip = (parseInt(page) - 1) * parseInt(limit);
 
     // Validate user ID
@@ -1305,8 +1305,15 @@ exports.getVideosByUser = async (req, res) => {
     const query = {
       userId: userId
     };
-    if (approved === 'true' || approved === true) {
-      query.is_approved = true;
+    
+    // Only apply approval filter if explicitly requested
+    if (approved !== undefined) {
+      if (approved === 'true' || approved === true) {
+        query.is_approved = true;
+      } else if (approved === 'false' || approved === false) {
+        query.is_approved = false;
+      }
+      // If approved is not provided or is null/undefined, don't filter by approval status
     }
 
     const videos = await ContentVideo.find(query)
