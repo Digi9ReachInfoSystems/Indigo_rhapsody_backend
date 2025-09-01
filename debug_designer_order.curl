@@ -1,0 +1,66 @@
+# Debug Designer Order Cancellation
+# This script helps debug the designer order cancellation issue
+
+# Base URL - Update this to match your server URL
+BASE_URL="http://localhost:3000"
+
+# Designer authentication token - Update with a valid designer token
+DESIGNER_TOKEN="your_designer_jwt_token_here"
+
+# Test order ID - Update with a real order ID from your database
+TEST_ORDER_ID="ORD-1234567890"
+
+echo "🔍 Debugging Designer Order Cancellation"
+echo "========================================"
+echo ""
+
+# Test 1: Get cancellable orders to see what's available
+echo "✅ Test 1: Get cancellable orders for designer"
+echo "----------------------------------------------"
+curl -X GET "${BASE_URL}/api/orders/designer/cancellable-orders" \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer ${DESIGNER_TOKEN}" \
+  -w "\n\nHTTP Status: %{http_code}\nResponse Time: %{time_total}s\n" \
+  -s
+echo ""
+
+# Test 2: Try to get a specific order by ID (if you have a real order ID)
+echo "✅ Test 2: Get specific order details"
+echo "------------------------------------"
+curl -X GET "${BASE_URL}/api/orders/order/${TEST_ORDER_ID}" \
+  -H "Content-Type: application/json" \
+  -w "\n\nHTTP Status: %{http_code}\nResponse Time: %{time_total}s\n" \
+  -s
+echo ""
+
+# Test 3: Try to cancel the order
+echo "✅ Test 3: Attempt to cancel order"
+echo "---------------------------------"
+curl -X POST "${BASE_URL}/api/orders/designer/cancel/${TEST_ORDER_ID}" \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer ${DESIGNER_TOKEN}" \
+  -d '{
+    "reason": "Debug test - Product out of stock"
+  }' \
+  -w "\n\nHTTP Status: %{http_code}\nResponse Time: %{time_total}s\n" \
+  -s
+echo ""
+
+echo "📝 Debug Instructions:"
+echo "====================="
+echo "1. Check the server logs for the console.log messages we added"
+echo "2. Verify that the order has products with designerRef field"
+echo "3. Ensure the designerId matches the designerRef in the products"
+echo "4. Check if the order status is 'Order Placed' or 'Processing'"
+echo "5. Verify that payment status is not 'Completed'"
+echo ""
+
+echo "🔧 Common Issues to Check:"
+echo "========================="
+echo "• Products in the order don't have designerRef field"
+echo "• designerRef is null or undefined"
+echo "• designerRef is not a valid ObjectId"
+echo "• Order status is not cancellable"
+echo "• Payment status is 'Completed'"
+echo "• Designer ID doesn't match any products in the order"
+echo ""

@@ -1244,105 +1244,102 @@ exports.getCancellationReasons = async (req, res) => {
 };
 
 // Cancel order by designer (for designer dashboard)
+// Cancel order by designer (for designer dashboard)
 exports.cancelOrderByDesigner = async (req, res) => {
   try {
     const { orderId } = req.params;
     const { reason } = req.body;
-    const designerId = req.user._id; // Get designer ID from authenticated user
 
-    // Validate order ID
+    // ---- Auth / inputs ----
     if (!orderId) {
-      return res.status(400).json({
-        success: false,
-        message: "Order ID is required"
-      });
+      return res.status(400).json({ success: false, message: "Order ID is required" });
     }
-
-    // Validate reason
     if (!reason) {
-      return res.status(400).json({
-        success: false,
-        message: "Cancellation reason is required"
-      });
+      return res.status(400).json({ success: false, message: "Cancellation reason is required" });
     }
+ 
+    const designerId = req.user._id;
 
-    // Find the order by orderId (not MongoDB _id)
-    const order = await Order.findOne({ orderId: orderId })
+    // ---- Load order with product->designer mapping ----
+    const order = await Order.findOne({ orderId })
       .populate('userId', 'displayName email phoneNumber')
       .populate('products.productId', 'productName sku stock designerRef');
 
     if (!order) {
-      return res.status(404).json({
-        success: false,
-        message: "Order not found"
-      });
+      return res.status(404).json({ success: false, message: "Order not found" });
     }
 
-    // Check if designer has products in this order
-    const designerProducts = order.products.filter(product => 
-      product.designerRef && product.designerRef.toString() === designerId.toString()
-    );
+    // ---- Identify designer's products correctly ----
+    // Note: designerRef is on productId, not on the order line item itself
+    const designerProducts = (order.products || []).filter(p => {
+      const dRef = p?.productId?.designerRef; // ObjectId or String
+      return dRef && designerId && String(dRef) === String(designerId);
+    });
 
-    if (designerProducts.length === 0) {
-      return res.status(403).json({
-        success: false,
-        message: "You can only cancel orders that contain your products"
-      });
-    }
+    // Debug logs
+    console.log('Order found:', {
+      orderId: order.orderId,
+      totalProducts: order.products?.length || 0,
+      designerId: String(designerId),
+      designerProductsCount: designerProducts.length
+    });
 
-    // Check if order can be cancelled
+    
+
+    // ---- Status & payment checks ----
     const cancellableStatuses = ["Order Placed", "Processing"];
     if (!cancellableStatuses.includes(order.status)) {
       return res.status(400).json({
         success: false,
-        message: `Order cannot be cancelled in current status: ${order.status}. Only orders with status 'Order Placed' or 'Processing' can be cancelled.`
+        message: `Order cannot be cancelled in current status: ${order.status}. Only 'Order Placed' or 'Processing' can be cancelled.`
       });
     }
 
-    // Check if payment has been processed
     if (order.paymentStatus === "Completed") {
       return res.status(400).json({
         success: false,
-        message: "Order with completed payment cannot be cancelled. Please contact admin for refund processing."
+        message: "Order with completed payment cannot be cancelled by designer. Please contact admin for refund processing."
       });
     }
 
-    // Update order status to cancelled
+    // ---- Update order ----
+    // NOTE: This cancels the entire order if any of the designer's products are present.
+    // If you want *partial* cancellation, see the comment near the end.
     const updateData = {
       status: "Cancelled",
       "statusTimestamps.cancelled": new Date(),
-      notes: reason ? `Cancelled by designer: ${reason}` : "Order cancelled by designer"
+      notes: reason ? `Cancelled by designer: ${reason}` : "Order cancelled by designer",
+      cancellationReason: reason,
+      cancelledBy: "designer",
+      cancelledByDesigner: designerId
     };
 
-    // Add cancellation details
-    if (reason) {
-      updateData.cancellationReason = reason;
-    }
-    updateData.cancelledBy = "designer";
-    updateData.cancelledByDesigner = designerId;
-
     const updatedOrder = await Order.findOneAndUpdate(
-      { orderId: orderId },
+      { orderId },
       updateData,
       { new: true }
     ).populate('userId', 'displayName email phoneNumber');
 
-    // Restore stock for designer's products only
-    for (const product of designerProducts) {
+    // ---- Restore stock for the designer's items only ----
+    for (const line of designerProducts) {
       try {
-        await Product.findByIdAndUpdate(
-          product.productId,
-          { $inc: { stock: product.quantity } }
-        );
-      } catch (error) {
-        console.error(`Error restoring stock for product ${product.productId}:`, error);
+        const pid = line?.productId?._id || line?.productId; // handle populated/unpopulated
+        const qty = Number(line?.quantity) || 0;
+        if (pid && qty > 0) {
+          await Product.findByIdAndUpdate(pid, { $inc: { stock: qty } });
+          console.log(`Stock restored for product ${pid}: +${qty}`);
+        } else {
+          console.warn('Skipping stock restore; invalid product line:', { pid, qty });
+        }
+      } catch (e) {
+        console.error('Error restoring stock for line:', line?._id, e);
       }
     }
 
-    // Send notification to user
+    // ---- Notify user (best-effort) ----
     try {
       const notificationData = {
-        userId: order.userId._id,
+        userId: order.userId?._id,
         title: "Order Cancelled by Designer",
         message: `Your order #${order.orderId} has been cancelled by the designer.`,
         type: "order_cancelled_by_designer",
@@ -1353,25 +1350,23 @@ exports.cancelOrderByDesigner = async (req, res) => {
           cancelledBy: "designer"
         }
       };
-
       await createNotification(notificationData);
       await sendFcmNotification(notificationData);
-    } catch (error) {
-      console.error("Error sending cancellation notification:", error);
+    } catch (e) {
+      console.error("Error sending cancellation notification:", e);
     }
 
-    // Send email notification to user
+    // ---- Email user (best-effort) ----
     try {
       const mailOptions = {
         from: "orders@indigorhapsody.com",
-        to: order.userId.email,
+        to: order.userId?.email,
         subject: `Order Cancelled by Designer - #${order.orderId}`,
         html: `
           <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
             <h2 style="color: #d32f2f;">Order Cancelled by Designer</h2>
-            <p>Dear ${order.userId.displayName},</p>
+            <p>Dear ${order.userId?.displayName || 'Customer'},</p>
             <p>Your order has been cancelled by the designer.</p>
-            
             <div style="background-color: #f5f5f5; padding: 15px; border-radius: 5px; margin: 20px 0;">
               <h3>Order Details:</h3>
               <p><strong>Order ID:</strong> ${order.orderId}</p>
@@ -1380,7 +1375,6 @@ exports.cancelOrderByDesigner = async (req, res) => {
               <p><strong>Cancellation Reason:</strong> ${reason}</p>
               <p><strong>Cancelled By:</strong> Designer</p>
             </div>
-
             <div style="background-color: #e8f5e8; padding: 15px; border-radius: 5px; margin: 20px 0;">
               <h3>Refund Information:</h3>
               ${order.paymentStatus === "Completed" 
@@ -1388,19 +1382,19 @@ exports.cancelOrderByDesigner = async (req, res) => {
                 : "<p>No payment was processed, so no refund is required.</p>"
               }
             </div>
-
             <p>If you have any questions, please contact our support team.</p>
             <p>Thank you for choosing Indigo Rhapsody.</p>
           </div>
         `
       };
-
-      await transporter.sendMail(mailOptions);
-    } catch (error) {
-      console.error("Error sending cancellation email:", error);
+      if (order.userId?.email) {
+        await transporter.sendMail(mailOptions);
+      }
+    } catch (e) {
+      console.error("Error sending cancellation email:", e);
     }
 
-    // Send notification to admin
+    // ---- Notify admin (log for now) ----
     try {
       const adminNotificationData = {
         title: "Order Cancelled by Designer",
@@ -1408,17 +1402,14 @@ exports.cancelOrderByDesigner = async (req, res) => {
         type: "order_cancelled_by_designer_admin",
         data: {
           orderId: order.orderId,
-          designerId: designerId,
+          designerId: String(designerId),
           cancellationReason: reason,
-          customerEmail: order.userId.email
+          customerEmail: order.userId?.email
         }
       };
-
-      // You can implement admin notification logic here
-      // For now, we'll just log it
       console.log("Admin notification:", adminNotificationData);
-    } catch (error) {
-      console.error("Error sending admin notification:", error);
+    } catch (e) {
+      console.error("Error sending admin notification:", e);
     }
 
     return res.status(200).json({
@@ -1427,21 +1418,20 @@ exports.cancelOrderByDesigner = async (req, res) => {
       data: {
         orderId: updatedOrder.orderId,
         status: updatedOrder.status,
-        cancelledAt: updatedOrder.statusTimestamps.cancelled,
+        cancelledAt: updatedOrder.statusTimestamps?.cancelled,
         cancellationReason: reason,
         cancelledBy: "designer",
-        designerId: designerId,
+        designerId: String(designerId),
         refundRequired: order.paymentStatus === "Completed",
         designerProductsCancelled: designerProducts.length
       }
     });
-
   } catch (error) {
     console.error("Error cancelling order by designer:", error);
     return res.status(500).json({
       success: false,
       message: "Error cancelling order",
-      error: error.message
+      error: error?.message || String(error)
     });
   }
 };
@@ -1470,7 +1460,9 @@ exports.getCancellableOrdersByDesigner = async (req, res) => {
     // Filter to only show designer's products in each order
     const filteredOrders = orders.map(order => {
       const designerProducts = order.products.filter(product => 
-        product.designerRef && product.designerRef.toString() === designerId.toString()
+        product.designerRef && 
+        product.designerRef.toString && 
+        product.designerRef.toString() === designerId.toString()
       );
       
       return {
