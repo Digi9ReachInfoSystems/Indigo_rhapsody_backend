@@ -34,7 +34,7 @@ echo ""
 # Test 3: Cancel order by designer (valid order)
 echo "✅ Test 3: Cancel order by designer (valid order)"
 echo "------------------------------------------------"
-curl -X POST "${BASE_URL}/api/orders/designer/cancel/507f1f77bcf86cd799439011" \
+curl -X POST "${BASE_URL}/api/orders/designer/cancel/ORD-1234567890" \
   -H "Content-Type: application/json" \
   -H "Authorization: Bearer ${DESIGNER_TOKEN}" \
   -d '{
@@ -47,7 +47,7 @@ echo ""
 # Test 4: Cancel order without reason
 echo "✅ Test 4: Cancel order without reason"
 echo "-------------------------------------"
-curl -X POST "${BASE_URL}/api/orders/designer/cancel/507f1f77bcf86cd799439011" \
+curl -X POST "${BASE_URL}/api/orders/designer/cancel/ORD-1234567890" \
   -H "Content-Type: application/json" \
   -H "Authorization: Bearer ${DESIGNER_TOKEN}" \
   -d '{}' \
@@ -58,7 +58,7 @@ echo ""
 # Test 5: Cancel order with empty reason
 echo "✅ Test 5: Cancel order with empty reason"
 echo "----------------------------------------"
-curl -X POST "${BASE_URL}/api/orders/designer/cancel/507f1f77bcf86cd799439011" \
+curl -X POST "${BASE_URL}/api/orders/designer/cancel/ORD-1234567890" \
   -H "Content-Type: application/json" \
   -H "Authorization: Bearer ${DESIGNER_TOKEN}" \
   -d '{
@@ -71,7 +71,7 @@ echo ""
 # Test 6: Cancel non-existent order
 echo "✅ Test 6: Cancel non-existent order"
 echo "-----------------------------------"
-curl -X POST "${BASE_URL}/api/orders/designer/cancel/507f1f77bcf86cd799439999" \
+curl -X POST "${BASE_URL}/api/orders/designer/cancel/ORD-9999999999" \
   -H "Content-Type: application/json" \
   -H "Authorization: Bearer ${DESIGNER_TOKEN}" \
   -d '{
@@ -84,7 +84,7 @@ echo ""
 # Test 7: Cancel order without authentication
 echo "✅ Test 7: Cancel order without authentication"
 echo "---------------------------------------------"
-curl -X POST "${BASE_URL}/api/orders/designer/cancel/507f1f77bcf86cd799439011" \
+curl -X POST "${BASE_URL}/api/orders/designer/cancel/ORD-1234567890" \
   -H "Content-Type: application/json" \
   -d '{
     "reason": "Product out of stock"
@@ -96,7 +96,7 @@ echo ""
 # Test 8: Cancel order with invalid token
 echo "✅ Test 8: Cancel order with invalid token"
 echo "-----------------------------------------"
-curl -X POST "${BASE_URL}/api/orders/designer/cancel/507f1f77bcf86cd799439011" \
+curl -X POST "${BASE_URL}/api/orders/designer/cancel/ORD-1234567890" \
   -H "Content-Type: application/json" \
   -H "Authorization: Bearer invalid_token" \
   -d '{
@@ -109,7 +109,7 @@ echo ""
 # Test 9: Cancel order that doesn't belong to designer
 echo "✅ Test 9: Cancel order that doesn't belong to designer"
 echo "------------------------------------------------------"
-curl -X POST "${BASE_URL}/api/orders/designer/cancel/507f1f77bcf86cd799439012" \
+curl -X POST "${BASE_URL}/api/orders/designer/cancel/ORD-9876543210" \
   -H "Content-Type: application/json" \
   -H "Authorization: Bearer ${DESIGNER_TOKEN}" \
   -d '{
@@ -122,7 +122,7 @@ echo ""
 # Test 10: Cancel order with different reasons
 echo "✅ Test 10: Cancel order with different reasons"
 echo "----------------------------------------------"
-curl -X POST "${BASE_URL}/api/orders/designer/cancel/507f1f77bcf86cd799439011" \
+curl -X POST "${BASE_URL}/api/orders/designer/cancel/ORD-1234567890" \
   -H "Content-Type: application/json" \
   -H "Authorization: Bearer ${DESIGNER_TOKEN}" \
   -d '{
@@ -165,7 +165,7 @@ echo ""
 
 echo "📊 URL Parameters:"
 echo "=================="
-echo "• orderId (required): Valid MongoDB ObjectId of the order"
+echo "• orderId (required): Valid order ID (e.g., ORD-1234567890)"
 echo ""
 
 echo "📊 Query Parameters (for cancellable orders):"
@@ -223,14 +223,14 @@ echo ""
 echo "💡 Usage Examples:"
 echo "=================="
 echo "• Get cancellable orders: GET /api/orders/designer/cancellable-orders"
-echo "• Cancel order: POST /api/orders/designer/cancel/507f1f77bcf86cd799439011"
+echo "• Cancel order: POST /api/orders/designer/cancel/ORD-1234567890"
 echo "• Get reasons: GET /api/orders/cancellation-reasons"
 echo ""
 
 echo "📋 Sample Request URLs:"
 echo "======================"
 echo "• Get cancellable orders: ${BASE_URL}/api/orders/designer/cancellable-orders"
-echo "• Cancel order: ${BASE_URL}/api/orders/designer/cancel/507f1f77bcf86cd799439011"
+echo "• Cancel order: ${BASE_URL}/api/orders/designer/cancel/ORD-1234567890"
 echo "• Get reasons: ${BASE_URL}/api/orders/cancellation-reasons"
 echo ""
 
