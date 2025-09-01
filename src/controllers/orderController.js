@@ -1244,8 +1244,7 @@ exports.getCancellationReasons = async (req, res) => {
 };
 
 // Cancel order by designer (for designer dashboard)
-exports.
-cancelOrderByDesigner = async (req, res) => {
+exports.cancelOrderByDesigner = async (req, res) => {
   try {
     const { orderId } = req.params;
     const { reason } = req.body;
@@ -1267,8 +1266,8 @@ cancelOrderByDesigner = async (req, res) => {
       });
     }
 
-    // Find the order
-    const order = await Order.findById(orderId)
+    // Find the order by orderId (not MongoDB _id)
+    const order = await Order.findOne({ orderId: orderId })
       .populate('userId', 'displayName email phoneNumber')
       .populate('products.productId', 'productName sku stock designerRef');
 
@@ -1322,8 +1321,8 @@ cancelOrderByDesigner = async (req, res) => {
     updateData.cancelledBy = "designer";
     updateData.cancelledByDesigner = designerId;
 
-    const updatedOrder = await Order.findByIdAndUpdate(
-      orderId,
+    const updatedOrder = await Order.findOneAndUpdate(
+      { orderId: orderId },
       updateData,
       { new: true }
     ).populate('userId', 'displayName email phoneNumber');
