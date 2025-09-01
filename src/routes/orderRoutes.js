@@ -87,4 +87,19 @@ router.get(
   orderController.getCancellationReasons
 );
 
+router.post(
+  "/designer/cancel/:orderId",
+  authMiddleware,
+  roleMiddleware(["Designer"]),
+  orderController.cancelOrderByDesigner
+);
+
+// Get cancellable orders for designer
+router.get(
+  "/designer/cancellable-orders",
+  authMiddleware,
+  roleMiddleware(["Designer"]),
+  orderController.getCancellableOrdersByDesigner
+);
+
 module.exports = router;

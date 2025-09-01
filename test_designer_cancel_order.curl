@@ -1,0 +1,328 @@
+# Test Designer Order Cancellation Endpoints
+# This script tests the designer-specific order cancellation functionality
+
+# Base URL - Update this to match your server URL
+BASE_URL="http://localhost:3000"
+
+# Designer authentication token - Update with a valid designer token
+DESIGNER_TOKEN="your_designer_jwt_token_here"
+
+echo "🧪 Testing Designer Order Cancellation Endpoints"
+echo "================================================"
+echo ""
+
+# Test 1: Get cancellable orders for designer
+echo "✅ Test 1: Get cancellable orders for designer"
+echo "----------------------------------------------"
+curl -X GET "${BASE_URL}/api/orders/designer/cancellable-orders" \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer ${DESIGNER_TOKEN}" \
+  -w "\n\nHTTP Status: %{http_code}\nResponse Time: %{time_total}s\n" \
+  -s
+echo ""
+
+# Test 2: Get cancellable orders with pagination
+echo "✅ Test 2: Get cancellable orders with pagination"
+echo "------------------------------------------------"
+curl -X GET "${BASE_URL}/api/orders/designer/cancellable-orders?page=1&limit=5" \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer ${DESIGNER_TOKEN}" \
+  -w "\n\nHTTP Status: %{http_code}\nResponse Time: %{time_total}s\n" \
+  -s
+echo ""
+
+# Test 3: Cancel order by designer (valid order)
+echo "✅ Test 3: Cancel order by designer (valid order)"
+echo "------------------------------------------------"
+curl -X POST "${BASE_URL}/api/orders/designer/cancel/507f1f77bcf86cd799439011" \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer ${DESIGNER_TOKEN}" \
+  -d '{
+    "reason": "Product out of stock"
+  }' \
+  -w "\n\nHTTP Status: %{http_code}\nResponse Time: %{time_total}s\n" \
+  -s
+echo ""
+
+# Test 4: Cancel order without reason
+echo "✅ Test 4: Cancel order without reason"
+echo "-------------------------------------"
+curl -X POST "${BASE_URL}/api/orders/designer/cancel/507f1f77bcf86cd799439011" \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer ${DESIGNER_TOKEN}" \
+  -d '{}' \
+  -w "\n\nHTTP Status: %{http_code}\nResponse Time: %{time_total}s\n" \
+  -s
+echo ""
+
+# Test 5: Cancel order with empty reason
+echo "✅ Test 5: Cancel order with empty reason"
+echo "----------------------------------------"
+curl -X POST "${BASE_URL}/api/orders/designer/cancel/507f1f77bcf86cd799439011" \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer ${DESIGNER_TOKEN}" \
+  -d '{
+    "reason": ""
+  }' \
+  -w "\n\nHTTP Status: %{http_code}\nResponse Time: %{time_total}s\n" \
+  -s
+echo ""
+
+# Test 6: Cancel non-existent order
+echo "✅ Test 6: Cancel non-existent order"
+echo "-----------------------------------"
+curl -X POST "${BASE_URL}/api/orders/designer/cancel/507f1f77bcf86cd799439999" \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer ${DESIGNER_TOKEN}" \
+  -d '{
+    "reason": "Product out of stock"
+  }' \
+  -w "\n\nHTTP Status: %{http_code}\nResponse Time: %{time_total}s\n" \
+  -s
+echo ""
+
+# Test 7: Cancel order without authentication
+echo "✅ Test 7: Cancel order without authentication"
+echo "---------------------------------------------"
+curl -X POST "${BASE_URL}/api/orders/designer/cancel/507f1f77bcf86cd799439011" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "reason": "Product out of stock"
+  }' \
+  -w "\n\nHTTP Status: %{http_code}\nResponse Time: %{time_total}s\n" \
+  -s
+echo ""
+
+# Test 8: Cancel order with invalid token
+echo "✅ Test 8: Cancel order with invalid token"
+echo "-----------------------------------------"
+curl -X POST "${BASE_URL}/api/orders/designer/cancel/507f1f77bcf86cd799439011" \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer invalid_token" \
+  -d '{
+    "reason": "Product out of stock"
+  }' \
+  -w "\n\nHTTP Status: %{http_code}\nResponse Time: %{time_total}s\n" \
+  -s
+echo ""
+
+# Test 9: Cancel order that doesn't belong to designer
+echo "✅ Test 9: Cancel order that doesn't belong to designer"
+echo "------------------------------------------------------"
+curl -X POST "${BASE_URL}/api/orders/designer/cancel/507f1f77bcf86cd799439012" \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer ${DESIGNER_TOKEN}" \
+  -d '{
+    "reason": "Product out of stock"
+  }' \
+  -w "\n\nHTTP Status: %{http_code}\nResponse Time: %{time_total}s\n" \
+  -s
+echo ""
+
+# Test 10: Cancel order with different reasons
+echo "✅ Test 10: Cancel order with different reasons"
+echo "----------------------------------------------"
+curl -X POST "${BASE_URL}/api/orders/designer/cancel/507f1f77bcf86cd799439011" \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer ${DESIGNER_TOKEN}" \
+  -d '{
+    "reason": "Changed my mind"
+  }' \
+  -w "\n\nHTTP Status: %{http_code}\nResponse Time: %{time_total}s\n" \
+  -s
+echo ""
+
+# Test 11: Get cancellation reasons
+echo "✅ Test 11: Get cancellation reasons"
+echo "-----------------------------------"
+curl -X GET "${BASE_URL}/api/orders/cancellation-reasons" \
+  -H "Content-Type: application/json" \
+  -w "\n\nHTTP Status: %{http_code}\nResponse Time: %{time_total}s\n" \
+  -s
+echo ""
+
+echo "🎯 Test Summary:"
+echo "================"
+echo "✅ Test 1: Should get cancellable orders for designer"
+echo "✅ Test 2: Should get cancellable orders with pagination"
+echo "✅ Test 3: Should cancel order by designer (valid order)"
+echo "✅ Test 4: Should return error for missing reason"
+echo "✅ Test 5: Should return error for empty reason"
+echo "✅ Test 6: Should return error for non-existent order"
+echo "✅ Test 7: Should return error for missing authentication"
+echo "✅ Test 8: Should return error for invalid token"
+echo "✅ Test 9: Should return error for order not belonging to designer"
+echo "✅ Test 10: Should cancel order with different reasons"
+echo "✅ Test 11: Should get cancellation reasons list"
+echo ""
+
+echo "📝 Endpoint Details:"
+echo "==================="
+echo "• GET /api/orders/designer/cancellable-orders - Get cancellable orders for designer"
+echo "• POST /api/orders/designer/cancel/:orderId - Cancel order by designer"
+echo "• GET /api/orders/cancellation-reasons - Get cancellation reasons"
+echo ""
+
+echo "📊 URL Parameters:"
+echo "=================="
+echo "• orderId (required): Valid MongoDB ObjectId of the order"
+echo ""
+
+echo "📊 Query Parameters (for cancellable orders):"
+echo "============================================="
+echo "• page (optional): Page number, defaults to 1"
+echo "• limit (optional): Number of orders per page, defaults to 10"
+echo ""
+
+echo "📊 Request Body (for cancel order):"
+echo "==================================="
+echo "• reason (required): Cancellation reason"
+echo ""
+
+echo "📊 Response Structure (Success - Cancel Order):"
+echo "=============================================="
+echo "• success: Boolean indicating success"
+echo "• message: Success message"
+echo "• data: Order cancellation details"
+echo "  - orderId: Order ID"
+echo "  - status: Updated order status"
+echo "  - cancelledAt: Cancellation timestamp"
+echo "  - cancellationReason: Reason for cancellation"
+echo "  - cancelledBy: Who cancelled (designer)"
+echo "  - designerId: Designer ID"
+echo "  - refundRequired: Whether refund is required"
+echo "  - designerProductsCancelled: Number of designer products cancelled"
+echo ""
+
+echo "📊 Response Structure (Success - Get Cancellable Orders):"
+echo "========================================================"
+echo "• success: Boolean indicating success"
+echo "• message: Success message"
+echo "• data: Orders data"
+echo "  - orders: Array of cancellable orders"
+echo "  - pagination: Pagination information"
+echo "    - currentPage: Current page number"
+echo "    - totalPages: Total number of pages"
+echo "    - totalOrders: Total number of orders"
+echo "    - hasNextPage: Whether there's a next page"
+echo "    - hasPrevPage: Whether there's a previous page"
+echo ""
+
+echo "🔒 Validation Rules:"
+echo "==================="
+echo "• Designer must be authenticated"
+echo "• Designer must have Designer role"
+echo "• Order ID must be provided"
+echo "• Order must exist"
+echo "• Order must contain designer's products"
+echo "• Order status must be 'Order Placed' or 'Processing'"
+echo "• Payment status must not be 'Completed'"
+echo "• Cancellation reason is required"
+echo ""
+
+echo "💡 Usage Examples:"
+echo "=================="
+echo "• Get cancellable orders: GET /api/orders/designer/cancellable-orders"
+echo "• Cancel order: POST /api/orders/designer/cancel/507f1f77bcf86cd799439011"
+echo "• Get reasons: GET /api/orders/cancellation-reasons"
+echo ""
+
+echo "📋 Sample Request URLs:"
+echo "======================"
+echo "• Get cancellable orders: ${BASE_URL}/api/orders/designer/cancellable-orders"
+echo "• Cancel order: ${BASE_URL}/api/orders/designer/cancel/507f1f77bcf86cd799439011"
+echo "• Get reasons: ${BASE_URL}/api/orders/cancellation-reasons"
+echo ""
+
+echo "📋 Sample Request Body (Cancel Order):"
+echo "====================================="
+echo '{
+  "reason": "Product out of stock"
+}'
+echo ""
+
+echo "📋 Sample Response (Success - Cancel Order):"
+echo "==========================================="
+echo '{
+  "success": true,
+  "message": "Order cancelled successfully by designer",
+  "data": {
+    "orderId": "ORD123456",
+    "status": "Cancelled",
+    "cancelledAt": "2024-01-15T10:30:00.000Z",
+    "cancellationReason": "Product out of stock",
+    "cancelledBy": "designer",
+    "designerId": "507f1f77bcf86cd799439011",
+    "refundRequired": false,
+    "designerProductsCancelled": 2
+  }
+}'
+echo ""
+
+echo "📋 Sample Response (Success - Get Cancellable Orders):"
+echo "===================================================="
+echo '{
+  "success": true,
+  "message": "Cancellable orders retrieved successfully",
+  "data": {
+    "orders": [
+      {
+        "_id": "507f1f77bcf86cd799439011",
+        "orderId": "ORD123456",
+        "status": "Order Placed",
+        "amount": 1500,
+        "userId": {
+          "_id": "507f1f77bcf86cd799439012",
+          "displayName": "John Doe",
+          "email": "john@example.com"
+        },
+        "products": [
+          {
+            "productId": {
+              "_id": "507f1f77bcf86cd799439013",
+              "productName": "Designer Dress",
+              "sku": "DD001"
+            },
+            "quantity": 1,
+            "price": 1500,
+            "designerRef": "507f1f77bcf86cd799439011"
+          }
+        ],
+        "totalDesignerProducts": 1,
+        "totalOrderProducts": 1
+      }
+    ],
+    "pagination": {
+      "currentPage": 1,
+      "totalPages": 3,
+      "totalOrders": 25,
+      "hasNextPage": true,
+      "hasPrevPage": false
+    }
+  }
+}'
+echo ""
+
+echo "📋 Sample Response (Error - Order Not Found):"
+echo "============================================"
+echo '{
+  "success": false,
+  "message": "Order not found"
+}'
+echo ""
+
+echo "📋 Sample Response (Error - No Designer Products):"
+echo "================================================="
+echo '{
+  "success": false,
+  "message": "You can only cancel orders that contain your products"
+}'
+echo ""
+
+echo "📋 Sample Response (Error - Missing Reason):"
+echo "==========================================="
+echo '{
+  "success": false,
+  "message": "Cancellation reason is required"
+}'
+echo ""

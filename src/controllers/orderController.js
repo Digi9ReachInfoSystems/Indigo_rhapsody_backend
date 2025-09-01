@@ -1242,3 +1242,274 @@ exports.getCancellationReasons = async (req, res) => {
     });
   }
 };
+
+// Cancel order by designer (for designer dashboard)
+exports.
+cancelOrderByDesigner = async (req, res) => {
+  try {
+    const { orderId } = req.params;
+    const { reason } = req.body;
+    const designerId = req.user._id; // Get designer ID from authenticated user
+
+    // Validate order ID
+    if (!orderId) {
+      return res.status(400).json({
+        success: false,
+        message: "Order ID is required"
+      });
+    }
+
+    // Validate reason
+    if (!reason) {
+      return res.status(400).json({
+        success: false,
+        message: "Cancellation reason is required"
+      });
+    }
+
+    // Find the order
+    const order = await Order.findById(orderId)
+      .populate('userId', 'displayName email phoneNumber')
+      .populate('products.productId', 'productName sku stock designerRef');
+
+    if (!order) {
+      return res.status(404).json({
+        success: false,
+        message: "Order not found"
+      });
+    }
+
+    // Check if designer has products in this order
+    const designerProducts = order.products.filter(product => 
+      product.designerRef && product.designerRef.toString() === designerId.toString()
+    );
+
+    if (designerProducts.length === 0) {
+      return res.status(403).json({
+        success: false,
+        message: "You can only cancel orders that contain your products"
+      });
+    }
+
+    // Check if order can be cancelled
+    const cancellableStatuses = ["Order Placed", "Processing"];
+    if (!cancellableStatuses.includes(order.status)) {
+      return res.status(400).json({
+        success: false,
+        message: `Order cannot be cancelled in current status: ${order.status}. Only orders with status 'Order Placed' or 'Processing' can be cancelled.`
+      });
+    }
+
+    // Check if payment has been processed
+    if (order.paymentStatus === "Completed") {
+      return res.status(400).json({
+        success: false,
+        message: "Order with completed payment cannot be cancelled. Please contact admin for refund processing."
+      });
+    }
+
+    // Update order status to cancelled
+    const updateData = {
+      status: "Cancelled",
+      "statusTimestamps.cancelled": new Date(),
+      notes: reason ? `Cancelled by designer: ${reason}` : "Order cancelled by designer"
+    };
+
+    // Add cancellation details
+    if (reason) {
+      updateData.cancellationReason = reason;
+    }
+    updateData.cancelledBy = "designer";
+    updateData.cancelledByDesigner = designerId;
+
+    const updatedOrder = await Order.findByIdAndUpdate(
+      orderId,
+      updateData,
+      { new: true }
+    ).populate('userId', 'displayName email phoneNumber');
+
+    // Restore stock for designer's products only
+    for (const product of designerProducts) {
+      try {
+        await Product.findByIdAndUpdate(
+          product.productId,
+          { $inc: { stock: product.quantity } }
+        );
+      } catch (error) {
+        console.error(`Error restoring stock for product ${product.productId}:`, error);
+      }
+    }
+
+    // Send notification to user
+    try {
+      const notificationData = {
+        userId: order.userId._id,
+        title: "Order Cancelled by Designer",
+        message: `Your order #${order.orderId} has been cancelled by the designer.`,
+        type: "order_cancelled_by_designer",
+        data: {
+          orderId: order.orderId,
+          orderAmount: order.amount,
+          cancellationReason: reason,
+          cancelledBy: "designer"
+        }
+      };
+
+      await createNotification(notificationData);
+      await sendFcmNotification(notificationData);
+    } catch (error) {
+      console.error("Error sending cancellation notification:", error);
+    }
+
+    // Send email notification to user
+    try {
+      const mailOptions = {
+        from: "orders@indigorhapsody.com",
+        to: order.userId.email,
+        subject: `Order Cancelled by Designer - #${order.orderId}`,
+        html: `
+          <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+            <h2 style="color: #d32f2f;">Order Cancelled by Designer</h2>
+            <p>Dear ${order.userId.displayName},</p>
+            <p>Your order has been cancelled by the designer.</p>
+            
+            <div style="background-color: #f5f5f5; padding: 15px; border-radius: 5px; margin: 20px 0;">
+              <h3>Order Details:</h3>
+              <p><strong>Order ID:</strong> ${order.orderId}</p>
+              <p><strong>Order Date:</strong> ${new Date(order.createdDate).toLocaleDateString()}</p>
+              <p><strong>Total Amount:</strong> ₹${order.amount}</p>
+              <p><strong>Cancellation Reason:</strong> ${reason}</p>
+              <p><strong>Cancelled By:</strong> Designer</p>
+            </div>
+
+            <div style="background-color: #e8f5e8; padding: 15px; border-radius: 5px; margin: 20px 0;">
+              <h3>Refund Information:</h3>
+              ${order.paymentStatus === "Completed" 
+                ? "<p>Since payment was completed, a refund will be processed within 5-7 business days.</p>"
+                : "<p>No payment was processed, so no refund is required.</p>"
+              }
+            </div>
+
+            <p>If you have any questions, please contact our support team.</p>
+            <p>Thank you for choosing Indigo Rhapsody.</p>
+          </div>
+        `
+      };
+
+      await transporter.sendMail(mailOptions);
+    } catch (error) {
+      console.error("Error sending cancellation email:", error);
+    }
+
+    // Send notification to admin
+    try {
+      const adminNotificationData = {
+        title: "Order Cancelled by Designer",
+        message: `Order #${order.orderId} has been cancelled by designer.`,
+        type: "order_cancelled_by_designer_admin",
+        data: {
+          orderId: order.orderId,
+          designerId: designerId,
+          cancellationReason: reason,
+          customerEmail: order.userId.email
+        }
+      };
+
+      // You can implement admin notification logic here
+      // For now, we'll just log it
+      console.log("Admin notification:", adminNotificationData);
+    } catch (error) {
+      console.error("Error sending admin notification:", error);
+    }
+
+    return res.status(200).json({
+      success: true,
+      message: "Order cancelled successfully by designer",
+      data: {
+        orderId: updatedOrder.orderId,
+        status: updatedOrder.status,
+        cancelledAt: updatedOrder.statusTimestamps.cancelled,
+        cancellationReason: reason,
+        cancelledBy: "designer",
+        designerId: designerId,
+        refundRequired: order.paymentStatus === "Completed",
+        designerProductsCancelled: designerProducts.length
+      }
+    });
+
+  } catch (error) {
+    console.error("Error cancelling order by designer:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Error cancelling order",
+      error: error.message
+    });
+  }
+};
+
+// Get orders that can be cancelled by designer
+exports.getCancellableOrdersByDesigner = async (req, res) => {
+  try {
+    const designerId = req.user._id;
+    const { page = 1, limit = 10 } = req.query;
+    const skip = (parseInt(page) - 1) * parseInt(limit);
+
+    // Find orders that contain designer's products and are in cancellable status
+    const cancellableStatuses = ["Order Placed", "Processing"];
+    
+    const orders = await Order.find({
+      "products.designerRef": designerId,
+      status: { $in: cancellableStatuses },
+      paymentStatus: { $ne: "Completed" } // Exclude orders with completed payment
+    })
+    .populate('userId', 'displayName email phoneNumber')
+    .populate('products.productId', 'productName sku stock designerRef')
+    .sort({ createdDate: -1 })
+    .skip(skip)
+    .limit(parseInt(limit));
+
+    // Filter to only show designer's products in each order
+    const filteredOrders = orders.map(order => {
+      const designerProducts = order.products.filter(product => 
+        product.designerRef && product.designerRef.toString() === designerId.toString()
+      );
+      
+      return {
+        ...order.toObject(),
+        products: designerProducts,
+        totalDesignerProducts: designerProducts.length,
+        totalOrderProducts: order.products.length
+      };
+    });
+
+    // Get total count
+    const totalOrders = await Order.countDocuments({
+      "products.designerRef": designerId,
+      status: { $in: cancellableStatuses },
+      paymentStatus: { $ne: "Completed" }
+    });
+
+    return res.status(200).json({
+      success: true,
+      message: "Cancellable orders retrieved successfully",
+      data: {
+        orders: filteredOrders,
+        pagination: {
+          currentPage: parseInt(page),
+          totalPages: Math.ceil(totalOrders / parseInt(limit)),
+          totalOrders,
+          hasNextPage: skip + filteredOrders.length < totalOrders,
+          hasPrevPage: parseInt(page) > 1
+        }
+      }
+    });
+
+  } catch (error) {
+    console.error("Error getting cancellable orders by designer:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Error retrieving cancellable orders",
+      error: error.message
+    });
+  }
+};
