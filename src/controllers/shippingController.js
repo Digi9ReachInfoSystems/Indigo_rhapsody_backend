@@ -44,15 +44,15 @@ exports.ship = async (req, res) => {
       return res.status(400).json({ message: "orderId is required." });
     }
 
-    console.log("Checking if shipping already exists for orderId...");
-    const existingShipping = await Shipping.findOne({ order_id: orderId });
-    if (existingShipping) {
-      console.log("Shipping already exists for this orderId:", orderId);
-      return res.status(400).json({
-        message: "Shipping has already been created for this orderId.",
-        data: existingShipping,
-      });
-    }
+    // console.log("Checking if shipping already exists for orderId...");
+    // const existingShipping = await Shipping.findOne({ order_id: orderId });
+    // if (existingShipping) {
+    //   console.log("Shipping already exists for this orderId:", orderId);
+    //   return res.status(400).json({
+    //     message: "Shipping has already been created for this orderId.",
+    //     data: existingShipping,
+    //   });
+    // }
 
     console.log("Fetching access token...");
     const authResponse = await fetch(AUTH_API_URL, {
