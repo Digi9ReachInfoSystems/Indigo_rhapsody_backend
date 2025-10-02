@@ -13,4 +13,8 @@ router.post("/", authMiddleware, cartController.deleteItem);
 router.get("/getCart/:userId", authMiddleware, cartController.getCartForUser);
 router.post("/CreateCart", authMiddleware, cartController.upsertCart);
 
+// New routes for getting cart ID by user ID
+router.get("/cart-id/:userId", authMiddleware, cartController.getCartIdByUserId);
+router.get("/cart-details/:userId", authMiddleware, cartController.getCartDetailsByUserId);
+
 module.exports = router;

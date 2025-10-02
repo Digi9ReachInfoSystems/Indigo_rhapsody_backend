@@ -1,0 +1,246 @@
+# Test Stylist Application Workflow with Payment and Approval
+# This script tests the complete stylist application process including PhonePe payment integration
+
+# Base URL - Update this to match your server URL
+BASE_URL="http://localhost:3000"
+
+# Admin authentication token - Update with a valid admin token
+ADMIN_TOKEN="your_admin_jwt_token_here"
+
+echo "🎨 Testing Stylist Application Workflow"
+echo "======================================="
+echo ""
+
+# Test 1: Submit stylist application
+echo "✅ Test 1: Submit stylist application"
+echo "------------------------------------"
+curl -X POST "${BASE_URL}/api/stylist-application/submit" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "displayName": "Sarah Johnson",
+    "email": "sarah.johnson@example.com",
+    "phoneNumber": "+1234567890",
+    "password": "SecurePassword123!",
+    "stylistName": "Sarah Johnson Styling",
+    "stylistEmail": "sarah.styling@example.com",
+    "stylistPhone": "+1234567891",
+    "stylistAddress": "123 Fashion Street, Apt 4B",
+    "stylistCity": "New York",
+    "stylistState": "NY",
+    "stylistPincode": "10001",
+    "stylistCountry": "USA",
+    "stylistImage": "https://example.com/sarah-profile.jpg",
+    "stylistBio": "Professional stylist with 5+ years of experience in fashion and personal styling. Specializing in wardrobe consulting and personal image transformation.",
+    "stylistPortfolio": [
+      "https://example.com/portfolio1.jpg",
+      "https://example.com/portfolio2.jpg",
+      "https://example.com/portfolio3.jpg",
+      "https://example.com/portfolio4.jpg"
+    ],
+    "stylistExperience": "5+ years in fashion styling, worked with celebrities and fashion brands",
+    "stylistEducation": "Fashion Design Degree from Fashion Institute of Technology (FIT)",
+    "stylistSkills": [
+      "Personal Styling",
+      "Wardrobe Consulting",
+      "Color Analysis",
+      "Body Type Analysis",
+      "Event Styling",
+      "Celebrity Styling",
+      "Fashion Photography Styling"
+    ],
+    "stylistAvailability": "Monday-Friday: 9AM-6PM, Saturday: 10AM-4PM, Sunday: Closed",
+    "stylistPrice": 150
+  }' \
+  -w "\n\nHTTP Status: %{http_code}\nResponse Time: %{time_total}s\n" \
+  -s
+echo ""
+
+# Test 2: Initiate payment for application
+echo "✅ Test 2: Initiate payment for application"
+echo "------------------------------------------"
+curl -X POST "${BASE_URL}/api/stylist-application/payment/initiate/APPLICATION_ID_HERE" \
+  -H "Content-Type: application/json" \
+  -w "\n\nHTTP Status: %{http_code}\nResponse Time: %{time_total}s\n" \
+  -s
+echo ""
+
+# Test 3: Check payment status
+echo "✅ Test 3: Check payment status"
+echo "------------------------------"
+curl -X GET "${BASE_URL}/api/stylist-application/payment/status/APPLICATION_ID_HERE" \
+  -H "Content-Type: application/json" \
+  -w "\n\nHTTP Status: %{http_code}\nResponse Time: %{time_total}s\n" \
+  -s
+echo ""
+
+# Test 4: Simulate PhonePe payment callback (successful payment)
+echo "✅ Test 4: Simulate PhonePe payment callback (successful payment)"
+echo "----------------------------------------------------------------"
+curl -X POST "${BASE_URL}/api/stylist-application/payment/callback" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "response": "eyJzdWNjZXNzIjp0cnVlLCJjb2RlIjoiUEFZTUVOVCIsIm1lc3NhZ2UiOiJZb3VyIHRyYW5zYWN0aW9uIGlzIHN1Y2Nlc3NmdWwiLCJkYXRhIjp7Im1lcmNoYW50SWQiOiJNRVJDSEFOVFVBRCIsIm1lcmNoYW50VHJhbnNhY3Rpb25JZCI6IlNUWUxJU1RfNjY0YjFhYjEyMzQ1Njc4OV8xNzA0MjM0NTY3ODkiLCJ0cmFuc2FjdGlvbklkIjoiTVRfNjY0YjFhYjEyMzQ1Njc4OSIsImFtb3VudCI6NTAwMDAsInN0YXRlIjoiQ09NUExFVEVEIiwicmVzcG9uc2VDb2RlIjoiUEFZTUVOVCIsInJlc3BvbnNlTWVzc2FnZSI6IlBheW1lbnQgc3VjY2Vzc2Z1bCIsInR4blRpbWUiOjE3MDQyMzQ1Njc4OX19"
+  }' \
+  -w "\n\nHTTP Status: %{http_code}\nResponse Time: %{time_total}s\n" \
+  -s
+echo ""
+
+# Test 5: Get applications for admin review
+echo "✅ Test 5: Get applications for admin review"
+echo "-------------------------------------------"
+curl -X GET "${BASE_URL}/api/stylist-application/applications?status=under_review&page=1&limit=10" \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer ${ADMIN_TOKEN}" \
+  -w "\n\nHTTP Status: %{http_code}\nResponse Time: %{time_total}s\n" \
+  -s
+echo ""
+
+# Test 6: Approve stylist application (Admin)
+echo "✅ Test 6: Approve stylist application (Admin)"
+echo "---------------------------------------------"
+curl -X POST "${BASE_URL}/api/stylist-application/approve/APPLICATION_ID_HERE" \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer ${ADMIN_TOKEN}" \
+  -d '{
+    "adminNotes": "Profile looks excellent! Great portfolio and experience. Approved for platform."
+  }' \
+  -w "\n\nHTTP Status: %{http_code}\nResponse Time: %{time_total}s\n" \
+  -s
+echo ""
+
+# Test 7: Reject stylist application (Admin)
+echo "✅ Test 7: Reject stylist application (Admin)"
+echo "--------------------------------------------"
+curl -X POST "${BASE_URL}/api/stylist-application/reject/APPLICATION_ID_HERE" \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer ${ADMIN_TOKEN}" \
+  -d '{
+    "rejectionReason": "Incomplete portfolio images and insufficient experience documentation",
+    "adminNotes": "Please provide higher quality portfolio images and more detailed experience documentation. You can reapply after updating your application."
+  }' \
+  -w "\n\nHTTP Status: %{http_code}\nResponse Time: %{time_total}s\n" \
+  -s
+echo ""
+
+# Test 8: Test validation errors
+echo "✅ Test 8: Test validation errors"
+echo "--------------------------------"
+curl -X POST "${BASE_URL}/api/stylist-application/submit" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "displayName": "Test User",
+    "email": "invalid-email",
+    "phoneNumber": "+1234567890",
+    "password": "123",
+    "stylistName": "Test Styling"
+  }' \
+  -w "\n\nHTTP Status: %{http_code}\nResponse Time: %{time_total}s\n" \
+  -s
+echo ""
+
+# Test 9: Test duplicate email prevention
+echo "✅ Test 9: Test duplicate email prevention"
+echo "-----------------------------------------"
+curl -X POST "${BASE_URL}/api/stylist-application/submit" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "displayName": "Duplicate User",
+    "email": "sarah.johnson@example.com",
+    "phoneNumber": "+1234567892",
+    "password": "SecurePassword123!",
+    "stylistName": "Duplicate Styling",
+    "stylistEmail": "duplicate.styling@example.com",
+    "stylistPhone": "+1234567893",
+    "stylistAddress": "123 Test Street",
+    "stylistCity": "Test City",
+    "stylistState": "TS",
+    "stylistPincode": "12345",
+    "stylistCountry": "USA",
+    "stylistImage": "https://example.com/test.jpg",
+    "stylistBio": "Test bio",
+    "stylistPortfolio": ["https://example.com/test1.jpg"],
+    "stylistExperience": "Test experience",
+    "stylistEducation": "Test education",
+    "stylistSkills": ["Test skill"],
+    "stylistAvailability": "Test availability"
+  }' \
+  -w "\n\nHTTP Status: %{http_code}\nResponse Time: %{time_total}s\n" \
+  -s
+echo ""
+
+# Test 10: Test old signup endpoint redirect
+echo "✅ Test 10: Test old signup endpoint redirect"
+echo "--------------------------------------------"
+curl -X POST "${BASE_URL}/api/auth/stylist-signup" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "displayName": "Test User",
+    "email": "test@example.com",
+    "phoneNumber": "+1234567894",
+    "password": "SecurePassword123!"
+  }' \
+  -w "\n\nHTTP Status: %{http_code}\nResponse Time: %{time_total}s\n" \
+  -s
+echo ""
+
+echo "📊 API Endpoints Summary:"
+echo "========================"
+echo "• POST /api/stylist-application/submit - Submit stylist application"
+echo "• POST /api/stylist-application/payment/initiate/:applicationId - Initiate payment"
+echo "• POST /api/stylist-application/payment/callback - Handle payment callback"
+echo "• GET /api/stylist-application/payment/status/:applicationId - Check payment status"
+echo "• GET /api/stylist-application/applications - Get applications for review (Admin)"
+echo "• POST /api/stylist-application/approve/:applicationId - Approve application (Admin)"
+echo "• POST /api/stylist-application/reject/:applicationId - Reject application (Admin)"
+echo ""
+
+echo "🔄 Application Workflow:"
+echo "======================="
+echo "1. Submit Application → Status: 'submitted'"
+echo "2. Initiate Payment → Status: 'payment_pending'"
+echo "3. Complete Payment → Status: 'under_review'"
+echo "4. Admin Review → Status: 'approved' or 'rejected'"
+echo "5. Account Creation → User account created (only after approval)"
+echo ""
+
+echo "💳 Payment Integration:"
+echo "======================"
+echo "• Payment Gateway: PhonePe"
+echo "• Registration Fee: ₹500 (default)"
+echo "• Payment Methods: All PhonePe supported methods"
+echo "• Payment Expiry: 30 minutes"
+echo "• Currency: INR"
+echo ""
+
+echo "🔒 Security Features:"
+echo "===================="
+echo "• Password hashing with bcrypt (12 salt rounds)"
+echo "• Email format validation"
+echo "• Duplicate email/phone prevention"
+echo "• Payment verification"
+echo "• Admin approval required"
+echo "• Secure callback handling"
+echo ""
+
+echo "📋 Application Status Flow:"
+echo "=========================="
+echo "• draft → submitted → payment_pending → payment_completed → under_review → approved/rejected"
+echo ""
+
+echo "💡 Usage Examples:"
+echo "=================="
+echo "• Submit application: POST /api/stylist-application/submit"
+echo "• Initiate payment: POST /api/stylist-application/payment/initiate/APP_ID"
+echo "• Check status: GET /api/stylist-application/payment/status/APP_ID"
+echo "• Admin approve: POST /api/stylist-application/approve/APP_ID"
+echo ""
+
+echo "🔧 Environment Variables Required:"
+echo "=================================="
+echo "• PHONEPE_MERCHANT_ID"
+echo "• PHONEPE_SALT_KEY"
+echo "• PHONEPE_SALT_INDEX"
+echo "• PHONEPE_BASE_URL"
+echo "• PHONEPE_REDIRECT_URL"
+echo "• PHONEPE_CALLBACK_URL"
+echo ""

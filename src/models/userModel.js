@@ -28,7 +28,7 @@ const userSchema = new mongoose.Schema({
   },
   role: {
     type: String,
-    enum: ["Designer", "User", "Admin"],
+    enum: ["Designer", "User", "Admin", "Stylist"],
     default: "User",
   },
   is_creator: {
@@ -78,5 +78,5 @@ const userSchema = new mongoose.Schema({
   ],
 });
 
-
 module.exports = mongoose.model("User", userSchema);
+

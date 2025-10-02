@@ -1,0 +1,392 @@
+# Test Stylist Signup Endpoint
+# This script tests the comprehensive stylist signup functionality with JWT token handling
+
+# Base URL - Update this to match your server URL
+BASE_URL="http://localhost:3000"
+
+echo "🎨 Testing Stylist Signup Endpoint"
+echo "=================================="
+echo ""
+
+# Test 1: Successful stylist signup
+echo "✅ Test 1: Successful stylist signup"
+echo "-----------------------------------"
+curl -X POST "${BASE_URL}/api/auth/stylist-signup" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "displayName": "Sarah Johnson",
+    "email": "sarah.johnson@example.com",
+    "phoneNumber": "+1234567890",
+    "password": "SecurePassword123!",
+    "stylistName": "Sarah Johnson Styling",
+    "stylistEmail": "sarah.styling@example.com",
+    "stylistPhone": "+1234567891",
+    "stylistAddress": "123 Fashion Street, Apt 4B",
+    "stylistCity": "New York",
+    "stylistState": "NY",
+    "stylistPincode": "10001",
+    "stylistCountry": "USA",
+    "stylistImage": "https://example.com/sarah-profile.jpg",
+    "stylistBio": "Professional stylist with 5+ years of experience in fashion and personal styling. Specializing in wardrobe consulting and personal image transformation.",
+    "stylistPortfolio": [
+      "https://example.com/portfolio1.jpg",
+      "https://example.com/portfolio2.jpg",
+      "https://example.com/portfolio3.jpg",
+      "https://example.com/portfolio4.jpg"
+    ],
+    "stylistExperience": "5+ years in fashion styling, worked with celebrities and fashion brands",
+    "stylistEducation": "Fashion Design Degree from Fashion Institute of Technology (FIT)",
+    "stylistSkills": [
+      "Personal Styling",
+      "Wardrobe Consulting",
+      "Color Analysis",
+      "Body Type Analysis",
+      "Event Styling",
+      "Celebrity Styling",
+      "Fashion Photography Styling"
+    ],
+    "stylistAvailability": "Monday-Friday: 9AM-6PM, Saturday: 10AM-4PM, Sunday: Closed",
+    "stylistPrice": 150
+  }' \
+  -w "\n\nHTTP Status: %{http_code}\nResponse Time: %{time_total}s\n" \
+  -s
+echo ""
+
+# Test 2: Missing required user fields
+echo "✅ Test 2: Missing required user fields"
+echo "---------------------------------------"
+curl -X POST "${BASE_URL}/api/auth/stylist-signup" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "displayName": "John Doe",
+    "email": "john@example.com",
+    "stylistName": "John Doe Styling",
+    "stylistEmail": "john.styling@example.com"
+  }' \
+  -w "\n\nHTTP Status: %{http_code}\nResponse Time: %{time_total}s\n" \
+  -s
+echo ""
+
+# Test 3: Missing required stylist fields
+echo "✅ Test 3: Missing required stylist fields"
+echo "------------------------------------------"
+curl -X POST "${BASE_URL}/api/auth/stylist-signup" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "displayName": "Jane Smith",
+    "email": "jane@example.com",
+    "phoneNumber": "+1234567892",
+    "password": "SecurePassword123!",
+    "stylistName": "Jane Smith Styling",
+    "stylistEmail": "jane.styling@example.com"
+  }' \
+  -w "\n\nHTTP Status: %{http_code}\nResponse Time: %{time_total}s\n" \
+  -s
+echo ""
+
+# Test 4: Invalid email format
+echo "✅ Test 4: Invalid email format"
+echo "-------------------------------"
+curl -X POST "${BASE_URL}/api/auth/stylist-signup" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "displayName": "Invalid Email",
+    "email": "invalid-email",
+    "phoneNumber": "+1234567893",
+    "password": "SecurePassword123!",
+    "stylistName": "Invalid Email Styling",
+    "stylistEmail": "invalid-stylist-email",
+    "stylistPhone": "+1234567894",
+    "stylistAddress": "123 Test Street",
+    "stylistCity": "Test City",
+    "stylistState": "TS",
+    "stylistPincode": "12345",
+    "stylistCountry": "USA",
+    "stylistImage": "https://example.com/test.jpg",
+    "stylistBio": "Test bio",
+    "stylistPortfolio": ["https://example.com/test1.jpg"],
+    "stylistExperience": "Test experience",
+    "stylistEducation": "Test education",
+    "stylistSkills": ["Test skill"],
+    "stylistAvailability": "Test availability"
+  }' \
+  -w "\n\nHTTP Status: %{http_code}\nResponse Time: %{time_total}s\n" \
+  -s
+echo ""
+
+# Test 5: Weak password
+echo "✅ Test 5: Weak password"
+echo "------------------------"
+curl -X POST "${BASE_URL}/api/auth/stylist-signup" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "displayName": "Weak Password",
+    "email": "weak@example.com",
+    "phoneNumber": "+1234567895",
+    "password": "123",
+    "stylistName": "Weak Password Styling",
+    "stylistEmail": "weak.styling@example.com",
+    "stylistPhone": "+1234567896",
+    "stylistAddress": "123 Test Street",
+    "stylistCity": "Test City",
+    "stylistState": "TS",
+    "stylistPincode": "12345",
+    "stylistCountry": "USA",
+    "stylistImage": "https://example.com/test.jpg",
+    "stylistBio": "Test bio",
+    "stylistPortfolio": ["https://example.com/test1.jpg"],
+    "stylistExperience": "Test experience",
+    "stylistEducation": "Test education",
+    "stylistSkills": ["Test skill"],
+    "stylistAvailability": "Test availability"
+  }' \
+  -w "\n\nHTTP Status: %{http_code}\nResponse Time: %{time_total}s\n" \
+  -s
+echo ""
+
+# Test 6: Empty portfolio array
+echo "✅ Test 6: Empty portfolio array"
+echo "--------------------------------"
+curl -X POST "${BASE_URL}/api/auth/stylist-signup" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "displayName": "Empty Portfolio",
+    "email": "empty@example.com",
+    "phoneNumber": "+1234567897",
+    "password": "SecurePassword123!",
+    "stylistName": "Empty Portfolio Styling",
+    "stylistEmail": "empty.styling@example.com",
+    "stylistPhone": "+1234567898",
+    "stylistAddress": "123 Test Street",
+    "stylistCity": "Test City",
+    "stylistState": "TS",
+    "stylistPincode": "12345",
+    "stylistCountry": "USA",
+    "stylistImage": "https://example.com/test.jpg",
+    "stylistBio": "Test bio",
+    "stylistPortfolio": [],
+    "stylistExperience": "Test experience",
+    "stylistEducation": "Test education",
+    "stylistSkills": ["Test skill"],
+    "stylistAvailability": "Test availability"
+  }' \
+  -w "\n\nHTTP Status: %{http_code}\nResponse Time: %{time_total}s\n" \
+  -s
+echo ""
+
+# Test 7: Empty skills array
+echo "✅ Test 7: Empty skills array"
+echo "-----------------------------"
+curl -X POST "${BASE_URL}/api/auth/stylist-signup" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "displayName": "Empty Skills",
+    "email": "skills@example.com",
+    "phoneNumber": "+1234567899",
+    "password": "SecurePassword123!",
+    "stylistName": "Empty Skills Styling",
+    "stylistEmail": "skills.styling@example.com",
+    "stylistPhone": "+1234567800",
+    "stylistAddress": "123 Test Street",
+    "stylistCity": "Test City",
+    "stylistState": "TS",
+    "stylistPincode": "12345",
+    "stylistCountry": "USA",
+    "stylistImage": "https://example.com/test.jpg",
+    "stylistBio": "Test bio",
+    "stylistPortfolio": ["https://example.com/test1.jpg"],
+    "stylistExperience": "Test experience",
+    "stylistEducation": "Test education",
+    "stylistSkills": [],
+    "stylistAvailability": "Test availability"
+  }' \
+  -w "\n\nHTTP Status: %{http_code}\nResponse Time: %{time_total}s\n" \
+  -s
+echo ""
+
+# Test 8: Duplicate email (if previous test succeeded)
+echo "✅ Test 8: Duplicate email"
+echo "--------------------------"
+curl -X POST "${BASE_URL}/api/auth/stylist-signup" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "displayName": "Duplicate Email",
+    "email": "sarah.johnson@example.com",
+    "phoneNumber": "+1234567801",
+    "password": "SecurePassword123!",
+    "stylistName": "Duplicate Email Styling",
+    "stylistEmail": "duplicate.styling@example.com",
+    "stylistPhone": "+1234567802",
+    "stylistAddress": "123 Test Street",
+    "stylistCity": "Test City",
+    "stylistState": "TS",
+    "stylistPincode": "12345",
+    "stylistCountry": "USA",
+    "stylistImage": "https://example.com/test.jpg",
+    "stylistBio": "Test bio",
+    "stylistPortfolio": ["https://example.com/test1.jpg"],
+    "stylistExperience": "Test experience",
+    "stylistEducation": "Test education",
+    "stylistSkills": ["Test skill"],
+    "stylistAvailability": "Test availability"
+  }' \
+  -w "\n\nHTTP Status: %{http_code}\nResponse Time: %{time_total}s\n" \
+  -s
+echo ""
+
+# Test 9: Duplicate stylist email
+echo "✅ Test 9: Duplicate stylist email"
+echo "----------------------------------"
+curl -X POST "${BASE_URL}/api/auth/stylist-signup" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "displayName": "Duplicate Stylist Email",
+    "email": "duplicate2@example.com",
+    "phoneNumber": "+1234567803",
+    "password": "SecurePassword123!",
+    "stylistName": "Duplicate Stylist Email Styling",
+    "stylistEmail": "sarah.styling@example.com",
+    "stylistPhone": "+1234567804",
+    "stylistAddress": "123 Test Street",
+    "stylistCity": "Test City",
+    "stylistState": "TS",
+    "stylistPincode": "12345",
+    "stylistCountry": "USA",
+    "stylistImage": "https://example.com/test.jpg",
+    "stylistBio": "Test bio",
+    "stylistPortfolio": ["https://example.com/test1.jpg"],
+    "stylistExperience": "Test experience",
+    "stylistEducation": "Test education",
+    "stylistSkills": ["Test skill"],
+    "stylistAvailability": "Test availability"
+  }' \
+  -w "\n\nHTTP Status: %{http_code}\nResponse Time: %{time_total}s\n" \
+  -s
+echo ""
+
+# Test 10: Complete signup with all optional fields
+echo "✅ Test 10: Complete signup with all optional fields"
+echo "----------------------------------------------------"
+curl -X POST "${BASE_URL}/api/auth/stylist-signup" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "displayName": "Complete Stylist",
+    "email": "complete@example.com",
+    "phoneNumber": "+1234567805",
+    "password": "SecurePassword123!",
+    "stylistName": "Complete Stylist Services",
+    "stylistEmail": "complete.styling@example.com",
+    "stylistPhone": "+1234567806",
+    "stylistAddress": "456 Complete Avenue, Suite 200",
+    "stylistCity": "Los Angeles",
+    "stylistState": "CA",
+    "stylistPincode": "90210",
+    "stylistCountry": "USA",
+    "stylistImage": "https://example.com/complete-profile.jpg",
+    "stylistBio": "Award-winning stylist with 10+ years of experience in high-end fashion, celebrity styling, and personal image consulting. Featured in Vogue, Elle, and Harper'\''s Bazaar.",
+    "stylistPortfolio": [
+      "https://example.com/portfolio-celeb1.jpg",
+      "https://example.com/portfolio-celeb2.jpg",
+      "https://example.com/portfolio-fashion1.jpg",
+      "https://example.com/portfolio-fashion2.jpg",
+      "https://example.com/portfolio-editorial1.jpg",
+      "https://example.com/portfolio-editorial2.jpg"
+    ],
+    "stylistExperience": "10+ years in high-end fashion styling, celebrity red carpet events, editorial shoots, and personal styling for executives and influencers",
+    "stylistEducation": "Master'\''s in Fashion Design from Parsons School of Design, Certified Image Consultant from AICI",
+    "stylistSkills": [
+      "Celebrity Styling",
+      "Red Carpet Styling",
+      "Editorial Styling",
+      "Personal Styling",
+      "Wardrobe Consulting",
+      "Color Analysis",
+      "Body Type Analysis",
+      "Event Styling",
+      "Fashion Photography Styling",
+      "Brand Styling",
+      "Image Consulting",
+      "Fashion Trend Analysis"
+    ],
+    "stylistAvailability": "Monday-Thursday: 9AM-7PM, Friday: 9AM-5PM, Saturday: 10AM-3PM, Sunday: Emergency appointments only",
+    "stylistPrice": 300
+  }' \
+  -w "\n\nHTTP Status: %{http_code}\nResponse Time: %{time_total}s\n" \
+  -s
+echo ""
+
+echo "📊 API Endpoint Summary:"
+echo "========================"
+echo "• POST /api/auth/stylist-signup - Create stylist account with profile"
+echo ""
+
+echo "🔒 Security Features:"
+echo "===================="
+echo "• Password hashing with bcrypt (12 salt rounds)"
+echo "• JWT token generation (access + refresh tokens)"
+echo "• Email format validation"
+echo "• Password strength validation (minimum 8 characters)"
+echo "• Duplicate email/phone prevention"
+echo "• Duplicate stylist email prevention"
+echo "• Input validation for all required fields"
+echo ""
+
+echo "📋 Required Fields:"
+echo "=================="
+echo "User Account:"
+echo "• displayName (String)"
+echo "• email (String, valid email format)"
+echo "• phoneNumber (String)"
+echo "• password (String, minimum 8 characters)"
+echo ""
+echo "Stylist Profile:"
+echo "• stylistName (String)"
+echo "• stylistEmail (String, valid email format)"
+echo "• stylistPhone (String)"
+echo "• stylistAddress (String)"
+echo "• stylistCity (String)"
+echo "• stylistState (String)"
+echo "• stylistPincode (String)"
+echo "• stylistCountry (String)"
+echo "• stylistImage (String)"
+echo "• stylistBio (String)"
+echo "• stylistPortfolio (Array of Strings, non-empty)"
+echo "• stylistExperience (String)"
+echo "• stylistEducation (String)"
+echo "• stylistSkills (Array of Strings, non-empty)"
+echo "• stylistAvailability (String)"
+echo "• stylistPrice (Number, optional)"
+echo ""
+
+echo "🎯 Response Structure:"
+echo "====================="
+echo "Success Response (201):"
+echo "{"
+echo "  \"success\": true,"
+echo "  \"message\": \"Stylist account created successfully. Profile is pending approval.\","
+echo "  \"data\": {"
+echo "    \"user\": { /* user account details */ },"
+echo "    \"stylistProfile\": { /* stylist profile summary */ },"
+echo "    \"tokens\": {"
+echo "      \"accessToken\": \"jwt_access_token\","
+echo "      \"refreshToken\": \"jwt_refresh_token\","
+echo "      \"expiresIn\": \"15m\""
+echo "    }"
+echo "  }"
+echo "}"
+echo ""
+
+echo "💡 Usage Examples:"
+echo "=================="
+echo "• Basic signup: POST /api/auth/stylist-signup with all required fields"
+echo "• With pricing: Include stylistPrice in request body"
+echo "• Multiple skills: Provide array of skill strings"
+echo "• Portfolio images: Provide array of image URLs"
+echo ""
+
+echo "🔧 Error Handling:"
+echo "=================="
+echo "• 400: Validation errors, missing fields, invalid formats"
+echo "• 500: Server errors, database issues"
+echo "• Comprehensive error messages for debugging"
+echo ""

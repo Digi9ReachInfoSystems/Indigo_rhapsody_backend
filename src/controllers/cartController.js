@@ -502,3 +502,101 @@ exports.upsertCart = async (req, res) => {
       .json({ message: "Error updating cart", error: error.message });
   }
 };
+
+// Get Cart ID by User ID
+exports.getCartIdByUserId = async (req, res) => {
+  try {
+    const { userId } = req.params;
+
+    // Validate ObjectId format
+    if (!mongoose.Types.ObjectId.isValid(userId)) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid user ID format"
+      });
+    }
+
+    // Find cart by userId
+    const cart = await Cart.findOne({ userId }).select('_id userId status createdDate lastUpdatedDate');
+
+    if (!cart) {
+      return res.status(404).json({
+        success: false,
+        message: "Cart not found for this user"
+      });
+    }
+
+    return res.status(200).json({
+      success: true,
+      message: "Cart ID retrieved successfully",
+      data: {
+        cartId: cart._id,
+        userId: cart.userId,
+        status: cart.status,
+        createdDate: cart.createdDate,
+        lastUpdatedDate: cart.lastUpdatedDate
+      }
+    });
+
+  } catch (error) {
+    console.error("Error getting cart ID by user ID:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Error retrieving cart ID",
+      error: error.message
+    });
+  }
+};
+
+// Get Cart ID by User ID (Alternative method with more details)
+exports.getCartDetailsByUserId = async (req, res) => {
+  try {
+    const { userId } = req.params;
+
+    // Validate ObjectId format
+    if (!mongoose.Types.ObjectId.isValid(userId)) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid user ID format"
+      });
+    }
+
+    // Find cart by userId with basic details
+    const cart = await Cart.findOne({ userId }).select(
+      '_id userId status subtotal total_amount discount_amount tax_amount shipping_cost products.length createdDate lastUpdatedDate'
+    );
+
+    if (!cart) {
+      return res.status(404).json({
+        success: false,
+        message: "Cart not found for this user"
+      });
+    }
+
+    return res.status(200).json({
+      success: true,
+      message: "Cart details retrieved successfully",
+      data: {
+        cartId: cart._id,
+        userId: cart.userId,
+        status: cart.status,
+        itemCount: cart.products.length,
+        subtotal: cart.subtotal,
+        totalAmount: cart.total_amount,
+        discountAmount: cart.discount_amount,
+        taxAmount: cart.tax_amount,
+        shippingCost: cart.shipping_cost,
+        createdDate: cart.createdDate,
+        lastUpdatedDate: cart.lastUpdatedDate
+      }
+    });
+
+  } catch (error) {
+    console.error("Error getting cart details by user ID:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Error retrieving cart details",
+      error: error.message
+    });
+  }
+};

@@ -1,0 +1,228 @@
+# Test Stylist Profile API Endpoints
+# This script tests all stylist profile functionality including CRUD operations and approval system
+
+# Base URL - Update this to match your server URL
+BASE_URL="http://localhost:3000"
+
+# Authentication tokens - Update with valid tokens
+USER_TOKEN="your_user_jwt_token_here"
+ADMIN_TOKEN="your_admin_jwt_token_here"
+
+echo "🎨 Testing Stylist Profile API Endpoints"
+echo "========================================"
+echo ""
+
+# Test 1: Create stylist profile
+echo "✅ Test 1: Create stylist profile"
+echo "--------------------------------"
+curl -X POST "${BASE_URL}/api/stylist/create" \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer ${USER_TOKEN}" \
+  -d '{
+    "stylistName": "Sarah Johnson",
+    "stylistEmail": "sarah.johnson@example.com",
+    "stylistPhone": "+1234567890",
+    "stylistAddress": "123 Fashion Street",
+    "stylistCity": "New York",
+    "stylistState": "NY",
+    "stylistPincode": "10001",
+    "stylistCountry": "USA",
+    "stylistImage": "https://example.com/sarah-profile.jpg",
+    "stylistBio": "Professional stylist with 5+ years of experience in fashion and personal styling.",
+    "stylistPortfolio": [
+      "https://example.com/portfolio1.jpg",
+      "https://example.com/portfolio2.jpg",
+      "https://example.com/portfolio3.jpg"
+    ],
+    "stylistExperience": "5+ years in fashion styling",
+    "stylistEducation": "Fashion Design Degree from FIT",
+    "stylistSkills": [
+      "Personal Styling",
+      "Wardrobe Consulting",
+      "Color Analysis",
+      "Body Type Analysis",
+      "Event Styling"
+    ],
+    "stylistAvailability": "Monday-Friday, 9AM-6PM",
+    "stylistPrice": 150
+  }' \
+  -w "\n\nHTTP Status: %{http_code}\nResponse Time: %{time_total}s\n" \
+  -s
+echo ""
+
+# Test 2: Get my stylist profile
+echo "✅ Test 2: Get my stylist profile"
+echo "--------------------------------"
+curl -X GET "${BASE_URL}/api/stylist/my-profile" \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer ${USER_TOKEN}" \
+  -w "\n\nHTTP Status: %{http_code}\nResponse Time: %{time_total}s\n" \
+  -s
+echo ""
+
+# Test 3: Update stylist profile
+echo "✅ Test 3: Update stylist profile"
+echo "--------------------------------"
+curl -X PUT "${BASE_URL}/api/stylist/update" \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer ${USER_TOKEN}" \
+  -d '{
+    "stylistBio": "Updated bio: Professional stylist with 6+ years of experience in fashion and personal styling.",
+    "stylistPrice": 175,
+    "stylistSkills": [
+      "Personal Styling",
+      "Wardrobe Consulting",
+      "Color Analysis",
+      "Body Type Analysis",
+      "Event Styling",
+      "Celebrity Styling"
+    ]
+  }' \
+  -w "\n\nHTTP Status: %{http_code}\nResponse Time: %{time_total}s\n" \
+  -s
+echo ""
+
+# Test 4: Get all stylist profiles (Admin)
+echo "✅ Test 4: Get all stylist profiles (Admin)"
+echo "-------------------------------------------"
+curl -X GET "${BASE_URL}/api/stylist/all?page=1&limit=10&status=all" \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer ${ADMIN_TOKEN}" \
+  -w "\n\nHTTP Status: %{http_code}\nResponse Time: %{time_total}s\n" \
+  -s
+echo ""
+
+# Test 5: Get pending stylist profiles (Admin)
+echo "✅ Test 5: Get pending stylist profiles (Admin)"
+echo "-----------------------------------------------"
+curl -X GET "${BASE_URL}/api/stylist/pending?page=1&limit=10" \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer ${ADMIN_TOKEN}" \
+  -w "\n\nHTTP Status: %{http_code}\nResponse Time: %{time_total}s\n" \
+  -s
+echo ""
+
+# Test 6: Get approved stylist profiles (Public)
+echo "✅ Test 6: Get approved stylist profiles (Public)"
+echo "------------------------------------------------"
+curl -X GET "${BASE_URL}/api/stylist/approved?page=1&limit=10&city=New York&minRating=4" \
+  -H "Content-Type: application/json" \
+  -w "\n\nHTTP Status: %{http_code}\nResponse Time: %{time_total}s\n" \
+  -s
+echo ""
+
+# Test 7: Get stylist statistics (Admin)
+echo "✅ Test 7: Get stylist statistics (Admin)"
+echo "-----------------------------------------"
+curl -X GET "${BASE_URL}/api/stylist/statistics" \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer ${ADMIN_TOKEN}" \
+  -w "\n\nHTTP Status: %{http_code}\nResponse Time: %{time_total}s\n" \
+  -s
+echo ""
+
+# Test 8: Approve stylist profile (Admin)
+echo "✅ Test 8: Approve stylist profile (Admin)"
+echo "------------------------------------------"
+curl -X POST "${BASE_URL}/api/stylist/approve/STYLIST_ID_HERE" \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer ${ADMIN_TOKEN}" \
+  -d '{
+    "adminNotes": "Profile looks great! Approved for platform."
+  }' \
+  -w "\n\nHTTP Status: %{http_code}\nResponse Time: %{time_total}s\n" \
+  -s
+echo ""
+
+# Test 9: Reject stylist profile (Admin)
+echo "✅ Test 9: Reject stylist profile (Admin)"
+echo "-----------------------------------------"
+curl -X POST "${BASE_URL}/api/stylist/reject/STYLIST_ID_HERE" \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer ${ADMIN_TOKEN}" \
+  -d '{
+    "rejectionReason": "Incomplete portfolio images",
+    "adminNotes": "Please provide higher quality portfolio images and resubmit."
+  }' \
+  -w "\n\nHTTP Status: %{http_code}\nResponse Time: %{time_total}s\n" \
+  -s
+echo ""
+
+# Test 10: Get specific stylist profile by user ID
+echo "✅ Test 10: Get specific stylist profile by user ID"
+echo "--------------------------------------------------"
+curl -X GET "${BASE_URL}/api/stylist/profile/USER_ID_HERE" \
+  -H "Content-Type: application/json" \
+  -w "\n\nHTTP Status: %{http_code}\nResponse Time: %{time_total}s\n" \
+  -s
+echo ""
+
+# Test 11: Delete stylist profile
+echo "✅ Test 11: Delete stylist profile"
+echo "---------------------------------"
+curl -X DELETE "${BASE_URL}/api/stylist/delete" \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer ${USER_TOKEN}" \
+  -w "\n\nHTTP Status: %{http_code}\nResponse Time: %{time_total}s\n" \
+  -s
+echo ""
+
+echo "📊 API Endpoints Summary:"
+echo "========================"
+echo "• POST /api/stylist/create - Create stylist profile (User)"
+echo "• GET /api/stylist/my-profile - Get my stylist profile (User)"
+echo "• PUT /api/stylist/update - Update stylist profile (User)"
+echo "• DELETE /api/stylist/delete - Delete stylist profile (User)"
+echo "• GET /api/stylist/all - Get all stylist profiles (Admin)"
+echo "• GET /api/stylist/pending - Get pending stylist profiles (Admin)"
+echo "• GET /api/stylist/approved - Get approved stylist profiles (Public)"
+echo "• GET /api/stylist/statistics - Get stylist statistics (Admin)"
+echo "• POST /api/stylist/approve/:stylistId - Approve stylist profile (Admin)"
+echo "• POST /api/stylist/reject/:stylistId - Reject stylist profile (Admin)"
+echo "• GET /api/stylist/profile/:userId - Get stylist profile by user ID (Public)"
+echo ""
+
+echo "🔒 Authentication Requirements:"
+echo "=============================="
+echo "• User routes: Requires valid user JWT token"
+echo "• Admin routes: Requires valid admin JWT token with Admin role"
+echo "• Public routes: No authentication required"
+echo ""
+
+echo "📋 Required Fields for Stylist Profile:"
+echo "======================================="
+echo "• stylistName (String)"
+echo "• stylistEmail (String)"
+echo "• stylistPhone (String)"
+echo "• stylistAddress (String)"
+echo "• stylistCity (String)"
+echo "• stylistState (String)"
+echo "• stylistPincode (String)"
+echo "• stylistCountry (String)"
+echo "• stylistImage (String)"
+echo "• stylistBio (String)"
+echo "• stylistPortfolio (Array of Strings)"
+echo "• stylistExperience (String)"
+echo "• stylistEducation (String)"
+echo "• stylistSkills (Array of Strings)"
+echo "• stylistAvailability (String)"
+echo "• stylistPrice (Number, optional)"
+echo ""
+
+echo "🎯 Approval System Features:"
+echo "============================"
+echo "• Automatic pending status on creation"
+echo "• Admin approval/rejection workflow"
+echo "• Email notifications for status changes"
+echo "• FCM push notifications"
+echo "• Admin notes and rejection reasons"
+echo "• Profile reset to pending on updates"
+echo ""
+
+echo "💡 Usage Examples:"
+echo "=================="
+echo "• Create profile: POST /api/stylist/create"
+echo "• Search approved: GET /api/stylist/approved?city=NYC&minRating=4"
+echo "• Admin approve: POST /api/stylist/approve/STYLIST_ID"
+echo "• Admin reject: POST /api/stylist/reject/STYLIST_ID"
+echo ""

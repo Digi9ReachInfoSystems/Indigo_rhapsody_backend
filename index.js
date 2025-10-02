@@ -22,6 +22,8 @@ const notifications = require("./src/routes/notificationroutes.js");
 const states = require("./src/routes/stateRoutes.js");
 const queryRoutes = require("./src/routes/queryRoutes.js");
 const Blogs = require("./src/routes/blogsRoutes.js");
+const stylistRoutes = require("./src/routes/stylistRoutes.js");
+const stylistApplicationRoutes = require("./src/routes/stylistApplicationRoutes.js");
 const app = express();
 
 const cors = require("cors");
@@ -56,6 +58,8 @@ app.use("/wishlist", wishlist);
 app.use("/notification", notifications);
 app.use("/states", states);
 app.use("/blogs", Blogs);
+app.use("/stylist", stylistRoutes);
+app.use("/stylist-application", stylistApplicationRoutes);
 
 const PORT = 5000;
 
