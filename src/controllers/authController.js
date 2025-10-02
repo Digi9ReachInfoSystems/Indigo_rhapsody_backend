@@ -1,7 +1,9 @@
 const User = require("../models/userModel");
+const StylistProfile = require("../models/stylistProfile");
 const { admin } = require("../service/firebaseServices");
 const jwt = require("jsonwebtoken");
 const nodemailer = require("nodemailer");
+const bcrypt = require("bcryptjs");
 require("dotenv").config();
 
 // JWT Configuration
@@ -365,14 +367,14 @@ exports.refresh = async (req, res) => {
     });
   } catch (error) {
     console.error("Token refresh error:", error);
-    
+
     if (error.name === "JsonWebTokenError") {
       return res.status(401).json({
         success: false,
         message: "Invalid refresh token",
       });
     }
-    
+
     if (error.name === "TokenExpiredError") {
       return res.status(401).json({
         success: false,
@@ -416,7 +418,7 @@ exports.logout = async (req, res) => {
 exports.verify = async (req, res) => {
   try {
     const authHeader = req.headers.authorization;
-    
+
     if (!authHeader || !authHeader.startsWith("Bearer ")) {
       return res.status(401).json({
         success: false,
@@ -465,14 +467,14 @@ exports.verify = async (req, res) => {
     });
   } catch (error) {
     console.error("Token verification error:", error);
-    
+
     if (error.name === "JsonWebTokenError") {
       return res.status(401).json({
         success: false,
         message: "Invalid token",
       });
     }
-    
+
     if (error.name === "TokenExpiredError") {
       return res.status(401).json({
         success: false,
@@ -670,7 +672,7 @@ exports.adminLogin = async (req, res) => {
     // Verify password (assuming bcrypt is used for password hashing)
     const bcrypt = require("bcryptjs");
     const isPasswordValid = await bcrypt.compare(password, user.password);
-    
+
     if (!isPasswordValid) {
       return res.status(401).json({
         success: false,
@@ -743,7 +745,7 @@ exports.createAdmin = async (req, res) => {
     const existingUser = await User.findOne({
       $or: [{ email }, { phoneNumber }]
     });
-    
+
     if (existingUser) {
       return res.status(400).json({
         success: false,
@@ -790,6 +792,29 @@ exports.createAdmin = async (req, res) => {
       success: false,
       message: "Failed to create admin user",
       error: error.message,
+    });
+  }
+};
+
+// Stylist Signup - Redirect to Application Process
+exports.stylistSignup = async (req, res) => {
+  try {
+    // Redirect to the new application process
+    return res.status(200).json({
+      success: true,
+      message: "Please use the new stylist application process",
+      data: {
+        redirectTo: "/api/stylist-application/submit",
+        note: "Stylist signup now requires application submission, payment, and approval before account creation"
+      }
+    });
+
+  } catch (error) {
+    console.error("Stylist signup error:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Failed to create stylist account",
+      error: error.message
     });
   }
 };

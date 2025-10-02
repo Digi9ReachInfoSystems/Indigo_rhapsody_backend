@@ -1,0 +1,192 @@
+# Test Cart ID Endpoints
+# This script tests the new cart ID retrieval endpoints
+
+# Base URL - Update this to match your server URL
+BASE_URL="http://localhost:3000"
+
+# Authentication token - Update with a valid user token
+USER_TOKEN="your_user_jwt_token_here"
+
+# Test user ID - Update with a valid user ID
+USER_ID="your_user_id_here"
+
+echo "🛒 Testing Cart ID Endpoints"
+echo "============================"
+echo ""
+
+# Test 1: Get Cart ID by User ID (Basic)
+echo "✅ Test 1: Get Cart ID by User ID (Basic)"
+echo "----------------------------------------"
+curl -X GET "${BASE_URL}/api/cart/cart-id/${USER_ID}" \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer ${USER_TOKEN}" \
+  -w "\n\nHTTP Status: %{http_code}\nResponse Time: %{time_total}s\n" \
+  -s
+echo ""
+
+# Test 2: Get Cart Details by User ID (Extended)
+echo "✅ Test 2: Get Cart Details by User ID (Extended)"
+echo "------------------------------------------------"
+curl -X GET "${BASE_URL}/api/cart/cart-details/${USER_ID}" \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer ${USER_TOKEN}" \
+  -w "\n\nHTTP Status: %{http_code}\nResponse Time: %{time_total}s\n" \
+  -s
+echo ""
+
+# Test 3: Test with invalid user ID format
+echo "✅ Test 3: Test with invalid user ID format"
+echo "------------------------------------------"
+curl -X GET "${BASE_URL}/api/cart/cart-id/invalid_user_id" \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer ${USER_TOKEN}" \
+  -w "\n\nHTTP Status: %{http_code}\nResponse Time: %{time_total}s\n" \
+  -s
+echo ""
+
+# Test 4: Test with non-existent user ID
+echo "✅ Test 4: Test with non-existent user ID"
+echo "----------------------------------------"
+curl -X GET "${BASE_URL}/api/cart/cart-id/507f1f77bcf86cd799439011" \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer ${USER_TOKEN}" \
+  -w "\n\nHTTP Status: %{http_code}\nResponse Time: %{time_total}s\n" \
+  -s
+echo ""
+
+# Test 5: Test without authentication
+echo "✅ Test 5: Test without authentication"
+echo "-------------------------------------"
+curl -X GET "${BASE_URL}/api/cart/cart-id/${USER_ID}" \
+  -H "Content-Type: application/json" \
+  -w "\n\nHTTP Status: %{http_code}\nResponse Time: %{time_total}s\n" \
+  -s
+echo ""
+
+# Test 6: Test with invalid token
+echo "✅ Test 6: Test with invalid token"
+echo "---------------------------------"
+curl -X GET "${BASE_URL}/api/cart/cart-id/${USER_ID}" \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer invalid_token_here" \
+  -w "\n\nHTTP Status: %{http_code}\nResponse Time: %{time_total}s\n" \
+  -s
+echo ""
+
+# Test 7: Test cart details with empty cart
+echo "✅ Test 7: Test cart details with empty cart"
+echo "-------------------------------------------"
+curl -X GET "${BASE_URL}/api/cart/cart-details/${USER_ID}" \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer ${USER_TOKEN}" \
+  -w "\n\nHTTP Status: %{http_code}\nResponse Time: %{time_total}s\n" \
+  -s
+echo ""
+
+# Test 8: Test cart ID with empty cart
+echo "✅ Test 8: Test cart ID with empty cart"
+echo "--------------------------------------"
+curl -X GET "${BASE_URL}/api/cart/cart-id/${USER_ID}" \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer ${USER_TOKEN}" \
+  -w "\n\nHTTP Status: %{http_code}\nResponse Time: %{time_total}s\n" \
+  -s
+echo ""
+
+echo "📊 API Endpoints Summary:"
+echo "========================"
+echo "• GET /api/cart/cart-id/:userId - Get basic cart ID information"
+echo "• GET /api/cart/cart-details/:userId - Get detailed cart information"
+echo ""
+
+echo "🔍 Response Formats:"
+echo "==================="
+echo ""
+echo "Basic Cart ID Response:"
+echo "{"
+echo "  \"success\": true,"
+echo "  \"message\": \"Cart ID retrieved successfully\","
+echo "  \"data\": {"
+echo "    \"cartId\": \"cart_mongodb_id\","
+echo "    \"userId\": \"user_mongodb_id\","
+echo "    \"status\": \"active\","
+echo "    \"createdDate\": \"2024-01-15T10:30:00.000Z\","
+echo "    \"lastUpdatedDate\": \"2024-01-15T10:30:00.000Z\""
+echo "  }"
+echo "}"
+echo ""
+echo "Detailed Cart Response:"
+echo "{"
+echo "  \"success\": true,"
+echo "  \"message\": \"Cart details retrieved successfully\","
+echo "  \"data\": {"
+echo "    \"cartId\": \"cart_mongodb_id\","
+echo "    \"userId\": \"user_mongodb_id\","
+echo "    \"status\": \"active\","
+echo "    \"itemCount\": 3,"
+echo "    \"subtotal\": 1500.00,"
+echo "    \"totalAmount\": 1779.00,"
+echo "    \"discountAmount\": 0.00,"
+echo "    \"taxAmount\": 180.00,"
+echo "    \"shippingCost\": 99.00,"
+echo "    \"createdDate\": \"2024-01-15T10:30:00.000Z\","
+echo "    \"lastUpdatedDate\": \"2024-01-15T10:30:00.000Z\""
+echo "  }"
+echo "}"
+echo ""
+
+echo "🚨 Error Responses:"
+echo "=================="
+echo ""
+echo "Invalid User ID Format:"
+echo "{"
+echo "  \"success\": false,"
+echo "  \"message\": \"Invalid user ID format\""
+echo "}"
+echo ""
+echo "Cart Not Found:"
+echo "{"
+echo "  \"success\": false,"
+echo "  \"message\": \"Cart not found for this user\""
+echo "}"
+echo ""
+echo "Authentication Required:"
+echo "{"
+echo "  \"success\": false,"
+echo "  \"message\": \"Access denied. No token provided.\""
+echo "}"
+echo ""
+
+echo "💡 Usage Examples:"
+echo "=================="
+echo ""
+echo "1. Get basic cart ID:"
+echo "   GET /api/cart/cart-id/USER_ID"
+echo ""
+echo "2. Get detailed cart information:"
+echo "   GET /api/cart/cart-details/USER_ID"
+echo ""
+echo "3. Use in other operations:"
+echo "   - Use cartId for order creation"
+echo "   - Use cartId for cart modifications"
+echo "   - Use cartId for payment processing"
+echo ""
+
+echo "🔧 Features:"
+echo "============"
+echo "• ObjectId validation for user ID"
+echo "• Authentication required"
+echo "• Efficient database queries with select"
+echo "• Comprehensive error handling"
+echo "• Two levels of detail (basic and extended)"
+echo "• Consistent response format"
+echo ""
+
+echo "📋 Use Cases:"
+echo "============="
+echo "• Get cart ID for order processing"
+echo "• Check if user has an active cart"
+echo "• Get cart summary without full product details"
+echo "• Validate cart existence before operations"
+echo "• Display cart status in UI"
+echo ""

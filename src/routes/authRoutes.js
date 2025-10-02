@@ -7,6 +7,7 @@ const { authMiddleware } = require("../middleware/authMiddleware");
 router.post("/register", authController.register);
 router.post("/login", authController.login);
 router.post("/admin-login", authController.adminLogin);
+router.post("/stylist-signup", authController.stylistSignup);
 router.post("/verify-phone", authController.verifyPhone);
 router.post("/refresh", authController.refresh);
 router.post("/logout", authController.logout);
@@ -18,5 +19,6 @@ router.put("/profile", authMiddleware, authController.updateProfile);
 
 // Admin routes
 router.post("/create-admin", authController.createAdmin); // No auth required for creating first admin
+
 
 module.exports = router;
