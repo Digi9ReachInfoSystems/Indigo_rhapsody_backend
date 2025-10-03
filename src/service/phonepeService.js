@@ -3,12 +3,12 @@ const axios = require('axios');
 
 class PhonePeService {
     constructor() {
-        this.merchantId = process.env.PHONEPE_MERCHANT_ID || 'MERCHANTUAT';
-        this.saltKey = process.env.PHONEPE_SALT_KEY || '099eb0cd-02cf-4e2a-8aca-3c6faf0e5d8f';
+        this.merchantId = process.env.PHONEPE_MERCHANT_ID || 'M1LA2M87XNOE';
+        this.saltKey = process.env.PHONEPE_SALT_KEY || '6362bd9f-17b6-4eb2-b030-1ebbb78ce518';
         this.saltIndex = process.env.PHONEPE_SALT_INDEX || '1';
-        this.baseUrl = process.env.PHONEPE_BASE_URL || 'https://api-preprod.phonepe.com/apis/pg-sandbox';
-        this.redirectUrl = process.env.PHONEPE_REDIRECT_URL || 'https://your-app.com/payment/callback';
-        this.callbackUrl = process.env.PHONEPE_CALLBACK_URL || 'https://your-app.com/api/payment/phonepe/callback';
+        this.baseUrl = process.env.PHONEPE_BASE_URL || 'https://api-preprod.phonepe.com/apis/';
+        this.redirectUrl = process.env.PHONEPE_REDIRECT_URL || 'http://localhost:3000/payment/callback';
+        this.callbackUrl = process.env.PHONEPE_CALLBACK_URL || 'http://localhost:3000/api/payment/phonepe/callback';
     }
 
     // Generate SHA256 hash
