@@ -13,6 +13,7 @@ const {
   createNotification,
   sendFcmNotification,
 } = require("../controllers/notificationController");
+const phonepeService = require("../service/phonepeService");
 
 const transporter = nodemailer.createTransport({
   host: "smtp.hostinger.com",
@@ -35,11 +36,11 @@ const notifyDesignerByEmail = async (designerEmail, orderDetails) => {
       <h2>Order Details</h2>
       <ul>
         ${orderDetails
-          .map(
-            (product) =>
-              `<li>${product.productName} - ${product.quantity} x $${product.price}</li>`
-          )
-          .join("")}
+        .map(
+          (product) =>
+            `<li>${product.productName} - ${product.quantity} x $${product.price}</li>`
+        )
+        .join("")}
       </ul>
       <p>Please log in to your dashboard to view and manage this order.</p>
     `,
@@ -102,8 +103,7 @@ const generateAndUploadInvoice = async (order) => {
         .font("Helvetica")
         .text(order.shippingDetails?.address?.street || "Street Address")
         .text(
-          `${order.shippingDetails?.address?.city || "City"}, ${
-            order.shippingDetails?.address?.state || "State"
+          `${order.shippingDetails?.address?.city || "City"}, ${order.shippingDetails?.address?.state || "State"
           } - ${order.shippingDetails?.address?.country || "Country"}`,
           { align: "left" }
         );
@@ -239,7 +239,7 @@ const generateAndUploadInvoice = async (order) => {
   });
 };
 
-exports.getTotalOrdersOfparticularDesigner = async (req, res) => {};
+exports.getTotalOrdersOfparticularDesigner = async (req, res) => { };
 
 // Create Order Controller
 // Create Order Controller
@@ -467,16 +467,16 @@ exports.createOrder = async (req, res) => {
                   <th>Price</th>
                 </tr>
                 ${orderProducts
-                  .map(
-                    (product) => `
+          .map(
+            (product) => `
                 <tr>
                   <td>${product.productName}</td>
                   <td>${product.quantity}</td>
                   <td>${product.price}</td>
                 </tr>
                 `
-                  )
-                  .join("")}
+          )
+          .join("")}
               </table>
             </div>
             <p class="total"><strong>Subtotal:</strong> ${subtotal}</p>
@@ -1049,7 +1049,7 @@ exports.getTotalSalesForDesigner = async (req, res) => {
   }
 };
 
-exports.createReturnRequestForDesigner = async (req, res) => {};
+exports.createReturnRequestForDesigner = async (req, res) => { };
 
 // Cancel order
 exports.cancelOrder = async (req, res) => {
@@ -1169,10 +1169,10 @@ exports.cancelOrder = async (req, res) => {
 
             <div style="background-color: #e8f5e8; padding: 15px; border-radius: 5px; margin: 20px 0;">
               <h3>Refund Information:</h3>
-              ${order.paymentStatus === "Completed" 
-                ? "<p>Since payment was completed, a refund will be processed within 5-7 business days.</p>"
-                : "<p>No payment was processed, so no refund is required.</p>"
-              }
+              ${order.paymentStatus === "Completed"
+            ? "<p>Since payment was completed, a refund will be processed within 5-7 business days.</p>"
+            : "<p>No payment was processed, so no refund is required.</p>"
+          }
             </div>
 
             <p>If you have any questions, please contact our support team.</p>
@@ -1257,7 +1257,7 @@ exports.cancelOrderByDesigner = async (req, res) => {
     if (!reason) {
       return res.status(400).json({ success: false, message: "Cancellation reason is required" });
     }
- 
+
     const designerId = req.user._id;
 
     // ---- Load order with product->designer mapping ----
@@ -1284,7 +1284,7 @@ exports.cancelOrderByDesigner = async (req, res) => {
       designerProductsCount: designerProducts.length
     });
 
-    
+
 
     // ---- Status & payment checks ----
     const cancellableStatuses = ["Order Placed", "Processing"];
@@ -1377,10 +1377,10 @@ exports.cancelOrderByDesigner = async (req, res) => {
             </div>
             <div style="background-color: #e8f5e8; padding: 15px; border-radius: 5px; margin: 20px 0;">
               <h3>Refund Information:</h3>
-              ${order.paymentStatus === "Completed" 
-                ? "<p>Since payment was completed, a refund will be processed within 5-7 business days.</p>"
-                : "<p>No payment was processed, so no refund is required.</p>"
-              }
+              ${order.paymentStatus === "Completed"
+            ? "<p>Since payment was completed, a refund will be processed within 5-7 business days.</p>"
+            : "<p>No payment was processed, so no refund is required.</p>"
+          }
             </div>
             <p>If you have any questions, please contact our support team.</p>
             <p>Thank you for choosing Indigo Rhapsody.</p>
@@ -1445,26 +1445,26 @@ exports.getCancellableOrdersByDesigner = async (req, res) => {
 
     // Find orders that contain designer's products and are in cancellable status
     const cancellableStatuses = ["Order Placed", "Processing"];
-    
+
     const orders = await Order.find({
       "products.designerRef": designerId,
       status: { $in: cancellableStatuses },
       paymentStatus: { $ne: "Completed" } // Exclude orders with completed payment
     })
-    .populate('userId', 'displayName email phoneNumber')
-    .populate('products.productId', 'productName sku stock designerRef')
-    .sort({ createdDate: -1 })
-    .skip(skip)
-    .limit(parseInt(limit));
+      .populate('userId', 'displayName email phoneNumber')
+      .populate('products.productId', 'productName sku stock designerRef')
+      .sort({ createdDate: -1 })
+      .skip(skip)
+      .limit(parseInt(limit));
 
     // Filter to only show designer's products in each order
     const filteredOrders = orders.map(order => {
-      const designerProducts = order.products.filter(product => 
-        product.designerRef && 
-        product.designerRef.toString && 
+      const designerProducts = order.products.filter(product =>
+        product.designerRef &&
+        product.designerRef.toString &&
         product.designerRef.toString() === designerId.toString()
       );
-      
+
       return {
         ...order.toObject(),
         products: designerProducts,
@@ -1500,6 +1500,607 @@ exports.getCancellableOrdersByDesigner = async (req, res) => {
     return res.status(500).json({
       success: false,
       message: "Error retrieving cancellable orders",
+      error: error.message
+    });
+  }
+};
+
+// ==================== PAYMENT SERVICE INTEGRATION ====================
+
+// Create Payment Service - Main endpoint for payment integration
+exports.createPaymentService = async (req, res) => {
+  try {
+    const {
+      // Order details
+      userId,
+      cartId,
+      orderId,
+
+      // Payment details
+      paymentMethod, // 'phonepe', 'razorpay', 'stripe', 'paypal', 'cod'
+      amount,
+      currency = 'INR',
+
+      // Customer details
+      customerDetails: {
+        name,
+        email,
+        phone,
+        address
+      } = {},
+
+      // Payment gateway specific options
+      paymentOptions = {},
+
+      // Additional details
+      description,
+      notes,
+      returnUrl,
+      webhookUrl
+    } = req.body;
+
+    // Validate required fields
+    if (!userId || !paymentMethod || !amount) {
+      return res.status(400).json({
+        success: false,
+        message: "userId, paymentMethod, and amount are required"
+      });
+    }
+
+    // Validate amount
+    if (amount <= 0) {
+      return res.status(400).json({
+        success: false,
+        message: "Amount must be greater than 0"
+      });
+    }
+
+    // Validate payment method
+    const supportedPaymentMethods = ['phonepe', 'razorpay', 'stripe', 'paypal', 'cod'];
+    if (!supportedPaymentMethods.includes(paymentMethod.toLowerCase())) {
+      return res.status(400).json({
+        success: false,
+        message: `Unsupported payment method. Supported methods: ${supportedPaymentMethods.join(', ')}`
+      });
+    }
+
+    // Generate unique payment reference ID
+    const paymentReferenceId = `PAY_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+
+    // Create payment record in database
+    const paymentRecord = {
+      userId,
+      cartId,
+      orderId,
+      paymentMethod: paymentMethod.toLowerCase(),
+      amount,
+      currency,
+      paymentReferenceId,
+      status: 'initiated',
+      customerDetails: {
+        name: name || '',
+        email: email || '',
+        phone: phone || '',
+        address: address || {}
+      },
+      paymentOptions,
+      description: description || `Payment for order ${orderId || 'cart'}`,
+      notes: notes || '',
+      returnUrl: returnUrl || '',
+      webhookUrl: webhookUrl || '',
+      createdAt: new Date(),
+      updatedAt: new Date()
+    };
+
+    // Handle different payment methods
+    let paymentResponse;
+
+    switch (paymentMethod.toLowerCase()) {
+      case 'phonepe':
+        paymentResponse = await handlePhonePePayment(paymentRecord);
+        break;
+      case 'razorpay':
+        paymentResponse = await handleRazorpayPayment(paymentRecord);
+        break;
+      case 'stripe':
+        paymentResponse = await handleStripePayment(paymentRecord);
+        break;
+      case 'paypal':
+        paymentResponse = await handlePayPalPayment(paymentRecord);
+        break;
+      case 'cod':
+        paymentResponse = await handleCODPayment(paymentRecord);
+        break;
+      default:
+        return res.status(400).json({
+          success: false,
+          message: "Invalid payment method"
+        });
+    }
+
+    if (!paymentResponse.success) {
+      return res.status(500).json({
+        success: false,
+        message: "Payment initiation failed",
+        error: paymentResponse.message
+      });
+    }
+
+    // Save payment record to database (you can create a PaymentService model)
+    // For now, we'll return the payment response
+
+    return res.status(200).json({
+      success: true,
+      message: "Payment initiated successfully",
+      data: {
+        paymentReferenceId,
+        paymentMethod,
+        amount,
+        currency,
+        ...paymentResponse.data
+      }
+    });
+
+  } catch (error) {
+    console.error("Payment service error:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Payment service error",
+      error: error.message
+    });
+  }
+};
+
+// PhonePe Payment Handler
+const handlePhonePePayment = async (paymentRecord) => {
+  try {
+    const paymentData = {
+      amount: paymentRecord.amount,
+      orderId: paymentRecord.paymentReferenceId,
+      customerId: paymentRecord.userId,
+      customerEmail: paymentRecord.customerDetails.email,
+      customerPhone: paymentRecord.customerDetails.phone,
+      customerName: paymentRecord.customerDetails.name,
+      description: paymentRecord.description
+    };
+
+    const phonepeResponse = await phonepeService.createPaymentRequest(paymentData);
+
+    if (phonepeResponse.success) {
+      return {
+        success: true,
+        data: {
+          paymentUrl: phonepeResponse.data.paymentUrl,
+          transactionId: phonepeResponse.data.transactionId,
+          paymentId: phonepeResponse.data.paymentId,
+          expiresIn: 1800 // 30 minutes
+        }
+      };
+    } else {
+      return {
+        success: false,
+        message: phonepeResponse.message
+      };
+    }
+  } catch (error) {
+    return {
+      success: false,
+      message: error.message
+    };
+  }
+};
+
+// Razorpay Payment Handler
+const handleRazorpayPayment = async (paymentRecord) => {
+  try {
+    // Razorpay integration would go here
+    // For now, returning a mock response
+    return {
+      success: true,
+      data: {
+        paymentUrl: `https://razorpay.com/payment/${paymentRecord.paymentReferenceId}`,
+        transactionId: paymentRecord.paymentReferenceId,
+        paymentId: `rzp_${paymentRecord.paymentReferenceId}`,
+        expiresIn: 1800
+      }
+    };
+  } catch (error) {
+    return {
+      success: false,
+      message: error.message
+    };
+  }
+};
+
+// Stripe Payment Handler
+const handleStripePayment = async (paymentRecord) => {
+  try {
+    // Stripe integration would go here
+    // For now, returning a mock response
+    return {
+      success: true,
+      data: {
+        paymentUrl: `https://stripe.com/payment/${paymentRecord.paymentReferenceId}`,
+        transactionId: paymentRecord.paymentReferenceId,
+        paymentId: `stripe_${paymentRecord.paymentReferenceId}`,
+        expiresIn: 1800
+      }
+    };
+  } catch (error) {
+    return {
+      success: false,
+      message: error.message
+    };
+  }
+};
+
+// PayPal Payment Handler
+const handlePayPalPayment = async (paymentRecord) => {
+  try {
+    // PayPal integration would go here
+    // For now, returning a mock response
+    return {
+      success: true,
+      data: {
+        paymentUrl: `https://paypal.com/payment/${paymentRecord.paymentReferenceId}`,
+        transactionId: paymentRecord.paymentReferenceId,
+        paymentId: `paypal_${paymentRecord.paymentReferenceId}`,
+        expiresIn: 1800
+      }
+    };
+  } catch (error) {
+    return {
+      success: false,
+      message: error.message
+    };
+  }
+};
+
+// Cash on Delivery Payment Handler
+const handleCODPayment = async (paymentRecord) => {
+  try {
+    // COD doesn't require payment gateway integration
+    return {
+      success: true,
+      data: {
+        paymentUrl: null,
+        transactionId: paymentRecord.paymentReferenceId,
+        paymentId: `cod_${paymentRecord.paymentReferenceId}`,
+        message: "Cash on Delivery payment confirmed",
+        status: "confirmed"
+      }
+    };
+  } catch (error) {
+    return {
+      success: false,
+      message: error.message
+    };
+  }
+};
+
+// Verify Payment Status
+exports.verifyPaymentStatus = async (req, res) => {
+  try {
+    const { paymentReferenceId, paymentMethod } = req.params;
+
+    if (!paymentReferenceId || !paymentMethod) {
+      return res.status(400).json({
+        success: false,
+        message: "paymentReferenceId and paymentMethod are required"
+      });
+    }
+
+    let verificationResponse;
+
+    switch (paymentMethod.toLowerCase()) {
+      case 'phonepe':
+        verificationResponse = await phonepeService.verifyPayment(paymentReferenceId);
+        break;
+      case 'razorpay':
+        verificationResponse = await verifyRazorpayPayment(paymentReferenceId);
+        break;
+      case 'stripe':
+        verificationResponse = await verifyStripePayment(paymentReferenceId);
+        break;
+      case 'paypal':
+        verificationResponse = await verifyPayPalPayment(paymentReferenceId);
+        break;
+      case 'cod':
+        verificationResponse = { success: true, data: { status: 'confirmed' } };
+        break;
+      default:
+        return res.status(400).json({
+          success: false,
+          message: "Invalid payment method"
+        });
+    }
+
+    if (!verificationResponse.success) {
+      return res.status(500).json({
+        success: false,
+        message: "Payment verification failed",
+        error: verificationResponse.message
+      });
+    }
+
+    return res.status(200).json({
+      success: true,
+      message: "Payment status verified",
+      data: {
+        paymentReferenceId,
+        paymentMethod,
+        ...verificationResponse.data
+      }
+    });
+
+  } catch (error) {
+    console.error("Payment verification error:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Payment verification error",
+      error: error.message
+    });
+  }
+};
+
+// Payment Webhook Handler
+exports.handlePaymentWebhook = async (req, res) => {
+  try {
+    const { paymentMethod } = req.params;
+    const webhookData = req.body;
+
+    console.log(`Payment webhook received for ${paymentMethod}:`, webhookData);
+
+    let webhookResponse;
+
+    switch (paymentMethod.toLowerCase()) {
+      case 'phonepe':
+        webhookResponse = await handlePhonePeWebhook(webhookData);
+        break;
+      case 'razorpay':
+        webhookResponse = await handleRazorpayWebhook(webhookData);
+        break;
+      case 'stripe':
+        webhookResponse = await handleStripeWebhook(webhookData);
+        break;
+      case 'paypal':
+        webhookResponse = await handlePayPalWebhook(webhookData);
+        break;
+      default:
+        return res.status(400).json({
+          success: false,
+          message: "Invalid payment method"
+        });
+    }
+
+    if (!webhookResponse.success) {
+      return res.status(500).json({
+        success: false,
+        message: "Webhook processing failed",
+        error: webhookResponse.message
+      });
+    }
+
+    return res.status(200).json({
+      success: true,
+      message: "Webhook processed successfully",
+      data: webhookResponse.data
+    });
+
+  } catch (error) {
+    console.error("Payment webhook error:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Webhook processing error",
+      error: error.message
+    });
+  }
+};
+
+// PhonePe Webhook Handler
+const handlePhonePeWebhook = async (webhookData) => {
+  try {
+    const callbackResult = phonepeService.handlePaymentCallback(webhookData);
+
+    if (callbackResult.success) {
+      const { transactionId, status, amount } = callbackResult.data;
+
+      // Update payment status in database
+      // Create order if payment is successful
+      if (status === 'COMPLETED') {
+        // Handle successful payment
+        console.log(`Payment completed for transaction: ${transactionId}`);
+      }
+
+      return {
+        success: true,
+        data: callbackResult.data
+      };
+    } else {
+      return {
+        success: false,
+        message: callbackResult.message
+      };
+    }
+  } catch (error) {
+    return {
+      success: false,
+      message: error.message
+    };
+  }
+};
+
+// Razorpay Webhook Handler
+const handleRazorpayWebhook = async (webhookData) => {
+  try {
+    // Razorpay webhook handling logic
+    return {
+      success: true,
+      data: { status: 'processed' }
+    };
+  } catch (error) {
+    return {
+      success: false,
+      message: error.message
+    };
+  }
+};
+
+// Stripe Webhook Handler
+const handleStripeWebhook = async (webhookData) => {
+  try {
+    // Stripe webhook handling logic
+    return {
+      success: true,
+      data: { status: 'processed' }
+    };
+  } catch (error) {
+    return {
+      success: false,
+      message: error.message
+    };
+  }
+};
+
+// PayPal Webhook Handler
+const handlePayPalWebhook = async (webhookData) => {
+  try {
+    // PayPal webhook handling logic
+    return {
+      success: true,
+      data: { status: 'processed' }
+    };
+  } catch (error) {
+    return {
+      success: false,
+      message: error.message
+    };
+  }
+};
+
+// Mock verification functions for other payment gateways
+const verifyRazorpayPayment = async (paymentReferenceId) => {
+  return { success: true, data: { status: 'completed' } };
+};
+
+const verifyStripePayment = async (paymentReferenceId) => {
+  return { success: true, data: { status: 'completed' } };
+};
+
+const verifyPayPalPayment = async (paymentReferenceId) => {
+  return { success: true, data: { status: 'completed' } };
+};
+
+// Get Payment Methods
+exports.getPaymentMethods = async (req, res) => {
+  try {
+    const paymentMethods = [
+      {
+        id: 'phonepe',
+        name: 'PhonePe',
+        description: 'Pay with PhonePe UPI, Cards, Wallets',
+        icon: 'https://example.com/phonepe-icon.png',
+        enabled: true,
+        supportedCurrencies: ['INR'],
+        minAmount: 1,
+        maxAmount: 100000
+      },
+      {
+        id: 'razorpay',
+        name: 'Razorpay',
+        description: 'Pay with Cards, UPI, Net Banking',
+        icon: 'https://example.com/razorpay-icon.png',
+        enabled: true,
+        supportedCurrencies: ['INR'],
+        minAmount: 1,
+        maxAmount: 100000
+      },
+      {
+        id: 'stripe',
+        name: 'Stripe',
+        description: 'Pay with International Cards',
+        icon: 'https://example.com/stripe-icon.png',
+        enabled: true,
+        supportedCurrencies: ['USD', 'EUR', 'INR'],
+        minAmount: 0.5,
+        maxAmount: 10000
+      },
+      {
+        id: 'paypal',
+        name: 'PayPal',
+        description: 'Pay with PayPal Account',
+        icon: 'https://example.com/paypal-icon.png',
+        enabled: true,
+        supportedCurrencies: ['USD', 'EUR', 'GBP'],
+        minAmount: 1,
+        maxAmount: 10000
+      },
+      {
+        id: 'cod',
+        name: 'Cash on Delivery',
+        description: 'Pay when your order is delivered',
+        icon: 'https://example.com/cod-icon.png',
+        enabled: true,
+        supportedCurrencies: ['INR'],
+        minAmount: 1,
+        maxAmount: 5000
+      }
+    ];
+
+    return res.status(200).json({
+      success: true,
+      message: "Payment methods retrieved successfully",
+      data: {
+        paymentMethods,
+        defaultCurrency: 'INR',
+        supportedCurrencies: ['INR', 'USD', 'EUR', 'GBP']
+      }
+    });
+
+  } catch (error) {
+    console.error("Error getting payment methods:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Error retrieving payment methods",
+      error: error.message
+    });
+  }
+};
+
+// Get Payment Status
+exports.getPaymentStatus = async (req, res) => {
+  try {
+    const { paymentReferenceId } = req.params;
+
+    if (!paymentReferenceId) {
+      return res.status(400).json({
+        success: false,
+        message: "paymentReferenceId is required"
+      });
+    }
+
+    // In a real implementation, you would query your payment database
+    // For now, returning a mock response
+    return res.status(200).json({
+      success: true,
+      message: "Payment status retrieved successfully",
+      data: {
+        paymentReferenceId,
+        status: 'completed',
+        amount: 1000,
+        currency: 'INR',
+        paymentMethod: 'phonepe',
+        transactionId: 'TXN123456789',
+        createdAt: new Date(),
+        updatedAt: new Date()
+      }
+    });
+
+  } catch (error) {
+    console.error("Error getting payment status:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Error retrieving payment status",
       error: error.message
     });
   }

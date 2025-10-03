@@ -102,4 +102,39 @@ router.get(
   orderController.getCancellableOrdersByDesigner
 );
 
+// ==================== PAYMENT SERVICE ROUTES ====================
+
+// Create payment service
+router.post(
+  "/payment/create",
+  authMiddleware,
+  orderController.createPaymentService
+);
+
+// Get available payment methods
+router.get(
+  "/payment/methods",
+  orderController.getPaymentMethods
+);
+
+// Verify payment status
+router.get(
+  "/payment/verify/:paymentReferenceId/:paymentMethod",
+  authMiddleware,
+  orderController.verifyPaymentStatus
+);
+
+// Get payment status
+router.get(
+  "/payment/status/:paymentReferenceId",
+  authMiddleware,
+  orderController.getPaymentStatus
+);
+
+// Payment webhook handlers
+router.post(
+  "/payment/webhook/:paymentMethod",
+  orderController.handlePaymentWebhook
+);
+
 module.exports = router;

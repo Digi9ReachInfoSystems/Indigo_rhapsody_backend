@@ -1,0 +1,366 @@
+# Test Payment Service Integration
+# This script tests the comprehensive payment service for web application integration
+
+# Base URL - Update this to match your server URL
+BASE_URL="http://localhost:3000"
+
+# Authentication token - Update with a valid user token
+USER_TOKEN="your_user_jwt_token_here"
+
+# Test user ID - Update with a valid user ID
+USER_ID="your_user_id_here"
+
+# Test cart ID - Update with a valid cart ID
+CART_ID="your_cart_id_here"
+
+echo "💳 Testing Payment Service Integration"
+echo "====================================="
+echo ""
+
+# Test 1: Get available payment methods
+echo "✅ Test 1: Get available payment methods"
+echo "---------------------------------------"
+curl -X GET "${BASE_URL}/api/order/payment/methods" \
+  -H "Content-Type: application/json" \
+  -w "\n\nHTTP Status: %{http_code}\nResponse Time: %{time_total}s\n" \
+  -s
+echo ""
+
+# Test 2: Create PhonePe payment
+echo "✅ Test 2: Create PhonePe payment"
+echo "--------------------------------"
+curl -X POST "${BASE_URL}/api/order/payment/create" \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer ${USER_TOKEN}" \
+  -d '{
+    "userId": "'${USER_ID}'",
+    "cartId": "'${CART_ID}'",
+    "paymentMethod": "phonepe",
+    "amount": 1500,
+    "currency": "INR",
+    "customerDetails": {
+      "name": "John Doe",
+      "email": "john.doe@example.com",
+      "phone": "+1234567890",
+      "address": {
+        "street": "123 Main Street",
+        "city": "New York",
+        "state": "NY",
+        "pincode": "10001",
+        "country": "USA"
+      }
+    },
+    "description": "Payment for order #12345",
+    "notes": "Please process this payment",
+    "returnUrl": "https://your-app.com/payment/success",
+    "webhookUrl": "https://your-app.com/api/order/payment/webhook/phonepe"
+  }' \
+  -w "\n\nHTTP Status: %{http_code}\nResponse Time: %{time_total}s\n" \
+  -s
+echo ""
+
+# Test 3: Create Razorpay payment
+echo "✅ Test 3: Create Razorpay payment"
+echo "---------------------------------"
+curl -X POST "${BASE_URL}/api/order/payment/create" \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer ${USER_TOKEN}" \
+  -d '{
+    "userId": "'${USER_ID}'",
+    "cartId": "'${CART_ID}'",
+    "paymentMethod": "razorpay",
+    "amount": 2000,
+    "currency": "INR",
+    "customerDetails": {
+      "name": "Jane Smith",
+      "email": "jane.smith@example.com",
+      "phone": "+1234567891"
+    },
+    "description": "Payment for order #12346",
+    "paymentOptions": {
+      "theme": "dark",
+      "prefill": {
+        "name": "Jane Smith",
+        "email": "jane.smith@example.com"
+      }
+    }
+  }' \
+  -w "\n\nHTTP Status: %{http_code}\nResponse Time: %{time_total}s\n" \
+  -s
+echo ""
+
+# Test 4: Create Stripe payment
+echo "✅ Test 4: Create Stripe payment"
+echo "-------------------------------"
+curl -X POST "${BASE_URL}/api/order/payment/create" \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer ${USER_TOKEN}" \
+  -d '{
+    "userId": "'${USER_ID}'",
+    "cartId": "'${CART_ID}'",
+    "paymentMethod": "stripe",
+    "amount": 50,
+    "currency": "USD",
+    "customerDetails": {
+      "name": "Bob Johnson",
+      "email": "bob.johnson@example.com",
+      "phone": "+1234567892"
+    },
+    "description": "Payment for order #12347",
+    "paymentOptions": {
+      "payment_method_types": ["card"],
+      "billing_address_collection": "required"
+    }
+  }' \
+  -w "\n\nHTTP Status: %{http_code}\nResponse Time: %{time_total}s\n" \
+  -s
+echo ""
+
+# Test 5: Create PayPal payment
+echo "✅ Test 5: Create PayPal payment"
+echo "-------------------------------"
+curl -X POST "${BASE_URL}/api/order/payment/create" \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer ${USER_TOKEN}" \
+  -d '{
+    "userId": "'${USER_ID}'",
+    "cartId": "'${CART_ID}'",
+    "paymentMethod": "paypal",
+    "amount": 75,
+    "currency": "USD",
+    "customerDetails": {
+      "name": "Alice Brown",
+      "email": "alice.brown@example.com",
+      "phone": "+1234567893"
+    },
+    "description": "Payment for order #12348",
+    "paymentOptions": {
+      "intent": "sale",
+      "payer": {
+        "payment_method": "paypal"
+      }
+    }
+  }' \
+  -w "\n\nHTTP Status: %{http_code}\nResponse Time: %{time_total}s\n" \
+  -s
+echo ""
+
+# Test 6: Create Cash on Delivery payment
+echo "✅ Test 6: Create Cash on Delivery payment"
+echo "-----------------------------------------"
+curl -X POST "${BASE_URL}/api/order/payment/create" \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer ${USER_TOKEN}" \
+  -d '{
+    "userId": "'${USER_ID}'",
+    "cartId": "'${CART_ID}'",
+    "paymentMethod": "cod",
+    "amount": 3000,
+    "currency": "INR",
+    "customerDetails": {
+      "name": "Charlie Wilson",
+      "email": "charlie.wilson@example.com",
+      "phone": "+1234567894",
+      "address": {
+        "street": "456 Oak Avenue",
+        "city": "Mumbai",
+        "state": "Maharashtra",
+        "pincode": "400001",
+        "country": "India"
+      }
+    },
+    "description": "Payment for order #12349",
+    "notes": "Cash on delivery - please collect payment upon delivery"
+  }' \
+  -w "\n\nHTTP Status: %{http_code}\nResponse Time: %{time_total}s\n" \
+  -s
+echo ""
+
+# Test 7: Verify PhonePe payment status
+echo "✅ Test 7: Verify PhonePe payment status"
+echo "---------------------------------------"
+curl -X GET "${BASE_URL}/api/order/payment/verify/PAY_1704123456789_abc123def/phonepe" \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer ${USER_TOKEN}" \
+  -w "\n\nHTTP Status: %{http_code}\nResponse Time: %{time_total}s\n" \
+  -s
+echo ""
+
+# Test 8: Get payment status
+echo "✅ Test 8: Get payment status"
+echo "----------------------------"
+curl -X GET "${BASE_URL}/api/order/payment/status/PAY_1704123456789_abc123def" \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer ${USER_TOKEN}" \
+  -w "\n\nHTTP Status: %{http_code}\nResponse Time: %{time_total}s\n" \
+  -s
+echo ""
+
+# Test 9: PhonePe webhook simulation
+echo "✅ Test 9: PhonePe webhook simulation"
+echo "------------------------------------"
+curl -X POST "${BASE_URL}/api/order/payment/webhook/phonepe" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "response": "eyJzdWNjZXNzIjp0cnVlLCJjb2RlIjoiUEFZTUVOVCIsIm1lc3NhZ2UiOiJZb3VyIHRyYW5zYWN0aW9uIGlzIHN1Y2Nlc3NmdWwiLCJkYXRhIjp7Im1lcmNoYW50SWQiOiJNRVJDSEFOVFVBRCIsIm1lcmNoYW50VHJhbnNhY3Rpb25JZCI6IlBBWV8xNzA0MTIzNDU2Nzg5X2FiYzEyM2RlZiIsInRyYW5zYWN0aW9uSWQiOiJNVF8xNzA0MTIzNDU2Nzg5IiwiYW1vdW50Ijo1MDAwMCwic3RhdGUiOiJDT01QTEVURUQiLCJyZXNwb25zZUNvZGUiOiJQQVlNRU5UIiwicmVzcG9uc2VNZXNzYWdlIjoiUGF5bWVudCBzdWNjZXNzZnVsIiwidHhuVGltZSI6MTcwNDEyMzQ1Njc4OX19"
+  }' \
+  -w "\n\nHTTP Status: %{http_code}\nResponse Time: %{time_total}s\n" \
+  -s
+echo ""
+
+# Test 10: Razorpay webhook simulation
+echo "✅ Test 10: Razorpay webhook simulation"
+echo "--------------------------------------"
+curl -X POST "${BASE_URL}/api/order/payment/webhook/razorpay" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "event": "payment.captured",
+    "account_id": "acc_1234567890",
+    "contains": ["payment"],
+    "payload": {
+      "payment": {
+        "entity": {
+          "id": "pay_1234567890",
+          "amount": 200000,
+          "currency": "INR",
+          "status": "captured",
+          "method": "card"
+        }
+      }
+    }
+  }' \
+  -w "\n\nHTTP Status: %{http_code}\nResponse Time: %{time_total}s\n" \
+  -s
+echo ""
+
+# Test 11: Test validation errors
+echo "✅ Test 11: Test validation errors"
+echo "---------------------------------"
+curl -X POST "${BASE_URL}/api/order/payment/create" \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer ${USER_TOKEN}" \
+  -d '{
+    "userId": "",
+    "paymentMethod": "invalid_method",
+    "amount": -100
+  }' \
+  -w "\n\nHTTP Status: %{http_code}\nResponse Time: %{time_total}s\n" \
+  -s
+echo ""
+
+# Test 12: Test without authentication
+echo "✅ Test 12: Test without authentication"
+echo "--------------------------------------"
+curl -X POST "${BASE_URL}/api/order/payment/create" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "userId": "'${USER_ID}'",
+    "paymentMethod": "phonepe",
+    "amount": 1000
+  }' \
+  -w "\n\nHTTP Status: %{http_code}\nResponse Time: %{time_total}s\n" \
+  -s
+echo ""
+
+# Test 13: Test with invalid payment reference ID
+echo "✅ Test 13: Test with invalid payment reference ID"
+echo "------------------------------------------------"
+curl -X GET "${BASE_URL}/api/order/payment/status/invalid_reference_id" \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer ${USER_TOKEN}" \
+  -w "\n\nHTTP Status: %{http_code}\nResponse Time: %{time_total}s\n" \
+  -s
+echo ""
+
+# Test 14: Test webhook with invalid payment method
+echo "✅ Test 14: Test webhook with invalid payment method"
+echo "--------------------------------------------------"
+curl -X POST "${BASE_URL}/api/order/payment/webhook/invalid_method" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "test": "data"
+  }' \
+  -w "\n\nHTTP Status: %{http_code}\nResponse Time: %{time_total}s\n" \
+  -s
+echo ""
+
+echo "📊 API Endpoints Summary:"
+echo "========================"
+echo "• POST /api/order/payment/create - Create payment service"
+echo "• GET /api/order/payment/methods - Get available payment methods"
+echo "• GET /api/order/payment/verify/:paymentReferenceId/:paymentMethod - Verify payment status"
+echo "• GET /api/order/payment/status/:paymentReferenceId - Get payment status"
+echo "• POST /api/order/payment/webhook/:paymentMethod - Handle payment webhooks"
+echo ""
+
+echo "💳 Supported Payment Methods:"
+echo "============================="
+echo "• PhonePe - UPI, Cards, Wallets (INR)"
+echo "• Razorpay - Cards, UPI, Net Banking (INR)"
+echo "• Stripe - International Cards (USD, EUR, INR)"
+echo "• PayPal - PayPal Account (USD, EUR, GBP)"
+echo "• Cash on Delivery - COD (INR)"
+echo ""
+
+echo "🔄 Payment Flow:"
+echo "================"
+echo "1. Get Payment Methods → Choose payment method"
+echo "2. Create Payment → Get payment URL/instructions"
+echo "3. Complete Payment → User completes payment"
+echo "4. Webhook/Callback → Payment gateway notifies status"
+echo "5. Verify Payment → Confirm payment completion"
+echo "6. Create Order → Process order after successful payment"
+echo ""
+
+echo "🔒 Security Features:"
+echo "===================="
+echo "• Authentication required for payment creation"
+echo "• Payment reference ID validation"
+echo "• Amount validation (positive values only)"
+echo "• Payment method validation"
+echo "• Webhook signature verification (implement per gateway)"
+echo "• Secure payment URL generation"
+echo ""
+
+echo "📋 Request Examples:"
+echo "==================="
+echo ""
+echo "Create PhonePe Payment:"
+echo "POST /api/order/payment/create"
+echo "{"
+echo "  \"userId\": \"user_id\","
+echo "  \"cartId\": \"cart_id\","
+echo "  \"paymentMethod\": \"phonepe\","
+echo "  \"amount\": 1500,"
+echo "  \"currency\": \"INR\","
+echo "  \"customerDetails\": {"
+echo "    \"name\": \"John Doe\","
+echo "    \"email\": \"john@example.com\","
+echo "    \"phone\": \"+1234567890\""
+echo "  }"
+echo "}"
+echo ""
+echo "Verify Payment:"
+echo "GET /api/order/payment/verify/PAY_REF_ID/phonepe"
+echo ""
+echo "Get Payment Status:"
+echo "GET /api/order/payment/status/PAY_REF_ID"
+echo ""
+
+echo "🌐 Webhook URLs:"
+echo "==============="
+echo "• PhonePe: POST /api/order/payment/webhook/phonepe"
+echo "• Razorpay: POST /api/order/payment/webhook/razorpay"
+echo "• Stripe: POST /api/order/payment/webhook/stripe"
+echo "• PayPal: POST /api/order/payment/webhook/paypal"
+echo ""
+
+echo "💡 Integration Tips:"
+echo "==================="
+echo "• Configure webhook URLs in payment gateway dashboards"
+echo "• Implement proper error handling for failed payments"
+echo "• Store payment reference IDs for order tracking"
+echo "• Validate webhook signatures for security"
+echo "• Handle payment timeouts and retries"
+echo "• Implement payment status polling as fallback"
+echo ""
