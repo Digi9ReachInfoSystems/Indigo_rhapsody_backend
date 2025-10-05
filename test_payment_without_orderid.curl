@@ -1,0 +1,76 @@
+#!/bin/bash
+
+echo "🧪 Testing Payment Creation Without OrderId"
+echo "============================================="
+echo ""
+
+echo "📋 Test Case 1: Payment without orderId (should auto-generate)"
+echo "POST http://localhost:5000/order/payment/create"
+echo ""
+
+curl -X POST http://localhost:5000/order/payment/create \
+  -H "Content-Type: application/json" \
+  -d '{
+    "userId": "68ccf8d9c585b659b38bc7ed",
+    "cartId": "68ccf9196fdf60f32f91a100",
+    "paymentMethod": "phonepe",
+    "amount": "3000",
+    "currency": "INR",
+    "customerDetails": {
+      "name": "rajat",
+      "email": "rajatjiedm@gmail.com",
+      "phone": "9876543210",
+      "address": "c 1304 apex athena sec 75 noida"
+    },
+    "paymentOptions": {},
+    "description": "Test payment without orderId",
+    "notes": "Auto-generated orderId test",
+    "returnUrl": "",
+    "webhookUrl": ""
+  }' | jq '.'
+
+echo ""
+echo "📋 Test Case 2: Payment with custom orderId"
+echo "POST http://localhost:5000/order/payment/create"
+echo ""
+
+curl -X POST http://localhost:5000/order/payment/create \
+  -H "Content-Type: application/json" \
+  -d '{
+    "userId": "68ccf8d9c585b659b38bc7ed",
+    "cartId": "68ccf9196fdf60f32f91a100",
+    "orderId": "CUSTOM_ORDER_12345",
+    "paymentMethod": "phonepe",
+    "amount": "3000",
+    "currency": "INR",
+    "customerDetails": {
+      "name": "rajat",
+      "email": "rajatjiedm@gmail.com",
+      "phone": "9876543210",
+      "address": "c 1304 apex athena sec 75 noida"
+    },
+    "paymentOptions": {},
+    "description": "Test payment with custom orderId",
+    "notes": "Custom orderId test",
+    "returnUrl": "",
+    "webhookUrl": ""
+  }' | jq '.'
+
+echo ""
+echo "💡 Key Changes Made:"
+echo "==================="
+echo "• orderId is now OPTIONAL in the request"
+echo "• If orderId is not provided, system auto-generates one"
+echo "• Generated orderId format: ORD_[timestamp]_[random]"
+echo "• Response includes the orderId (generated or provided)"
+echo "• This orderId is used for tracking and will be used when creating the actual order"
+echo ""
+echo "🔄 Payment Flow:"
+echo "==============="
+echo "1. Client sends payment request (with or without orderId)"
+echo "2. System generates orderId if not provided"
+echo "3. Payment is initiated with PhonePe"
+echo "4. PhonePe processes payment"
+echo "5. Webhook is called when payment completes"
+echo "6. Actual order is created using the orderId from step 2"
+echo ""

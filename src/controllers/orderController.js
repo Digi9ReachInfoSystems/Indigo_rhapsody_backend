@@ -1514,7 +1514,7 @@ exports.createPaymentService = async (req, res) => {
       // Order details
       userId,
       cartId,
-      orderId,
+      orderId, // Optional - will be generated if not provided
 
       // Payment details
       paymentMethod, // 'phonepe', 'razorpay', 'stripe', 'paypal', 'cod'
@@ -1567,11 +1567,14 @@ exports.createPaymentService = async (req, res) => {
     // Generate unique payment reference ID
     const paymentReferenceId = `PAY_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
 
+    // Generate orderId if not provided (for tracking purposes)
+    const finalOrderId = orderId || `ORD_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+
     // Create payment record in database
     const paymentRecord = {
       userId,
       cartId,
-      orderId,
+      orderId: finalOrderId,
       paymentMethod: paymentMethod.toLowerCase(),
       amount,
       currency,
@@ -1584,7 +1587,7 @@ exports.createPaymentService = async (req, res) => {
         address: address || {}
       },
       paymentOptions,
-      description: description || `Payment for order ${orderId || 'cart'}`,
+      description: description || `Payment for order ${finalOrderId}`,
       notes: notes || '',
       returnUrl: returnUrl || '',
       webhookUrl: webhookUrl || '',
@@ -1634,6 +1637,7 @@ exports.createPaymentService = async (req, res) => {
       message: "Payment initiated successfully",
       data: {
         paymentReferenceId,
+        orderId: finalOrderId,
         paymentMethod,
         amount,
         currency,
