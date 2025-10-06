@@ -1,0 +1,112 @@
+#!/bin/bash
+
+echo "🧪 Testing Payment Storage in Database"
+echo "======================================"
+echo ""
+
+echo "📋 Test Case 1: Create Payment and Store in Database"
+echo "POST http://localhost:5000/order/payment/create"
+echo ""
+
+curl -X POST http://localhost:5000/order/payment/create \
+  -H "Content-Type: application/json" \
+  -d '{
+    "userId": "68ccf8d9c585b659b38bc7ed",
+    "cartId": "68ccf9196fdf60f32f91a100",
+    "paymentMethod": "phonepe",
+    "amount": "3000",
+    "currency": "INR",
+    "customerDetails": {
+      "name": "rajat",
+      "email": "rajatjiedm@gmail.com",
+      "phone": "9876543210",
+      "address": "c 1304 apex athena sec 75 noida"
+    },
+    "paymentOptions": {},
+    "description": "Test payment storage",
+    "notes": "Testing database storage",
+    "returnUrl": "",
+    "webhookUrl": ""
+  }' | jq '.'
+
+echo ""
+echo "📋 Test Case 2: Get All Payments (Admin endpoint)"
+echo "GET http://localhost:5000/payment/payments"
+echo ""
+
+curl -X GET http://localhost:5000/payment/payments \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer YOUR_ADMIN_TOKEN" | jq '.'
+
+echo ""
+echo "📋 Test Case 3: Get Payment by Transaction ID"
+echo "GET http://localhost:5000/payment/transaction/TRANSACTION_ID"
+echo ""
+
+# Replace TRANSACTION_ID with actual transaction ID from previous response
+# curl -X GET http://localhost:5000/payment/transaction/PAY_1703123456789_abc123def \
+#   -H "Content-Type: application/json" | jq '.'
+
+echo ""
+echo "📋 Test Case 4: Simulate PhonePe Webhook (Payment Success)"
+echo "POST http://localhost:5000/order/payment/webhook/phonepe"
+echo ""
+
+# This would be called by PhonePe when payment is completed
+# Replace with actual webhook data from PhonePe
+curl -X POST http://localhost:5000/order/payment/webhook/phonepe \
+  -H "Content-Type: application/json" \
+  -d '{
+    "response": "eyJzdWNjZXNzIjp0cnVlLCJkYXRhIjp7Im1lcmNoYW50VHJhbnNhY3Rpb25JZCI6IlBBWV8xNzAzMTIzNDU2Nzg5X2FiYzEyM2RlZiIsInRyYW5zYWN0aW9uSWQiOiJQSE9ORVBFX1RYTjEyMzQ1Njc4OTAiLCJzdGF0ZSI6IkNPTVBMRVRFRCIsImFtb3VudCI6MzAwMDAwLCJyZXNwb25zZUNvZGUiOiJTVUNDRVNTIiwicmVzcG9uc2VNZXNzYWdlIjoiUGF5bWVudCBzdWNjZXNzZnVsIn19"
+  }' | jq '.'
+
+echo ""
+echo "💡 Key Features Implemented:"
+echo "============================"
+echo "✅ Payment data is stored in PaymentDetails collection"
+echo "✅ Auto-generated orderId if not provided"
+echo "✅ Complete payment tracking with status updates"
+echo "✅ Webhook integration updates payment status"
+echo "✅ Customer details stored with payment"
+echo "✅ Payment reference ID for tracking"
+echo "✅ Database error handling with fallback responses"
+echo ""
+echo "🗄️ Database Schema Updates:"
+echo "==========================="
+echo "• Added paymentReferenceId (unique)"
+echo "• Added orderId for tracking"
+echo "• Added amount and currency fields"
+echo "• Added customerDetails object"
+echo "• Added paymentOptions and metadata"
+echo "• Added status tracking (initiated, completed, failed)"
+echo "• Added timestamps (createdDate, updatedAt, completedAt, failedAt)"
+echo "• Added failureReason for failed payments"
+echo ""
+echo "🔄 Payment Flow:"
+echo "==============="
+echo "1. Client calls /order/payment/create"
+echo "2. Payment record created in database with status 'initiated'"
+echo "3. PhonePe payment URL returned to client"
+echo "4. User completes payment on PhonePe"
+echo "5. PhonePe calls webhook with payment status"
+echo "6. Database updated with final payment status"
+echo "7. Order created if payment successful"
+echo ""
+echo "📊 Response Format:"
+echo "=================="
+echo "{
+  \"success\": true,
+  \"message\": \"Payment initiated successfully\",
+  \"data\": {
+    \"paymentId\": \"MONGODB_OBJECT_ID\",
+    \"paymentReferenceId\": \"PAY_1703123456789_abc123def\",
+    \"orderId\": \"ORD_1703123456789_xyz789ghi\",
+    \"paymentMethod\": \"phonepe\",
+    \"amount\": \"3000\",
+    \"currency\": \"INR\",
+    \"redirectUrl\": \"https://mercury.phonepe.com/transact/...\",
+    \"transactionId\": \"ORD_1703123456789_xyz789ghi\",
+    \"paymentId\": \"T12345678901234567890\"
+  }
+}"
+echo ""

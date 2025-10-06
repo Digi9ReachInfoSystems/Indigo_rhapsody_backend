@@ -170,13 +170,13 @@ const OrderSchema = new mongoose.Schema({
     default: 0,
   },
   shippingDetails: {
-    address: {
-      street: String,
-      city: String,
-      state: String,
-      pincode: String,
-      country: String,
-    },
+      address: {
+        street: String,
+        city: String,
+        state: String,
+        pincode: String,
+        country: String,
+      },
     shippingMethod: {
       type: String,
     },

@@ -4,6 +4,8 @@ const Order = require("../models/orderModel");
 const Product = require("../models/productModels");
 const Cart = require("../models/cartModel");
 const User = require("../models/userModel");
+const PaymentDetails = require("../models/paymentDetailsModel");
+const PhonePeService = require("../service/phonepeService");
 const fs = require("fs");
 const PDFDocument = require("pdfkit"); // To generate PDF invoices
 const nodemailer = require("nodemailer");
@@ -1061,19 +1063,19 @@ exports.cancelOrder = async (req, res) => {
     if (!orderId) {
       return res.status(400).json({
         success: false,
-        message: "Order ID is required"
+        message: "Order ID is required",
       });
     }
 
     // Find the order
     const order = await Order.findById(orderId)
-      .populate('userId', 'displayName email phoneNumber')
-      .populate('products.productId', 'productName sku stock');
+      .populate("userId", "displayName email phoneNumber")
+      .populate("products.productId", "productName sku stock");
 
     if (!order) {
       return res.status(404).json({
         success: false,
-        message: "Order not found"
+        message: "Order not found",
       });
     }
 
@@ -1082,7 +1084,7 @@ exports.cancelOrder = async (req, res) => {
     if (!cancellableStatuses.includes(order.status)) {
       return res.status(400).json({
         success: false,
-        message: `Order cannot be cancelled in current status: ${order.status}. Only orders with status 'Order Placed' or 'Processing' can be cancelled.`
+        message: `Order cannot be cancelled in current status: ${order.status}. Only orders with status 'Order Placed' or 'Processing' can be cancelled.`,
       });
     }
 
@@ -1090,7 +1092,8 @@ exports.cancelOrder = async (req, res) => {
     if (order.paymentStatus === "Completed") {
       return res.status(400).json({
         success: false,
-        message: "Order with completed payment cannot be cancelled. Please contact support for refund processing."
+        message:
+          "Order with completed payment cannot be cancelled. Please contact support for refund processing.",
       });
     }
 
@@ -1098,7 +1101,7 @@ exports.cancelOrder = async (req, res) => {
     const updateData = {
       status: "Cancelled",
       "statusTimestamps.cancelled": new Date(),
-      notes: reason ? `Cancelled: ${reason}` : "Order cancelled"
+      notes: reason ? `Cancelled: ${reason}` : "Order cancelled",
     };
 
     // Add cancellation details
@@ -1109,21 +1112,21 @@ exports.cancelOrder = async (req, res) => {
       updateData.cancelledBy = cancelBy;
     }
 
-    const updatedOrder = await Order.findByIdAndUpdate(
-      orderId,
-      updateData,
-      { new: true }
-    ).populate('userId', 'displayName email phoneNumber');
+    const updatedOrder = await Order.findByIdAndUpdate(orderId, updateData, {
+      new: true,
+    }).populate("userId", "displayName email phoneNumber");
 
     // Restore product stock
     for (const product of order.products) {
       try {
-        await Product.findByIdAndUpdate(
-          product.productId,
-          { $inc: { stock: product.quantity } }
-        );
+        await Product.findByIdAndUpdate(product.productId, {
+          $inc: { stock: product.quantity },
+        });
       } catch (error) {
-        console.error(`Error restoring stock for product ${product.productId}:`, error);
+        console.error(
+          `Error restoring stock for product ${product.productId}:`,
+          error
+        );
       }
     }
 
@@ -1137,8 +1140,8 @@ exports.cancelOrder = async (req, res) => {
         data: {
           orderId: order.orderId,
           orderAmount: order.amount,
-          cancellationReason: reason || "No reason provided"
-        }
+          cancellationReason: reason || "No reason provided",
+        },
       };
 
       await createNotification(notificationData);
@@ -1162,9 +1165,12 @@ exports.cancelOrder = async (req, res) => {
             <div style="background-color: #f5f5f5; padding: 15px; border-radius: 5px; margin: 20px 0;">
               <h3>Order Details:</h3>
               <p><strong>Order ID:</strong> ${order.orderId}</p>
-              <p><strong>Order Date:</strong> ${new Date(order.createdDate).toLocaleDateString()}</p>
+              <p><strong>Order Date:</strong> ${new Date(
+          order.createdDate
+        ).toLocaleDateString()}</p>
               <p><strong>Total Amount:</strong> ₹${order.amount}</p>
-              <p><strong>Cancellation Reason:</strong> ${reason || "No reason provided"}</p>
+              <p><strong>Cancellation Reason:</strong> ${reason || "No reason provided"
+          }</p>
             </div>
 
             <div style="background-color: #e8f5e8; padding: 15px; border-radius: 5px; margin: 20px 0;">
@@ -1178,7 +1184,7 @@ exports.cancelOrder = async (req, res) => {
             <p>If you have any questions, please contact our support team.</p>
             <p>Thank you for choosing Indigo Rhapsody.</p>
           </div>
-        `
+        `,
       };
 
       await transporter.sendMail(mailOptions);
@@ -1195,16 +1201,15 @@ exports.cancelOrder = async (req, res) => {
         cancelledAt: updatedOrder.statusTimestamps.cancelled,
         cancellationReason: reason,
         cancelledBy: cancelBy,
-        refundRequired: order.paymentStatus === "Completed"
-      }
+        refundRequired: order.paymentStatus === "Completed",
+      },
     });
-
   } catch (error) {
     console.error("Error cancelling order:", error);
     return res.status(500).json({
       success: false,
       message: "Error cancelling order",
-      error: error.message
+      error: error.message,
     });
   }
 };
@@ -1222,23 +1227,22 @@ exports.getCancellationReasons = async (req, res) => {
       "Duplicate order",
       "Wrong size/color selected",
       "Product out of stock",
-      "Other"
+      "Other",
     ];
 
     return res.status(200).json({
       success: true,
       message: "Cancellation reasons retrieved successfully",
       data: {
-        reasons: reasons
-      }
+        reasons: reasons,
+      },
     });
-
   } catch (error) {
     console.error("Error getting cancellation reasons:", error);
     return res.status(500).json({
       success: false,
       message: "Error retrieving cancellation reasons",
-      error: error.message
+      error: error.message,
     });
   }
 };
@@ -1252,53 +1256,58 @@ exports.cancelOrderByDesigner = async (req, res) => {
 
     // ---- Auth / inputs ----
     if (!orderId) {
-      return res.status(400).json({ success: false, message: "Order ID is required" });
+      return res
+        .status(400)
+        .json({ success: false, message: "Order ID is required" });
     }
     if (!reason) {
-      return res.status(400).json({ success: false, message: "Cancellation reason is required" });
+      return res
+        .status(400)
+        .json({ success: false, message: "Cancellation reason is required" });
     }
 
     const designerId = req.user._id;
 
     // ---- Load order with product->designer mapping ----
     const order = await Order.findOne({ orderId })
-      .populate('userId', 'displayName email phoneNumber')
-      .populate('products.productId', 'productName sku stock designerRef');
+      .populate("userId", "displayName email phoneNumber")
+      .populate("products.productId", "productName sku stock designerRef");
 
     if (!order) {
-      return res.status(404).json({ success: false, message: "Order not found" });
+      return res
+        .status(404)
+        .json({ success: false, message: "Order not found" });
     }
 
     // ---- Identify designer's products correctly ----
     // Note: designerRef is on productId, not on the order line item itself
-    const designerProducts = (order.products || []).filter(p => {
+    const designerProducts = (order.products || []).filter((p) => {
       const dRef = p?.productId?.designerRef; // ObjectId or String
       return dRef && designerId && String(dRef) === String(designerId);
     });
 
     // Debug logs
-    console.log('Order found:', {
+    console.log("Order found:", {
       orderId: order.orderId,
       totalProducts: order.products?.length || 0,
       designerId: String(designerId),
-      designerProductsCount: designerProducts.length
+      designerProductsCount: designerProducts.length,
     });
-
-
 
     // ---- Status & payment checks ----
     const cancellableStatuses = ["Order Placed", "Processing"];
     if (!cancellableStatuses.includes(order.status)) {
       return res.status(400).json({
         success: false,
-        message: `Order cannot be cancelled in current status: ${order.status}. Only 'Order Placed' or 'Processing' can be cancelled.`
+        message: `Order cannot be cancelled in current status: ${order.status}. Only 'Order Placed' or 'Processing' can be cancelled.`,
       });
     }
 
     if (order.paymentStatus === "Completed") {
       return res.status(400).json({
         success: false,
-        message: "Order with completed payment cannot be cancelled by designer. Please contact admin for refund processing."
+        message:
+          "Order with completed payment cannot be cancelled by designer. Please contact admin for refund processing.",
       });
     }
 
@@ -1308,17 +1317,17 @@ exports.cancelOrderByDesigner = async (req, res) => {
     const updateData = {
       status: "Cancelled",
       "statusTimestamps.cancelled": new Date(),
-      notes: reason ? `Cancelled by designer: ${reason}` : "Order cancelled by designer",
+      notes: reason
+        ? `Cancelled by designer: ${reason}`
+        : "Order cancelled by designer",
       cancellationReason: reason,
       cancelledBy: "designer",
-      cancelledByDesigner: designerId
+      cancelledByDesigner: designerId,
     };
 
-    const updatedOrder = await Order.findOneAndUpdate(
-      { orderId },
-      updateData,
-      { new: true }
-    ).populate('userId', 'displayName email phoneNumber');
+    const updatedOrder = await Order.findOneAndUpdate({ orderId }, updateData, {
+      new: true,
+    }).populate("userId", "displayName email phoneNumber");
 
     // ---- Restore stock for the designer's items only ----
     for (const line of designerProducts) {
@@ -1329,10 +1338,13 @@ exports.cancelOrderByDesigner = async (req, res) => {
           await Product.findByIdAndUpdate(pid, { $inc: { stock: qty } });
           console.log(`Stock restored for product ${pid}: +${qty}`);
         } else {
-          console.warn('Skipping stock restore; invalid product line:', { pid, qty });
+          console.warn("Skipping stock restore; invalid product line:", {
+            pid,
+            qty,
+          });
         }
       } catch (e) {
-        console.error('Error restoring stock for line:', line?._id, e);
+        console.error("Error restoring stock for line:", line?._id, e);
       }
     }
 
@@ -1347,8 +1359,8 @@ exports.cancelOrderByDesigner = async (req, res) => {
           orderId: order.orderId,
           orderAmount: order.amount,
           cancellationReason: reason,
-          cancelledBy: "designer"
-        }
+          cancelledBy: "designer",
+        },
       };
       await createNotification(notificationData);
       await sendFcmNotification(notificationData);
@@ -1365,12 +1377,14 @@ exports.cancelOrderByDesigner = async (req, res) => {
         html: `
           <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
             <h2 style="color: #d32f2f;">Order Cancelled by Designer</h2>
-            <p>Dear ${order.userId?.displayName || 'Customer'},</p>
+            <p>Dear ${order.userId?.displayName || "Customer"},</p>
             <p>Your order has been cancelled by the designer.</p>
             <div style="background-color: #f5f5f5; padding: 15px; border-radius: 5px; margin: 20px 0;">
               <h3>Order Details:</h3>
               <p><strong>Order ID:</strong> ${order.orderId}</p>
-              <p><strong>Order Date:</strong> ${new Date(order.createdDate).toLocaleDateString()}</p>
+              <p><strong>Order Date:</strong> ${new Date(
+          order.createdDate
+        ).toLocaleDateString()}</p>
               <p><strong>Total Amount:</strong> ₹${order.amount}</p>
               <p><strong>Cancellation Reason:</strong> ${reason}</p>
               <p><strong>Cancelled By:</strong> Designer</p>
@@ -1385,7 +1399,7 @@ exports.cancelOrderByDesigner = async (req, res) => {
             <p>If you have any questions, please contact our support team.</p>
             <p>Thank you for choosing Indigo Rhapsody.</p>
           </div>
-        `
+        `,
       };
       if (order.userId?.email) {
         await transporter.sendMail(mailOptions);
@@ -1404,8 +1418,8 @@ exports.cancelOrderByDesigner = async (req, res) => {
           orderId: order.orderId,
           designerId: String(designerId),
           cancellationReason: reason,
-          customerEmail: order.userId?.email
-        }
+          customerEmail: order.userId?.email,
+        },
       };
       console.log("Admin notification:", adminNotificationData);
     } catch (e) {
@@ -1423,15 +1437,15 @@ exports.cancelOrderByDesigner = async (req, res) => {
         cancelledBy: "designer",
         designerId: String(designerId),
         refundRequired: order.paymentStatus === "Completed",
-        designerProductsCancelled: designerProducts.length
-      }
+        designerProductsCancelled: designerProducts.length,
+      },
     });
   } catch (error) {
     console.error("Error cancelling order by designer:", error);
     return res.status(500).json({
       success: false,
       message: "Error cancelling order",
-      error: error?.message || String(error)
+      error: error?.message || String(error),
     });
   }
 };
@@ -1449,27 +1463,28 @@ exports.getCancellableOrdersByDesigner = async (req, res) => {
     const orders = await Order.find({
       "products.designerRef": designerId,
       status: { $in: cancellableStatuses },
-      paymentStatus: { $ne: "Completed" } // Exclude orders with completed payment
+      paymentStatus: { $ne: "Completed" }, // Exclude orders with completed payment
     })
-      .populate('userId', 'displayName email phoneNumber')
-      .populate('products.productId', 'productName sku stock designerRef')
+      .populate("userId", "displayName email phoneNumber")
+      .populate("products.productId", "productName sku stock designerRef")
       .sort({ createdDate: -1 })
       .skip(skip)
       .limit(parseInt(limit));
 
     // Filter to only show designer's products in each order
-    const filteredOrders = orders.map(order => {
-      const designerProducts = order.products.filter(product =>
-        product.designerRef &&
-        product.designerRef.toString &&
-        product.designerRef.toString() === designerId.toString()
+    const filteredOrders = orders.map((order) => {
+      const designerProducts = order.products.filter(
+        (product) =>
+          product.designerRef &&
+          product.designerRef.toString &&
+          product.designerRef.toString() === designerId.toString()
       );
 
       return {
         ...order.toObject(),
         products: designerProducts,
         totalDesignerProducts: designerProducts.length,
-        totalOrderProducts: order.products.length
+        totalOrderProducts: order.products.length,
       };
     });
 
@@ -1477,7 +1492,7 @@ exports.getCancellableOrdersByDesigner = async (req, res) => {
     const totalOrders = await Order.countDocuments({
       "products.designerRef": designerId,
       status: { $in: cancellableStatuses },
-      paymentStatus: { $ne: "Completed" }
+      paymentStatus: { $ne: "Completed" },
     });
 
     return res.status(200).json({
@@ -1490,87 +1505,75 @@ exports.getCancellableOrdersByDesigner = async (req, res) => {
           totalPages: Math.ceil(totalOrders / parseInt(limit)),
           totalOrders,
           hasNextPage: skip + filteredOrders.length < totalOrders,
-          hasPrevPage: parseInt(page) > 1
-        }
-      }
+          hasPrevPage: parseInt(page) > 1,
+        },
+      },
     });
-
   } catch (error) {
     console.error("Error getting cancellable orders by designer:", error);
     return res.status(500).json({
       success: false,
       message: "Error retrieving cancellable orders",
-      error: error.message
+      error: error.message,
     });
   }
 };
 
-// ==================== PAYMENT SERVICE INTEGRATION ====================
-
-// Create Payment Service - Main endpoint for payment integration
 exports.createPaymentService = async (req, res) => {
   try {
     const {
-      // Order details
       userId,
       cartId,
-      orderId, // Optional - will be generated if not provided
-
-      // Payment details
-      paymentMethod, // 'phonepe', 'razorpay', 'stripe', 'paypal', 'cod'
+      orderId,
+      paymentMethod,
       amount,
-      currency = 'INR',
-
-      // Customer details
-      customerDetails: {
-        name,
-        email,
-        phone,
-        address
-      } = {},
-
-      // Payment gateway specific options
+      currency = "INR",
+      customerDetails: { name, email, phone, address } = {},
       paymentOptions = {},
-
-      // Additional details
       description,
       notes,
       returnUrl,
-      webhookUrl
+      webhookUrl,
     } = req.body;
 
-    // Validate required fields
     if (!userId || !paymentMethod || !amount) {
       return res.status(400).json({
         success: false,
-        message: "userId, paymentMethod, and amount are required"
+        message: "userId, paymentMethod, and amount are required",
       });
     }
 
-    // Validate amount
     if (amount <= 0) {
       return res.status(400).json({
         success: false,
-        message: "Amount must be greater than 0"
+        message: "Amount must be greater than 0",
       });
     }
 
-    // Validate payment method
-    const supportedPaymentMethods = ['phonepe', 'razorpay', 'stripe', 'paypal', 'cod'];
+    const supportedPaymentMethods = [
+      "phonepe",
+      "razorpay",
+      "stripe",
+      "paypal",
+      "cod",
+    ];
+
     if (!supportedPaymentMethods.includes(paymentMethod.toLowerCase())) {
       return res.status(400).json({
         success: false,
-        message: `Unsupported payment method. Supported methods: ${supportedPaymentMethods.join(', ')}`
+        message: `Unsupported payment method. Supported methods: ${supportedPaymentMethods.join(
+          ", "
+        )}`,
       });
     }
 
-    // Generate unique payment reference ID
-    const paymentReferenceId = `PAY_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    const paymentReferenceId = `PAY_${Date.now()}_${Math.random()
+      .toString(36)
+      .substr(2, 9)}`;
 
-    // Generate orderId if not provided (for tracking purposes)
-    const finalOrderId = orderId || `ORD_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    const finalOrderId =
+      orderId || `ORD_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
 
-    // Create payment record in database
     const paymentRecord = {
       userId,
       cartId,
@@ -1579,45 +1582,33 @@ exports.createPaymentService = async (req, res) => {
       amount,
       currency,
       paymentReferenceId,
-      status: 'initiated',
+      status: "initiated",
       customerDetails: {
-        name: name || '',
-        email: email || '',
-        phone: phone || '',
-        address: address || {}
+        name: name || "",
+        email: email || "",
+        phone: phone || "",
+        address: address || {},
       },
       paymentOptions,
       description: description || `Payment for order ${finalOrderId}`,
-      notes: notes || '',
-      returnUrl: returnUrl || '',
-      webhookUrl: webhookUrl || '',
+      notes: notes || "",
+      returnUrl: returnUrl || "",
+      webhookUrl: webhookUrl || "",
       createdAt: new Date(),
-      updatedAt: new Date()
+      updatedAt: new Date(),
     };
 
-    // Handle different payment methods
-    let paymentResponse;
+    // --- PAYMENT DISPATCHER ---
+    let paymentResponse = null;
 
     switch (paymentMethod.toLowerCase()) {
-      case 'phonepe':
+      case "phonepe":
         paymentResponse = await handlePhonePePayment(paymentRecord);
-        break;
-      case 'razorpay':
-        paymentResponse = await handleRazorpayPayment(paymentRecord);
-        break;
-      case 'stripe':
-        paymentResponse = await handleStripePayment(paymentRecord);
-        break;
-      case 'paypal':
-        paymentResponse = await handlePayPalPayment(paymentRecord);
-        break;
-      case 'cod':
-        paymentResponse = await handleCODPayment(paymentRecord);
         break;
       default:
         return res.status(400).json({
           success: false,
-          message: "Invalid payment method"
+          message: "Invalid payment method",
         });
     }
 
@@ -1625,74 +1616,129 @@ exports.createPaymentService = async (req, res) => {
       return res.status(500).json({
         success: false,
         message: "Payment initiation failed",
-        error: paymentResponse.message
+        error: paymentResponse.message || "Unknown error",
       });
     }
 
-    // Save payment record to database (you can create a PaymentService model)
-    // For now, we'll return the payment response
-
-    return res.status(200).json({
-      success: true,
-      message: "Payment initiated successfully",
-      data: {
-        paymentReferenceId,
+    // Store payment record in database
+    try {
+      const paymentRecordToSave = new PaymentDetails({
+        userId,
+        cartId,
         orderId: finalOrderId,
-        paymentMethod,
-        amount,
+        paymentReferenceId,
+        transactionId: paymentResponse.data.transactionId || paymentReferenceId,
+        paymentId: paymentResponse.data.paymentId || null,
+        paymentMethod: paymentMethod.toLowerCase(),
+        amount: parseFloat(amount),
         currency,
-        ...paymentResponse.data
-      }
-    });
+        paymentStatus: "Initiated",
+        status: "initiated",
+        customerDetails: {
+          name: name || "",
+          email: email || "",
+          phone: phone || "",
+          address: address || {},
+        },
+        paymentOptions,
+        description: description || `Payment for order ${finalOrderId}`,
+        notes: notes || "",
+        returnUrl: returnUrl || "",
+        webhookUrl: webhookUrl || "",
+        createdDate: new Date(),
+        updatedAt: new Date(),
+      });
 
+      const savedPayment = await paymentRecordToSave.save();
+      console.log("✅ Payment record saved to database:", savedPayment._id);
+
+      // ✅ include redirect URL in the response
+      return res.status(200).json({
+        success: true,
+        message: "Payment initiated successfully",
+        data: {
+          paymentId: savedPayment._id,
+          paymentReferenceId,
+          orderId: finalOrderId,
+          paymentMethod,
+          amount,
+          currency,
+          redirectUrl: paymentResponse.data.redirectUrl, // ✅ explicit mapping
+          ...paymentResponse.data,
+        },
+      });
+    } catch (dbError) {
+      console.error("❌ Database Error:", dbError);
+      return res.status(500).json({
+        success: false,
+        message: "Payment initiated but failed to save to database",
+        error: dbError.message,
+        data: {
+          paymentReferenceId,
+          orderId: finalOrderId,
+          paymentMethod,
+          amount,
+          currency,
+          redirectUrl: paymentResponse.data.redirectUrl,
+          ...paymentResponse.data,
+        },
+      });
+    }
   } catch (error) {
-    console.error("Payment service error:", error);
+    console.error("❌ Payment Service Error:", error);
     return res.status(500).json({
       success: false,
       message: "Payment service error",
-      error: error.message
+      error: error.message,
     });
   }
 };
 
 // PhonePe Payment Handler
-const handlePhonePePayment = async (paymentRecord) => {
+async function handlePhonePePayment(paymentRecord) {
   try {
-    const paymentData = {
-      amount: paymentRecord.amount,
-      orderId: paymentRecord.paymentReferenceId,
+    const { amount, orderId, customerDetails } = paymentRecord;
+
+    const phonePeResponse = await PhonePeService.createPaymentRequest({
+      amount,
+      orderId,
       customerId: paymentRecord.userId,
-      customerEmail: paymentRecord.customerDetails.email,
-      customerPhone: paymentRecord.customerDetails.phone,
-      customerName: paymentRecord.customerDetails.name,
-      description: paymentRecord.description
-    };
+      customerPhone: customerDetails.phone,
+    });
 
-    const phonepeResponse = await phonepeService.createPaymentRequest(paymentData);
+    // ✅ Check for both nested and direct redirect URLs
+    const redirectUrl =
+      phonePeResponse?.data?.redirectUrl ||
+      phonePeResponse?.data?.paymentUrl ||
+      phonePeResponse?.redirectUrl;
 
-    if (phonepeResponse.success) {
+    if (phonePeResponse.success && redirectUrl) {
       return {
         success: true,
         data: {
-          paymentUrl: phonepeResponse.data.paymentUrl,
-          transactionId: phonepeResponse.data.transactionId,
-          paymentId: phonepeResponse.data.paymentId,
-          expiresIn: 1800 // 30 minutes
-        }
+          provider: "PhonePe",
+          orderId: phonePeResponse.data.orderId,
+          state: phonePeResponse.data.state,
+          expireAt: phonePeResponse.data.expireAt,
+          redirectUrl, // ✅ ensure redirectUrl is always included
+        },
       };
     } else {
+      console.error("⚠️ PhonePe Payment Failure:", phonePeResponse);
       return {
         success: false,
-        message: phonepeResponse.message
+        message:
+          phonePeResponse.message || "Failed to create PhonePe payment session",
       };
     }
   } catch (error) {
+    console.error("❌ PhonePe Handler Error:", error);
     return {
       success: false,
-      message: error.message
+      message: error.message,
     };
   }
-};
+}
 
 // Razorpay Payment Handler
 const handleRazorpayPayment = async (paymentRecord) => {
@@ -1705,13 +1751,13 @@ const handleRazorpayPayment = async (paymentRecord) => {
         paymentUrl: `https://razorpay.com/payment/${paymentRecord.paymentReferenceId}`,
         transactionId: paymentRecord.paymentReferenceId,
         paymentId: `rzp_${paymentRecord.paymentReferenceId}`,
-        expiresIn: 1800
-      }
+        expiresIn: 1800,
+      },
     };
   } catch (error) {
     return {
       success: false,
-      message: error.message
+      message: error.message,
     };
   }
 };
@@ -1727,13 +1773,13 @@ const handleStripePayment = async (paymentRecord) => {
         paymentUrl: `https://stripe.com/payment/${paymentRecord.paymentReferenceId}`,
         transactionId: paymentRecord.paymentReferenceId,
         paymentId: `stripe_${paymentRecord.paymentReferenceId}`,
-        expiresIn: 1800
-      }
+        expiresIn: 1800,
+      },
     };
   } catch (error) {
     return {
       success: false,
-      message: error.message
+      message: error.message,
     };
   }
 };
@@ -1749,13 +1795,13 @@ const handlePayPalPayment = async (paymentRecord) => {
         paymentUrl: `https://paypal.com/payment/${paymentRecord.paymentReferenceId}`,
         transactionId: paymentRecord.paymentReferenceId,
         paymentId: `paypal_${paymentRecord.paymentReferenceId}`,
-        expiresIn: 1800
-      }
+        expiresIn: 1800,
+      },
     };
   } catch (error) {
     return {
       success: false,
-      message: error.message
+      message: error.message,
     };
   }
 };
@@ -1771,13 +1817,13 @@ const handleCODPayment = async (paymentRecord) => {
         transactionId: paymentRecord.paymentReferenceId,
         paymentId: `cod_${paymentRecord.paymentReferenceId}`,
         message: "Cash on Delivery payment confirmed",
-        status: "confirmed"
-      }
+        status: "confirmed",
+      },
     };
   } catch (error) {
     return {
       success: false,
-      message: error.message
+      message: error.message,
     };
   }
 };
@@ -1790,32 +1836,34 @@ exports.verifyPaymentStatus = async (req, res) => {
     if (!paymentReferenceId || !paymentMethod) {
       return res.status(400).json({
         success: false,
-        message: "paymentReferenceId and paymentMethod are required"
+        message: "paymentReferenceId and paymentMethod are required",
       });
     }
 
     let verificationResponse;
 
     switch (paymentMethod.toLowerCase()) {
-      case 'phonepe':
-        verificationResponse = await phonepeService.verifyPayment(paymentReferenceId);
+      case "phonepe":
+        verificationResponse = await phonepeService.verifyPayment(
+          paymentReferenceId
+        );
         break;
-      case 'razorpay':
+      case "razorpay":
         verificationResponse = await verifyRazorpayPayment(paymentReferenceId);
         break;
-      case 'stripe':
+      case "stripe":
         verificationResponse = await verifyStripePayment(paymentReferenceId);
         break;
-      case 'paypal':
+      case "paypal":
         verificationResponse = await verifyPayPalPayment(paymentReferenceId);
         break;
-      case 'cod':
-        verificationResponse = { success: true, data: { status: 'confirmed' } };
+      case "cod":
+        verificationResponse = { success: true, data: { status: "confirmed" } };
         break;
       default:
         return res.status(400).json({
           success: false,
-          message: "Invalid payment method"
+          message: "Invalid payment method",
         });
     }
 
@@ -1823,7 +1871,7 @@ exports.verifyPaymentStatus = async (req, res) => {
       return res.status(500).json({
         success: false,
         message: "Payment verification failed",
-        error: verificationResponse.message
+        error: verificationResponse.message,
       });
     }
 
@@ -1833,16 +1881,15 @@ exports.verifyPaymentStatus = async (req, res) => {
       data: {
         paymentReferenceId,
         paymentMethod,
-        ...verificationResponse.data
-      }
+        ...verificationResponse.data,
+      },
     });
-
   } catch (error) {
     console.error("Payment verification error:", error);
     return res.status(500).json({
       success: false,
       message: "Payment verification error",
-      error: error.message
+      error: error.message,
     });
   }
 };
@@ -1858,22 +1905,22 @@ exports.handlePaymentWebhook = async (req, res) => {
     let webhookResponse;
 
     switch (paymentMethod.toLowerCase()) {
-      case 'phonepe':
+      case "phonepe":
         webhookResponse = await handlePhonePeWebhook(webhookData);
         break;
-      case 'razorpay':
+      case "razorpay":
         webhookResponse = await handleRazorpayWebhook(webhookData);
         break;
-      case 'stripe':
+      case "stripe":
         webhookResponse = await handleStripeWebhook(webhookData);
         break;
-      case 'paypal':
+      case "paypal":
         webhookResponse = await handlePayPalWebhook(webhookData);
         break;
       default:
         return res.status(400).json({
           success: false,
-          message: "Invalid payment method"
+          message: "Invalid payment method",
         });
     }
 
@@ -1881,22 +1928,21 @@ exports.handlePaymentWebhook = async (req, res) => {
       return res.status(500).json({
         success: false,
         message: "Webhook processing failed",
-        error: webhookResponse.message
+        error: webhookResponse.message,
       });
     }
 
     return res.status(200).json({
       success: true,
       message: "Webhook processed successfully",
-      data: webhookResponse.data
+      data: webhookResponse.data,
     });
-
   } catch (error) {
     console.error("Payment webhook error:", error);
     return res.status(500).json({
       success: false,
       message: "Webhook processing error",
-      error: error.message
+      error: error.message,
     });
   }
 };
@@ -1907,29 +1953,61 @@ const handlePhonePeWebhook = async (webhookData) => {
     const callbackResult = phonepeService.handlePaymentCallback(webhookData);
 
     if (callbackResult.success) {
-      const { transactionId, status, amount } = callbackResult.data;
+      const { transactionId, status, amount, paymentId } = callbackResult.data;
 
       // Update payment status in database
-      // Create order if payment is successful
-      if (status === 'COMPLETED') {
-        // Handle successful payment
-        console.log(`Payment completed for transaction: ${transactionId}`);
+      try {
+        const updateData = {
+          status: status.toLowerCase(),
+          paymentStatus: status === "COMPLETED" ? "Completed" : "Failed",
+          updatedAt: new Date(),
+        };
+
+        if (status === "COMPLETED") {
+          updateData.completedAt = new Date();
+          updateData.paymentId = paymentId;
+        } else if (status === "FAILED") {
+          updateData.failedAt = new Date();
+          updateData.failureReason = callbackResult.data.responseMessage || "Payment failed";
+        }
+
+        const updatedPayment = await PaymentDetails.findOneAndUpdate(
+          { transactionId: transactionId },
+          updateData,
+          { new: true }
+        );
+
+        if (updatedPayment) {
+          console.log(`✅ Payment status updated in database for transaction: ${transactionId}`);
+
+          // Create order if payment is successful
+          if (status === "COMPLETED") {
+            console.log(`🎉 Payment completed for transaction: ${transactionId}`);
+            // The order creation will be handled by the existing paymentController.paymentWebhook
+            // which is called from the payment routes
+          }
+        } else {
+          console.warn(`⚠️ Payment record not found for transaction: ${transactionId}`);
+        }
+      } catch (dbError) {
+        console.error("❌ Database update error:", dbError);
+        // Continue processing even if database update fails
       }
 
       return {
         success: true,
-        data: callbackResult.data
+        data: callbackResult.data,
       };
     } else {
       return {
         success: false,
-        message: callbackResult.message
+        message: callbackResult.message,
       };
     }
   } catch (error) {
     return {
       success: false,
-      message: error.message
+      message: error.message,
     };
   }
 };
@@ -1940,12 +2018,12 @@ const handleRazorpayWebhook = async (webhookData) => {
     // Razorpay webhook handling logic
     return {
       success: true,
-      data: { status: 'processed' }
+      data: { status: "processed" },
     };
   } catch (error) {
     return {
       success: false,
-      message: error.message
+      message: error.message,
     };
   }
 };
@@ -1956,12 +2034,12 @@ const handleStripeWebhook = async (webhookData) => {
     // Stripe webhook handling logic
     return {
       success: true,
-      data: { status: 'processed' }
+      data: { status: "processed" },
     };
   } catch (error) {
     return {
       success: false,
-      message: error.message
+      message: error.message,
     };
   }
 };
@@ -1972,27 +2050,27 @@ const handlePayPalWebhook = async (webhookData) => {
     // PayPal webhook handling logic
     return {
       success: true,
-      data: { status: 'processed' }
+      data: { status: "processed" },
     };
   } catch (error) {
     return {
       success: false,
-      message: error.message
+      message: error.message,
     };
   }
 };
 
 // Mock verification functions for other payment gateways
 const verifyRazorpayPayment = async (paymentReferenceId) => {
-  return { success: true, data: { status: 'completed' } };
+  return { success: true, data: { status: "completed" } };
 };
 
 const verifyStripePayment = async (paymentReferenceId) => {
-  return { success: true, data: { status: 'completed' } };
+  return { success: true, data: { status: "completed" } };
 };
 
 const verifyPayPalPayment = async (paymentReferenceId) => {
-  return { success: true, data: { status: 'completed' } };
+  return { success: true, data: { status: "completed" } };
 };
 
 // Get Payment Methods
@@ -2000,55 +2078,55 @@ exports.getPaymentMethods = async (req, res) => {
   try {
     const paymentMethods = [
       {
-        id: 'phonepe',
-        name: 'PhonePe',
-        description: 'Pay with PhonePe UPI, Cards, Wallets',
-        icon: 'https://example.com/phonepe-icon.png',
+        id: "phonepe",
+        name: "PhonePe",
+        description: "Pay with PhonePe UPI, Cards, Wallets",
+        icon: "https://example.com/phonepe-icon.png",
         enabled: true,
-        supportedCurrencies: ['INR'],
+        supportedCurrencies: ["INR"],
         minAmount: 1,
-        maxAmount: 100000
+        maxAmount: 100000,
       },
       {
-        id: 'razorpay',
-        name: 'Razorpay',
-        description: 'Pay with Cards, UPI, Net Banking',
-        icon: 'https://example.com/razorpay-icon.png',
+        id: "razorpay",
+        name: "Razorpay",
+        description: "Pay with Cards, UPI, Net Banking",
+        icon: "https://example.com/razorpay-icon.png",
         enabled: true,
-        supportedCurrencies: ['INR'],
+        supportedCurrencies: ["INR"],
         minAmount: 1,
-        maxAmount: 100000
+        maxAmount: 100000,
       },
       {
-        id: 'stripe',
-        name: 'Stripe',
-        description: 'Pay with International Cards',
-        icon: 'https://example.com/stripe-icon.png',
+        id: "stripe",
+        name: "Stripe",
+        description: "Pay with International Cards",
+        icon: "https://example.com/stripe-icon.png",
         enabled: true,
-        supportedCurrencies: ['USD', 'EUR', 'INR'],
+        supportedCurrencies: ["USD", "EUR", "INR"],
         minAmount: 0.5,
-        maxAmount: 10000
+        maxAmount: 10000,
       },
       {
-        id: 'paypal',
-        name: 'PayPal',
-        description: 'Pay with PayPal Account',
-        icon: 'https://example.com/paypal-icon.png',
+        id: "paypal",
+        name: "PayPal",
+        description: "Pay with PayPal Account",
+        icon: "https://example.com/paypal-icon.png",
         enabled: true,
-        supportedCurrencies: ['USD', 'EUR', 'GBP'],
+        supportedCurrencies: ["USD", "EUR", "GBP"],
         minAmount: 1,
-        maxAmount: 10000
+        maxAmount: 10000,
       },
       {
-        id: 'cod',
-        name: 'Cash on Delivery',
-        description: 'Pay when your order is delivered',
-        icon: 'https://example.com/cod-icon.png',
+        id: "cod",
+        name: "Cash on Delivery",
+        description: "Pay when your order is delivered",
+        icon: "https://example.com/cod-icon.png",
         enabled: true,
-        supportedCurrencies: ['INR'],
+        supportedCurrencies: ["INR"],
         minAmount: 1,
-        maxAmount: 5000
-      }
+        maxAmount: 5000,
+      },
     ];
 
     return res.status(200).json({
@@ -2056,17 +2134,16 @@ exports.getPaymentMethods = async (req, res) => {
       message: "Payment methods retrieved successfully",
       data: {
         paymentMethods,
-        defaultCurrency: 'INR',
-        supportedCurrencies: ['INR', 'USD', 'EUR', 'GBP']
-      }
+        defaultCurrency: "INR",
+        supportedCurrencies: ["INR", "USD", "EUR", "GBP"],
+      },
     });
-
   } catch (error) {
     console.error("Error getting payment methods:", error);
     return res.status(500).json({
       success: false,
       message: "Error retrieving payment methods",
-      error: error.message
+      error: error.message,
     });
   }
 };
@@ -2079,7 +2156,7 @@ exports.getPaymentStatus = async (req, res) => {
     if (!paymentReferenceId) {
       return res.status(400).json({
         success: false,
-        message: "paymentReferenceId is required"
+        message: "paymentReferenceId is required",
       });
     }
 
@@ -2090,22 +2167,21 @@ exports.getPaymentStatus = async (req, res) => {
       message: "Payment status retrieved successfully",
       data: {
         paymentReferenceId,
-        status: 'completed',
+        status: "completed",
         amount: 1000,
-        currency: 'INR',
-        paymentMethod: 'phonepe',
-        transactionId: 'TXN123456789',
+        currency: "INR",
+        paymentMethod: "phonepe",
+        transactionId: "TXN123456789",
         createdAt: new Date(),
-        updatedAt: new Date()
-      }
+        updatedAt: new Date(),
+      },
     });
-
   } catch (error) {
     console.error("Error getting payment status:", error);
     return res.status(500).json({
       success: false,
       message: "Error retrieving payment status",
-      error: error.message
+      error: error.message,
     });
   }
 };
