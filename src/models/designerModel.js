@@ -28,6 +28,11 @@ const designerSchema = new mongoose.Schema({
   about: {
     type: String,
   },
+  product_sample_images: [
+    {
+      type: String,
+    },
+  ],
   createdTime: {
     type: Date,
     default: Date.now,

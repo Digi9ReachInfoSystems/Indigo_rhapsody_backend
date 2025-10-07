@@ -1,0 +1,397 @@
+#!/bin/bash
+
+# Colors for output
+GREEN='\033[0;32m'
+BLUE='\033[0;34m'
+YELLOW='\033[1;33m'
+NC='\033[0m' # No Color
+
+echo -e "${BLUE}╔════════════════════════════════════════════════════════════════╗${NC}"
+echo -e "${BLUE}║      BANNER API - COMPREHENSIVE TEST SUITE                    ║${NC}"
+echo -e "${BLUE}╔════════════════════════════════════════════════════════════════╗${NC}"
+echo ""
+
+BASE_URL="http://localhost:5000"
+ADMIN_TOKEN="YOUR_ADMIN_TOKEN_HERE"
+
+# ==================== PUBLIC ENDPOINTS ====================
+
+echo -e "${GREEN}📋 TEST 1: Get All Banners${NC}"
+echo -e "${YELLOW}GET ${BASE_URL}/banner${NC}"
+echo ""
+curl -X GET "${BASE_URL}/banner" \
+  -H "Content-Type: application/json" | jq '.'
+echo ""
+echo "-------------------------------------------------------------------"
+echo ""
+
+echo -e "${GREEN}📋 TEST 2: Get Banners by Page (Home)${NC}"
+echo -e "${YELLOW}GET ${BASE_URL}/banner/page/home${NC}"
+echo ""
+curl -X GET "${BASE_URL}/banner/page/home" \
+  -H "Content-Type: application/json" | jq '.'
+echo ""
+echo "-------------------------------------------------------------------"
+echo ""
+
+echo -e "${GREEN}📋 TEST 3: Get Banners by Page with Platform Filter (Mobile)${NC}"
+echo -e "${YELLOW}GET ${BASE_URL}/banner/page/home?platform=mobile${NC}"
+echo ""
+curl -X GET "${BASE_URL}/banner/page/home?platform=mobile" \
+  -H "Content-Type: application/json" | jq '.'
+echo ""
+echo "-------------------------------------------------------------------"
+echo ""
+
+echo -e "${GREEN}📋 TEST 4: Get Banners by Page with Platform Filter (Web)${NC}"
+echo -e "${YELLOW}GET ${BASE_URL}/banner/page/products?platform=web${NC}"
+echo ""
+curl -X GET "${BASE_URL}/banner/page/products?platform=web" \
+  -H "Content-Type: application/json" | jq '.'
+echo ""
+echo "-------------------------------------------------------------------"
+echo ""
+
+# ==================== ADMIN ENDPOINTS ====================
+
+echo -e "${GREEN}📋 TEST 5: Create Banner for Web (Home Page)${NC}"
+echo -e "${YELLOW}POST ${BASE_URL}/banner${NC}"
+echo ""
+curl -X POST "${BASE_URL}/banner" \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer ${ADMIN_TOKEN}" \
+  -d '{
+    "name": "Summer Sale Web Banner",
+    "title": "Summer Collection 2024",
+    "subtitle": "Up to 50% Off",
+    "description": "Get the best deals on summer fashion",
+    "platform": "web",
+    "page": "home",
+    "actionType": "url",
+    "actionUrl": "/products?category=summer",
+    "displayOrder": 1,
+    "isActive": true,
+    "buttonText": "Shop Now",
+    "buttonColor": "#FF6B6B",
+    "textColor": "#FFFFFF",
+    "tags": ["summer", "sale", "featured"],
+    "webDesktopUrl": "https://example.com/banners/summer-desktop.jpg",
+    "webTabletUrl": "https://example.com/banners/summer-tablet.jpg",
+    "imageUrl": "https://example.com/banners/summer-desktop.jpg"
+  }' | jq '.'
+echo ""
+echo "-------------------------------------------------------------------"
+echo ""
+
+echo -e "${GREEN}📋 TEST 6: Create Banner for Mobile (Home Page)${NC}"
+echo -e "${YELLOW}POST ${BASE_URL}/banner${NC}"
+echo ""
+curl -X POST "${BASE_URL}/banner" \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer ${ADMIN_TOKEN}" \
+  -d '{
+    "name": "New Arrivals Mobile Banner",
+    "title": "New Arrivals",
+    "subtitle": "Fresh Styles Daily",
+    "description": "Discover the latest fashion trends",
+    "platform": "mobile",
+    "page": "home",
+    "actionType": "page",
+    "actionValue": "products",
+    "displayOrder": 2,
+    "isActive": true,
+    "buttonText": "Explore",
+    "buttonColor": "#4ECDC4",
+    "textColor": "#FFFFFF",
+    "tags": ["new", "arrivals", "mobile"],
+    "mobileUrl": "https://example.com/banners/new-arrivals-mobile.jpg",
+    "imageUrl": "https://example.com/banners/new-arrivals-mobile.jpg"
+  }' | jq '.'
+echo ""
+echo "-------------------------------------------------------------------"
+echo ""
+
+echo -e "${GREEN}📋 TEST 7: Create Banner for Both Platforms (Products Page)${NC}"
+echo -e "${YELLOW}POST ${BASE_URL}/banner${NC}"
+echo ""
+curl -X POST "${BASE_URL}/banner" \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer ${ADMIN_TOKEN}" \
+  -d '{
+    "name": "Designer Spotlight Banner",
+    "title": "Featured Designer",
+    "subtitle": "Exclusive Collection",
+    "description": "Shop exclusive designs from our featured designer",
+    "platform": "both",
+    "page": "designers",
+    "actionType": "designer",
+    "linkedDesigner": "DESIGNER_ID_HERE",
+    "displayOrder": 1,
+    "isActive": true,
+    "buttonText": "View Collection",
+    "buttonColor": "#2D3748",
+    "textColor": "#FFFFFF",
+    "tags": ["designer", "exclusive", "featured"],
+    "webDesktopUrl": "https://example.com/banners/designer-desktop.jpg",
+    "webTabletUrl": "https://example.com/banners/designer-tablet.jpg",
+    "mobileUrl": "https://example.com/banners/designer-mobile.jpg",
+    "imageUrl": "https://example.com/banners/designer-desktop.jpg"
+  }' | jq '.'
+echo ""
+echo "-------------------------------------------------------------------"
+echo ""
+
+echo -e "${GREEN}📋 TEST 8: Create Scheduled Banner${NC}"
+echo -e "${YELLOW}POST ${BASE_URL}/banner${NC}"
+echo ""
+curl -X POST "${BASE_URL}/banner" \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer ${ADMIN_TOKEN}" \
+  -d '{
+    "name": "Black Friday Sale Banner",
+    "title": "Black Friday Mega Sale",
+    "subtitle": "70% Off Everything",
+    "description": "Biggest sale of the year",
+    "platform": "both",
+    "page": "home",
+    "actionType": "url",
+    "actionUrl": "/black-friday-deals",
+    "displayOrder": 0,
+    "isActive": true,
+    "startDate": "2024-11-25T00:00:00Z",
+    "endDate": "2024-11-30T23:59:59Z",
+    "buttonText": "Shop Deals",
+    "buttonColor": "#000000",
+    "textColor": "#FFD700",
+    "tags": ["black-friday", "sale", "limited-time"],
+    "webDesktopUrl": "https://example.com/banners/black-friday-desktop.jpg",
+    "mobileUrl": "https://example.com/banners/black-friday-mobile.jpg",
+    "imageUrl": "https://example.com/banners/black-friday-desktop.jpg"
+  }' | jq '.'
+echo ""
+echo "-------------------------------------------------------------------"
+echo ""
+
+echo -e "${GREEN}📋 TEST 9: Create Product Linked Banner${NC}"
+echo -e "${YELLOW}POST ${BASE_URL}/banner${NC}"
+echo ""
+curl -X POST "${BASE_URL}/banner" \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer ${ADMIN_TOKEN}" \
+  -d '{
+    "name": "Featured Product Banner",
+    "title": "Product of the Week",
+    "subtitle": "Limited Stock Available",
+    "description": "Trending designer dress - get it before it is gone",
+    "platform": "both",
+    "page": "products",
+    "actionType": "product",
+    "linkedProduct": "PRODUCT_ID_HERE",
+    "displayOrder": 1,
+    "isActive": true,
+    "buttonText": "Buy Now",
+    "buttonColor": "#E53E3E",
+    "textColor": "#FFFFFF",
+    "tags": ["product", "featured", "trending"],
+    "webDesktopUrl": "https://example.com/banners/product-desktop.jpg",
+    "mobileUrl": "https://example.com/banners/product-mobile.jpg",
+    "imageUrl": "https://example.com/banners/product-desktop.jpg"
+  }' | jq '.'
+echo ""
+echo "-------------------------------------------------------------------"
+echo ""
+
+echo -e "${GREEN}📋 TEST 10: Get Single Banner by ID${NC}"
+echo -e "${YELLOW}GET ${BASE_URL}/banner/BANNER_ID${NC}"
+echo ""
+# Replace BANNER_ID with actual ID from previous responses
+# curl -X GET "${BASE_URL}/banner/BANNER_ID" \
+#   -H "Content-Type: application/json" | jq '.'
+echo "⚠️  Replace BANNER_ID with actual banner ID"
+echo ""
+echo "-------------------------------------------------------------------"
+echo ""
+
+echo -e "${GREEN}📋 TEST 11: Update Banner${NC}"
+echo -e "${YELLOW}PUT ${BASE_URL}/banner/BANNER_ID${NC}"
+echo ""
+curl -X PUT "${BASE_URL}/banner/BANNER_ID" \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer ${ADMIN_TOKEN}" \
+  -d '{
+    "title": "Updated Banner Title",
+    "subtitle": "Updated Subtitle",
+    "buttonText": "Shop Updated",
+    "isActive": true
+  }' | jq '.'
+echo "⚠️  Replace BANNER_ID with actual banner ID"
+echo ""
+echo "-------------------------------------------------------------------"
+echo ""
+
+echo -e "${GREEN}📋 TEST 12: Toggle Banner Status${NC}"
+echo -e "${YELLOW}PATCH ${BASE_URL}/banner/BANNER_ID/toggle${NC}"
+echo ""
+# curl -X PATCH "${BASE_URL}/banner/BANNER_ID/toggle" \
+#   -H "Content-Type: application/json" \
+#   -H "Authorization: Bearer ${ADMIN_TOKEN}" | jq '.'
+echo "⚠️  Replace BANNER_ID with actual banner ID"
+echo ""
+echo "-------------------------------------------------------------------"
+echo ""
+
+echo -e "${GREEN}📋 TEST 13: Track Banner Click${NC}"
+echo -e "${YELLOW}POST ${BASE_URL}/banner/BANNER_ID/click${NC}"
+echo ""
+# curl -X POST "${BASE_URL}/banner/BANNER_ID/click" \
+#   -H "Content-Type: application/json" | jq '.'
+echo "⚠️  Replace BANNER_ID with actual banner ID"
+echo ""
+echo "-------------------------------------------------------------------"
+echo ""
+
+echo -e "${GREEN}📋 TEST 14: Track Banner Impression${NC}"
+echo -e "${YELLOW}POST ${BASE_URL}/banner/BANNER_ID/impression${NC}"
+echo ""
+# curl -X POST "${BASE_URL}/banner/BANNER_ID/impression" \
+#   -H "Content-Type: application/json" | jq '.'
+echo "⚠️  Replace BANNER_ID with actual banner ID"
+echo ""
+echo "-------------------------------------------------------------------"
+echo ""
+
+echo -e "${GREEN}📋 TEST 15: Get Banner Analytics${NC}"
+echo -e "${YELLOW}GET ${BASE_URL}/banner/BANNER_ID/analytics${NC}"
+echo ""
+# curl -X GET "${BASE_URL}/banner/BANNER_ID/analytics" \
+#   -H "Content-Type: application/json" \
+#   -H "Authorization: Bearer ${ADMIN_TOKEN}" | jq '.'
+echo "⚠️  Replace BANNER_ID with actual banner ID"
+echo ""
+echo "-------------------------------------------------------------------"
+echo ""
+
+echo -e "${GREEN}📋 TEST 16: Reorder Banners${NC}"
+echo -e "${YELLOW}POST ${BASE_URL}/banner/reorder${NC}"
+echo ""
+curl -X POST "${BASE_URL}/banner/reorder" \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer ${ADMIN_TOKEN}" \
+  -d '{
+    "banners": [
+      { "bannerId": "BANNER_ID_1", "displayOrder": 0 },
+      { "bannerId": "BANNER_ID_2", "displayOrder": 1 },
+      { "bannerId": "BANNER_ID_3", "displayOrder": 2 }
+    ]
+  }' | jq '.'
+echo "⚠️  Replace BANNER_IDs with actual banner IDs"
+echo ""
+echo "-------------------------------------------------------------------"
+echo ""
+
+echo -e "${GREEN}📋 TEST 17: Get Banners with Filters${NC}"
+echo -e "${YELLOW}GET ${BASE_URL}/banner?page=home&platform=web&isActive=true&sortBy=displayOrder&sortOrder=asc${NC}"
+echo ""
+curl -X GET "${BASE_URL}/banner?page=home&platform=web&isActive=true&sortBy=displayOrder&sortOrder=asc" \
+  -H "Content-Type: application/json" | jq '.'
+echo ""
+echo "-------------------------------------------------------------------"
+echo ""
+
+echo -e "${GREEN}📋 TEST 18: Delete Banner${NC}"
+echo -e "${YELLOW}DELETE ${BASE_URL}/banner/BANNER_ID${NC}"
+echo ""
+# curl -X DELETE "${BASE_URL}/banner/BANNER_ID" \
+#   -H "Content-Type: application/json" \
+#   -H "Authorization: Bearer ${ADMIN_TOKEN}" | jq '.'
+echo "⚠️  Replace BANNER_ID with actual banner ID"
+echo ""
+echo "-------------------------------------------------------------------"
+echo ""
+
+echo ""
+echo -e "${BLUE}╔════════════════════════════════════════════════════════════════╗${NC}"
+echo -e "${BLUE}║                    TEST SUITE COMPLETE                         ║${NC}"
+echo -e "${BLUE}╚════════════════════════════════════════════════════════════════╝${NC}"
+echo ""
+
+echo -e "${YELLOW}📚 Banner API Features:${NC}"
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+echo "✅ Platform-specific banners (web/mobile/both)"
+echo "✅ Page-based banner organization"
+echo "✅ Responsive images (desktop/tablet/mobile)"
+echo "✅ Action linking (URL/Product/Category/Designer)"
+echo "✅ Display order management"
+echo "✅ Banner scheduling (start/end dates)"
+echo "✅ Active/Inactive status toggle"
+echo "✅ Analytics tracking (clicks/impressions)"
+echo "✅ Click-through rate calculation"
+echo "✅ Banner reordering"
+echo "✅ Customizable button colors and text"
+echo "✅ Tags for organization"
+echo "✅ Admin-only management"
+echo "✅ Public viewing endpoints"
+echo ""
+
+echo -e "${YELLOW}🌐 Supported Pages:${NC}"
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+echo "• home        - Homepage banners"
+echo "• products    - Product listing page"
+echo "• categories  - Category page"
+echo "• designers   - Designer showcase"
+echo "• about       - About us page"
+echo "• contact     - Contact page"
+echo "• checkout    - Checkout page"
+echo "• profile     - User profile"
+echo "• cart        - Shopping cart"
+echo "• wishlist    - Wishlist page"
+echo "• orders      - Order history"
+echo "• custom      - Custom pages"
+echo ""
+
+echo -e "${YELLOW}🎯 Action Types:${NC}"
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+echo "• none        - No action (display only)"
+echo "• url         - External/internal URL"
+echo "• product     - Link to specific product"
+echo "• category    - Link to category"
+echo "• designer    - Link to designer profile"
+echo "• page        - Link to app page"
+echo ""
+
+echo -e "${YELLOW}📱 Platform Options:${NC}"
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+echo "• web         - Web platform only"
+echo "• mobile      - Mobile app only"
+echo "• both        - All platforms"
+echo ""
+
+echo -e "${YELLOW}🔐 Authentication:${NC}"
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+echo "Public Endpoints:"
+echo "  • GET /banner"
+echo "  • GET /banner/page/:pageName"
+echo "  • GET /banner/:bannerId"
+echo "  • POST /banner/:bannerId/click"
+echo "  • POST /banner/:bannerId/impression"
+echo ""
+echo "Admin Only Endpoints:"
+echo "  • POST /banner"
+echo "  • PUT /banner/:bannerId"
+echo "  • DELETE /banner/:bannerId"
+echo "  • PATCH /banner/:bannerId/toggle"
+echo "  • POST /banner/reorder"
+echo "  • GET /banner/:bannerId/analytics"
+echo ""
+
+echo -e "${YELLOW}💡 Usage Tips:${NC}"
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+echo "1. Set ADMIN_TOKEN variable before running admin operations"
+echo "2. Replace placeholder IDs with actual values from responses"
+echo "3. Use different images for web/tablet/mobile for better UX"
+echo "4. Schedule banners in advance with startDate/endDate"
+echo "5. Track analytics to measure banner effectiveness"
+echo "6. Use displayOrder to control banner sequence"
+echo "7. Link banners to products/categories for better conversion"
+echo ""
+
