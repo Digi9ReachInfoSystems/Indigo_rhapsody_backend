@@ -144,13 +144,16 @@ exports.getBanners = async (req, res) => {
 
     // Build filter
     const filter = {};
+    const andConditions = [];
 
     if (page) {
       filter.page = page;
     }
 
     if (platform) {
-      filter.$or = [{ platform: platform }, { platform: "both" }];
+      andConditions.push({
+        $or: [{ platform: platform }, { platform: "both" }],
+      });
     }
 
     if (isActive !== undefined) {
@@ -159,12 +162,19 @@ exports.getBanners = async (req, res) => {
 
     // Check date validity
     const now = new Date();
-    filter.$or = [
-      { startDate: null, endDate: null },
-      { startDate: { $lte: now }, endDate: null },
-      { startDate: null, endDate: { $gte: now } },
-      { startDate: { $lte: now }, endDate: { $gte: now } },
-    ];
+    andConditions.push({
+      $or: [
+        { startDate: null, endDate: null },
+        { startDate: { $lte: now }, endDate: null },
+        { startDate: null, endDate: { $gte: now } },
+        { startDate: { $lte: now }, endDate: { $gte: now } },
+      ],
+    });
+
+    // Apply $and conditions if any
+    if (andConditions.length > 0) {
+      filter.$and = andConditions;
+    }
 
     // Build sort
     const sort = {};

@@ -1,0 +1,116 @@
+#!/bin/bash
+
+echo "🧪 Testing Banner Platform Endpoint"
+echo "===================================="
+echo ""
+
+BASE_URL="http://localhost:5000"
+
+echo "📋 Test 1: Get All Banners"
+echo "GET ${BASE_URL}/banner"
+echo ""
+curl -X GET "${BASE_URL}/banner" \
+  -H "Content-Type: application/json" | jq '.'
+echo ""
+echo "-------------------------------------------------------------------"
+echo ""
+
+echo "📋 Test 2: Get All Web Banners"
+echo "GET ${BASE_URL}/banner/platform/web"
+echo ""
+curl -X GET "${BASE_URL}/banner/platform/web" \
+  -H "Content-Type: application/json" | jq '.'
+echo ""
+echo "-------------------------------------------------------------------"
+echo ""
+
+echo "📋 Test 3: Get All Mobile Banners"
+echo "GET ${BASE_URL}/banner/platform/mobile"
+echo ""
+curl -X GET "${BASE_URL}/banner/platform/mobile" \
+  -H "Content-Type: application/json" | jq '.'
+echo ""
+echo "-------------------------------------------------------------------"
+echo ""
+
+echo "📋 Test 4: Get All 'Both' Platform Banners"
+echo "GET ${BASE_URL}/banner/platform/both"
+echo ""
+curl -X GET "${BASE_URL}/banner/platform/both" \
+  -H "Content-Type: application/json" | jq '.'
+echo ""
+echo "-------------------------------------------------------------------"
+echo ""
+
+echo "📋 Test 5: Get Web Banners for Home Page"
+echo "GET ${BASE_URL}/banner/platform/web?page=home"
+echo ""
+curl -X GET "${BASE_URL}/banner/platform/web?page=home" \
+  -H "Content-Type: application/json" | jq '.'
+echo ""
+echo "-------------------------------------------------------------------"
+echo ""
+
+echo "📋 Test 6: Get Mobile Banners for Products Page"
+echo "GET ${BASE_URL}/banner/platform/mobile?page=products"
+echo ""
+curl -X GET "${BASE_URL}/banner/platform/mobile?page=products" \
+  -H "Content-Type: application/json" | jq '.'
+echo ""
+echo "-------------------------------------------------------------------"
+echo ""
+
+echo "📋 Test 7: Get All Active Web Banners"
+echo "GET ${BASE_URL}/banner/platform/web?isActive=true"
+echo ""
+curl -X GET "${BASE_URL}/banner/platform/web?isActive=true" \
+  -H "Content-Type: application/json" | jq '.'
+echo ""
+echo "-------------------------------------------------------------------"
+echo ""
+
+echo "📋 Test 8: Get Banners with Pagination"
+echo "GET ${BASE_URL}/banner/platform/web?limit=5&skip=0"
+echo ""
+curl -X GET "${BASE_URL}/banner/platform/web?limit=5&skip=0" \
+  -H "Content-Type: application/json" | jq '.'
+echo ""
+echo "-------------------------------------------------------------------"
+echo ""
+
+echo ""
+echo "📚 Endpoint Documentation:"
+echo "=========================="
+echo ""
+echo "GET /banner/platform/:platform"
+echo ""
+echo "Parameters:"
+echo "  - platform (required): 'web', 'mobile', or 'both'"
+echo ""
+echo "Query Parameters:"
+echo "  - page (optional): Filter by page (e.g., 'home', 'products')"
+echo "  - isActive (optional): Filter by active status (true/false)"
+echo "  - limit (optional): Number of results (default: 50)"
+echo "  - skip (optional): Skip results (default: 0)"
+echo ""
+echo "Response Structure:"
+echo "{"
+echo '  "success": true,'
+echo '  "data": [ /* array of banners */ ],'
+echo '  "count": 3,'
+echo '  "pagination": {'
+echo '    "total": 10,'
+echo '    "limit": 50,'
+echo '    "skip": 0,'
+echo '    "hasMore": false'
+echo "  }"
+echo "}"
+echo ""
+echo "Examples:"
+echo "  - GET /banner/platform/web"
+echo "  - GET /banner/platform/mobile"
+echo "  - GET /banner/platform/web?page=home"
+echo "  - GET /banner/platform/mobile?page=products&isActive=true"
+echo "  - GET /banner/platform/both?limit=10&skip=0"
+echo ""
+
