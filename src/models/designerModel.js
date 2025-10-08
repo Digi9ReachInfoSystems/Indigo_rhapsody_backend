@@ -18,6 +18,9 @@ const designerSchema = new mongoose.Schema({
     type: String,
     // required: true,
   },
+  store_banner_web: {
+    type: String,
+  },
   is_approved: {
     type: Boolean,
     default: false,
