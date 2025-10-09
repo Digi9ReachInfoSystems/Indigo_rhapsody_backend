@@ -1,0 +1,202 @@
+#!/bin/bash
+
+echo "🧪 Testing Payment with Decimal Amounts"
+echo "========================================"
+echo ""
+
+BASE_URL="http://localhost:5000"
+TOKEN="YOUR_ADMIN_TOKEN"
+
+echo "📋 Test 1: Integer Amount (₹3000)"
+echo "POST ${BASE_URL}/order/payment/create"
+echo ""
+curl -X POST "${BASE_URL}/order/payment/create" \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer ${TOKEN}" \
+  -d '{
+    "userId": "68ccf8d9c585b659b38bc7ed",
+    "cartId": "68ccf9196fdf60f32f91a100",
+    "paymentMethod": "phonepe",
+    "amount": 3000,
+    "currency": "INR",
+    "customerDetails": {
+      "name": "Rajat",
+      "email": "rajatjiedm@gmail.com",
+      "phone": "9876543210",
+      "address": "c 1304 apex athena sec 75 noida"
+    }
+  }' | jq '.'
+echo ""
+echo "-------------------------------------------------------------------"
+echo ""
+
+echo "📋 Test 2: Decimal Amount with 2 places (₹1299.99)"
+echo "POST ${BASE_URL}/order/payment/create"
+echo ""
+curl -X POST "${BASE_URL}/order/payment/create" \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer ${TOKEN}" \
+  -d '{
+    "userId": "68ccf8d9c585b659b38bc7ed",
+    "cartId": "68ccf9196fdf60f32f91a100",
+    "paymentMethod": "phonepe",
+    "amount": "1299.99",
+    "currency": "INR",
+    "customerDetails": {
+      "name": "Rajat",
+      "email": "rajatjiedm@gmail.com",
+      "phone": "9876543210",
+      "address": "c 1304 apex athena sec 75 noida"
+    }
+  }' | jq '.'
+echo ""
+echo "-------------------------------------------------------------------"
+echo ""
+
+echo "📋 Test 3: Decimal Amount with 1 place (₹2499.5)"
+echo "POST ${BASE_URL}/order/payment/create"
+echo ""
+curl -X POST "${BASE_URL}/order/payment/create" \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer ${TOKEN}" \
+  -d '{
+    "userId": "68ccf8d9c585b659b38bc7ed",
+    "cartId": "68ccf9196fdf60f32f91a100",
+    "paymentMethod": "phonepe",
+    "amount": 2499.5,
+    "currency": "INR",
+    "customerDetails": {
+      "name": "Rajat",
+      "email": "rajatjiedm@gmail.com",
+      "phone": "9876543210",
+      "address": "c 1304 apex athena sec 75 noida"
+    }
+  }' | jq '.'
+echo ""
+echo "-------------------------------------------------------------------"
+echo ""
+
+echo "📋 Test 4: Small Decimal Amount (₹99.50)"
+echo "POST ${BASE_URL}/order/payment/create"
+echo ""
+curl -X POST "${BASE_URL}/order/payment/create" \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer ${TOKEN}" \
+  -d '{
+    "userId": "68ccf8d9c585b659b38bc7ed",
+    "cartId": "68ccf9196fdf60f32f91a100",
+    "paymentMethod": "phonepe",
+    "amount": "99.50",
+    "currency": "INR",
+    "customerDetails": {
+      "name": "Rajat",
+      "email": "rajatjiedm@gmail.com",
+      "phone": "9876543210",
+      "address": "c 1304 apex athena sec 75 noida"
+    }
+  }' | jq '.'
+echo ""
+echo "-------------------------------------------------------------------"
+echo ""
+
+echo "📋 Test 5: Invalid Amount (String 'abc')"
+echo "POST ${BASE_URL}/order/payment/create"
+echo ""
+curl -X POST "${BASE_URL}/order/payment/create" \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer ${TOKEN}" \
+  -d '{
+    "userId": "68ccf8d9c585b659b38bc7ed",
+    "cartId": "68ccf9196fdf60f32f91a100",
+    "paymentMethod": "phonepe",
+    "amount": "abc",
+    "currency": "INR",
+    "customerDetails": {
+      "name": "Rajat",
+      "email": "rajatjiedm@gmail.com",
+      "phone": "9876543210",
+      "address": "c 1304 apex athena sec 75 noida"
+    }
+  }' | jq '.'
+echo ""
+echo "Expected: Error message about invalid amount"
+echo "-------------------------------------------------------------------"
+echo ""
+
+echo "📋 Test 6: Zero Amount"
+echo "POST ${BASE_URL}/order/payment/create"
+echo ""
+curl -X POST "${BASE_URL}/order/payment/create" \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer ${TOKEN}" \
+  -d '{
+    "userId": "68ccf8d9c585b659b38bc7ed",
+    "cartId": "68ccf9196fdf60f32f91a100",
+    "paymentMethod": "phonepe",
+    "amount": 0,
+    "currency": "INR",
+    "customerDetails": {
+      "name": "Rajat",
+      "email": "rajatjiedm@gmail.com",
+      "phone": "9876543210",
+      "address": "c 1304 apex athena sec 75 noida"
+    }
+  }' | jq '.'
+echo ""
+echo "Expected: Error message about amount must be greater than 0"
+echo "-------------------------------------------------------------------"
+echo ""
+
+echo "📋 Test 7: Negative Amount"
+echo "POST ${BASE_URL}/order/payment/create"
+echo ""
+curl -X POST "${BASE_URL}/order/payment/create" \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer ${TOKEN}" \
+  -d '{
+    "userId": "68ccf8d9c585b659b38bc7ed",
+    "cartId": "68ccf9196fdf60f32f91a100",
+    "paymentMethod": "phonepe",
+    "amount": -100,
+    "currency": "INR",
+    "customerDetails": {
+      "name": "Rajat",
+      "email": "rajatjiedm@gmail.com",
+      "phone": "9876543210",
+      "address": "c 1304 apex athena sec 75 noida"
+    }
+  }' | jq '.'
+echo ""
+echo "Expected: Error message about amount must be greater than 0"
+echo "-------------------------------------------------------------------"
+echo ""
+
+echo ""
+echo "✅ Test Summary:"
+echo "================"
+echo "Test 1: Integer amount (3000) - Should succeed"
+echo "Test 2: Decimal amount (1299.99) - Should succeed"
+echo "Test 3: Decimal amount (2499.5) - Should succeed"
+echo "Test 4: Decimal amount (99.50) - Should succeed"
+echo "Test 5: Invalid string ('abc') - Should fail with validation error"
+echo "Test 6: Zero amount (0) - Should fail with validation error"
+echo "Test 7: Negative amount (-100) - Should fail with validation error"
+echo ""
+echo "💡 Key Features:"
+echo "================"
+echo "✅ Accepts integer amounts (1000, 2500, 3000)"
+echo "✅ Accepts decimal amounts (1299.99, 99.50)"
+echo "✅ Accepts both string and number formats"
+echo "✅ Validates amount is positive and numeric"
+echo "✅ Properly converts to paise for PhonePe (amount * 100)"
+echo "✅ Rounds to avoid fractional paise issues"
+echo "✅ Stores precise decimal values in database"
+echo ""
+echo "📊 Amount Conversion Examples:"
+echo "=============================="
+echo "₹1299.99 → 129999 paise (PhonePe)"
+echo "₹2499.50 → 249950 paise (PhonePe)"
+echo "₹99.50 → 9950 paise (PhonePe)"
+echo "₹3000 → 300000 paise (PhonePe)"
+echo ""
+

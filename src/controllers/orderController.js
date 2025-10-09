@@ -1543,10 +1543,12 @@ exports.createPaymentService = async (req, res) => {
       });
     }
 
-    if (amount <= 0) {
+    // Validate amount - must be a positive number (including decimals)
+    const parsedAmount = parseFloat(amount);
+    if (isNaN(parsedAmount) || parsedAmount <= 0) {
       return res.status(400).json({
         success: false,
-        message: "Amount must be greater than 0",
+        message: "Amount must be a valid number greater than 0. Decimal amounts are supported (e.g., 1299.99)",
       });
     }
 
@@ -1579,7 +1581,7 @@ exports.createPaymentService = async (req, res) => {
       cartId,
       orderId: finalOrderId,
       paymentMethod: paymentMethod.toLowerCase(),
-      amount,
+      amount: parsedAmount, // Use validated and parsed decimal amount
       currency,
       paymentReferenceId,
       status: "initiated",
@@ -1630,7 +1632,7 @@ exports.createPaymentService = async (req, res) => {
         transactionId: paymentResponse.data.transactionId || paymentReferenceId,
         paymentId: paymentResponse.data.paymentId || null,
         paymentMethod: paymentMethod.toLowerCase(),
-        amount: parseFloat(amount),
+        amount: parsedAmount, // Use validated and parsed amount
         currency,
         paymentStatus: "Initiated",
         status: "initiated",
