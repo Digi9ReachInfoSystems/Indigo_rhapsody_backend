@@ -12,6 +12,28 @@ exports.createCart = async (req, res) => {
   try {
     const { userId, products } = req.body;
 
+    // Validate input
+    if (!userId) {
+      return res.status(400).json({
+        message: "userId is required",
+        error: "Missing userId in request body"
+      });
+    }
+
+    if (!products || !Array.isArray(products)) {
+      return res.status(400).json({
+        message: "products must be an array",
+        error: "products is not iterable"
+      });
+    }
+
+    if (products.length === 0) {
+      return res.status(400).json({
+        message: "products array cannot be empty",
+        error: "No products provided"
+      });
+    }
+
     let cart = await Cart.findOne({ userId });
 
     if (cart) {
