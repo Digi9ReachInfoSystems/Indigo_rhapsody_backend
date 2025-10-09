@@ -124,6 +124,13 @@ router.get(
   orderController.verifyPaymentStatus
 );
 
+// Check PhonePe order status (specific PhonePe endpoint)
+router.get(
+  "/payment/phonepe/status/:orderId",
+  authMiddleware,
+  orderController.checkPhonePeOrderStatus
+);
+
 // Get payment status
 router.get(
   "/payment/status/:paymentReferenceId",
