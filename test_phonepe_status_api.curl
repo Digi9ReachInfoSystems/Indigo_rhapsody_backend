@@ -1,0 +1,183 @@
+#!/bin/bash
+
+echo "🧪 Testing PhonePe Payment Status API"
+echo "======================================"
+echo ""
+
+BASE_URL="http://localhost:5000"
+JWT_TOKEN="YOUR_JWT_TOKEN"
+
+# Test Order IDs (replace with actual order IDs from your system)
+ORDER_ID="ORD_1703123456789_xyz789ghi"
+
+echo "📋 Test 1: Check PhonePe Order Status (Primary Endpoint)"
+echo "GET ${BASE_URL}/order/payment/phonepe/status/${ORDER_ID}"
+echo ""
+curl -X GET "${BASE_URL}/order/payment/phonepe/status/${ORDER_ID}" \
+  -H "Authorization: Bearer ${JWT_TOKEN}" \
+  -H "Content-Type: application/json" | jq '.'
+echo ""
+echo "-------------------------------------------------------------------"
+echo ""
+
+echo "📋 Test 2: Check Payment Status via Generic Verify Endpoint"
+echo "GET ${BASE_URL}/order/payment/verify/${ORDER_ID}/phonepe"
+echo ""
+curl -X GET "${BASE_URL}/order/payment/verify/${ORDER_ID}/phonepe" \
+  -H "Authorization: Bearer ${JWT_TOKEN}" \
+  -H "Content-Type: application/json" | jq '.'
+echo ""
+echo "-------------------------------------------------------------------"
+echo ""
+
+echo "📋 Test 3: Check Status Without Authentication (Should Fail)"
+echo "GET ${BASE_URL}/order/payment/phonepe/status/${ORDER_ID}"
+echo ""
+curl -X GET "${BASE_URL}/order/payment/phonepe/status/${ORDER_ID}" \
+  -H "Content-Type: application/json" | jq '.'
+echo ""
+echo "Expected: 401 Unauthorized or similar error"
+echo "-------------------------------------------------------------------"
+echo ""
+
+echo "📋 Test 4: Check Status with Invalid Order ID"
+echo "GET ${BASE_URL}/order/payment/phonepe/status/INVALID_ORDER_ID"
+echo ""
+curl -X GET "${BASE_URL}/order/payment/phonepe/status/INVALID_ORDER_ID" \
+  -H "Authorization: Bearer ${JWT_TOKEN}" \
+  -H "Content-Type: application/json" | jq '.'
+echo ""
+echo "Expected: Error message about payment not found"
+echo "-------------------------------------------------------------------"
+echo ""
+
+echo ""
+echo "💡 Usage Instructions:"
+echo "======================"
+echo ""
+echo "1. Replace JWT_TOKEN with your actual JWT authentication token"
+echo "2. Replace ORDER_ID with an actual PhonePe order ID from your system"
+echo "3. Run this script: bash test_phonepe_status_api.curl"
+echo ""
+echo "📍 API Endpoint:"
+echo "================"
+echo "GET /order/payment/phonepe/status/:orderId"
+echo ""
+echo "Headers Required:"
+echo "  - Authorization: Bearer {JWT_TOKEN}"
+echo "  - Content-Type: application/json"
+echo ""
+echo "🔑 Authentication:"
+echo "=================="
+echo "This endpoint requires JWT authentication."
+echo "Obtain your JWT token by logging in through your auth endpoint."
+echo ""
+echo "📊 Expected Response for Successful Payment:"
+echo "============================================="
+echo '{'
+echo '  "success": true,'
+echo '  "message": "Payment status retrieved and updated successfully",'
+echo '  "data": {'
+echo '    "orderId": "ORD_1703123456789_xyz789ghi",'
+echo '    "status": "PAID",'
+echo '    "amount": 1299.99,'
+echo '    "responseCode": "SUCCESS",'
+echo '    "responseMessage": "Payment successful",'
+echo '    "paymentDetails": {'
+echo '      "_id": "payment_id",'
+echo '      "orderId": "ORD_1703123456789_xyz789ghi",'
+echo '      "paymentMethod": "phonepe",'
+echo '      "amount": 1299.99,'
+echo '      "paymentStatus": "Completed",'
+echo '      "status": "completed",'
+echo '      "completedAt": "2024-01-20T10:30:00.000Z"'
+echo '    }'
+echo '  }'
+echo '}'
+echo ""
+echo "📊 Expected Response for Pending Payment:"
+echo "=========================================="
+echo '{'
+echo '  "success": true,'
+echo '  "message": "Payment status retrieved and updated successfully",'
+echo '  "data": {'
+echo '    "orderId": "ORD_1703123456789_xyz789ghi",'
+echo '    "status": "PENDING",'
+echo '    "amount": 1299.99,'
+echo '    "responseCode": "PENDING",'
+echo '    "responseMessage": "Payment pending"'
+echo '  }'
+echo '}'
+echo ""
+echo "📊 Expected Response for Failed Payment:"
+echo "========================================="
+echo '{'
+echo '  "success": true,'
+echo '  "message": "Payment status retrieved and updated successfully",'
+echo '  "data": {'
+echo '    "orderId": "ORD_1703123456789_xyz789ghi",'
+echo '    "status": "FAILED",'
+echo '    "amount": 1299.99,'
+echo '    "responseCode": "PAYMENT_DECLINED",'
+echo '    "responseMessage": "Payment declined by user",'
+echo '    "paymentDetails": {'
+echo '      "paymentStatus": "FAILED",'
+echo '      "status": "failed",'
+echo '      "failedAt": "2024-01-20T10:30:00.000Z",'
+echo '      "failureReason": "Payment declined by user"'
+echo '    }'
+echo '  }'
+echo '}'
+echo ""
+echo "🔄 Payment Status Values:"
+echo "========================="
+echo "• PAID / SUCCESS - Payment completed successfully"
+echo "• PENDING - Payment is being processed"
+echo "• FAILED - Payment failed"
+echo "• EXPIRED - Payment link expired"
+echo "• CANCELLED - Payment cancelled by user"
+echo ""
+echo "🌐 PhonePe API Endpoint (Used Internally):"
+echo "==========================================="
+echo "GET https://api-preprod.phonepe.com/apis/pg-sandbox/checkout/v2/order/{orderId}/status"
+echo ""
+echo "Headers:"
+echo "  - Content-Type: application/json"
+echo "  - Authorization: O-Bearer {access_token}"
+echo ""
+echo "✨ Features:"
+echo "============"
+echo "✅ Real-time status check from PhonePe"
+echo "✅ Automatic database update"
+echo "✅ O-Bearer authentication with PhonePe"
+echo "✅ Supports all payment states (PAID, PENDING, FAILED, etc.)"
+echo "✅ Returns populated user and cart details"
+echo "✅ Error handling and fallback responses"
+echo ""
+echo "📱 Frontend Integration Example:"
+echo "================================="
+echo ""
+echo "const checkPaymentStatus = async (orderId) => {"
+echo "  const response = await fetch("
+echo "    \`/api/order/payment/phonepe/status/\${orderId}\`,"
+echo "    {"
+echo "      headers: {"
+echo "        'Authorization': \`Bearer \${token}\`"
+echo "      }"
+echo "    }"
+echo "  );"
+echo "  const data = await response.json();"
+echo "  "
+echo "  if (data.success && data.data.status === 'PAID') {"
+echo "    // Payment successful"
+echo "    showSuccessPage(data.data);"
+echo "  } else if (data.data.status === 'PENDING') {"
+echo "    // Still pending, check again"
+echo "    setTimeout(() => checkPaymentStatus(orderId), 5000);"
+echo "  } else {"
+echo "    // Payment failed"
+echo "    showErrorPage(data.data);"
+echo "  }"
+echo "};"
+echo ""
+

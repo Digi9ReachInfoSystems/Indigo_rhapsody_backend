@@ -1831,6 +1831,7 @@ const handleCODPayment = async (paymentRecord) => {
 };
 
 // Verify Payment Status
+// Verify Payment Status (Generic - supports all payment methods)
 exports.verifyPaymentStatus = async (req, res) => {
   try {
     const { paymentReferenceId, paymentMethod } = req.params;
@@ -1877,6 +1878,34 @@ exports.verifyPaymentStatus = async (req, res) => {
       });
     }
 
+    // Update payment status in database if verification successful
+    if (verificationResponse.data && paymentMethod.toLowerCase() === "phonepe") {
+      try {
+        const { orderId, status, amount } = verificationResponse.data;
+
+        const updateData = {
+          paymentStatus: status === "PAID" || status === "SUCCESS" ? "Completed" : status,
+          status: status === "PAID" || status === "SUCCESS" ? "completed" : status.toLowerCase(),
+          updatedAt: new Date(),
+        };
+
+        if (status === "PAID" || status === "SUCCESS") {
+          updateData.completedAt = new Date();
+        }
+
+        await PaymentDetails.findOneAndUpdate(
+          { transactionId: orderId },
+          updateData,
+          { new: true }
+        );
+
+        console.log(`✅ Payment status updated in database for order: ${orderId}`);
+      } catch (dbError) {
+        console.error("❌ Database update error:", dbError);
+        // Continue even if DB update fails
+      }
+    }
+
     return res.status(200).json({
       success: true,
       message: "Payment status verified",
@@ -1891,6 +1920,112 @@ exports.verifyPaymentStatus = async (req, res) => {
     return res.status(500).json({
       success: false,
       message: "Payment verification error",
+      error: error.message,
+    });
+  }
+};
+
+// Check PhonePe Order Status (Specific PhonePe API endpoint)
+exports.checkPhonePeOrderStatus = async (req, res) => {
+  try {
+    const { orderId } = req.params;
+
+    if (!orderId) {
+      return res.status(400).json({
+        success: false,
+        message: "orderId is required",
+      });
+    }
+
+    console.log(`🔍 Checking PhonePe status for order: ${orderId}`);
+
+    // Call PhonePe verify payment API
+    const verificationResponse = await phonepeService.verifyPayment(orderId);
+
+    if (!verificationResponse.success) {
+      return res.status(400).json({
+        success: false,
+        message: "Failed to verify payment status",
+        error: verificationResponse.error || verificationResponse.message,
+      });
+    }
+
+    const { status, amount, responseCode, responseMessage } =
+      verificationResponse.data;
+
+    // Update payment status in database
+    try {
+      const updateData = {
+        paymentStatus: status === "PAID" || status === "SUCCESS" ? "Completed" : status,
+        status: status === "PAID" || status === "SUCCESS" ? "completed" : status.toLowerCase(),
+        updatedAt: new Date(),
+      };
+
+      if (status === "PAID" || status === "SUCCESS") {
+        updateData.completedAt = new Date();
+      } else if (status === "FAILED") {
+        updateData.failedAt = new Date();
+        updateData.failureReason = responseMessage || "Payment failed";
+      }
+
+      const updatedPayment = await PaymentDetails.findOneAndUpdate(
+        { transactionId: orderId },
+        updateData,
+        { new: true }
+      ).populate("userId", "displayName email")
+        .populate("cartId", "total_amount");
+
+      if (updatedPayment) {
+        console.log(`✅ Payment status updated: ${status}`);
+
+        return res.status(200).json({
+          success: true,
+          message: "Payment status retrieved and updated successfully",
+          data: {
+            orderId,
+            status,
+            amount,
+            responseCode,
+            responseMessage,
+            paymentDetails: updatedPayment,
+          },
+        });
+      } else {
+        // Payment not found in DB, still return PhonePe status
+        console.warn(`⚠️ Payment record not found for order: ${orderId}`);
+        return res.status(200).json({
+          success: true,
+          message: "Payment status retrieved (not found in database)",
+          data: {
+            orderId,
+            status,
+            amount,
+            responseCode,
+            responseMessage,
+          },
+        });
+      }
+    } catch (dbError) {
+      console.error("❌ Database error:", dbError);
+      // Return PhonePe status even if DB update fails
+      return res.status(200).json({
+        success: true,
+        message: "Payment status retrieved (database update failed)",
+        data: {
+          orderId,
+          status,
+          amount,
+          responseCode,
+          responseMessage,
+        },
+        warning: "Database update failed",
+      });
+    }
+  } catch (error) {
+    console.error("❌ Error checking PhonePe order status:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Error checking payment status",
       error: error.message,
     });
   }
