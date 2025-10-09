@@ -65,7 +65,7 @@ class PhonePeService {
 
       const payload = {
         merchantOrderId: orderId,
-        amount: amount * 100, // amount in paise
+        amount: Math.round(parseFloat(amount) * 100), // Convert to paise and round to avoid decimals
         expireAfter: 1800, // 30 minutes
         metaInfo: {
           customerId,
