@@ -188,19 +188,15 @@ const generateAndUploadInvoice = async (order) => {
         });
 
       doc
-        .text("Tax (12%):", 400, summaryTop + 30, { align: "left" })
-        .text(`₹${tax.toFixed(2)}`, 480, summaryTop + 30, { align: "right" });
-
-      doc
-        .text("Delivery Charges:", 400, summaryTop + 45, { align: "left" })
-        .text(`₹${shippingCost.toFixed(2)}`, 480, summaryTop + 45, {
+        .text("Delivery Charges:", 400, summaryTop + 30, { align: "left" })
+        .text(`₹${shippingCost.toFixed(2)}`, 480, summaryTop + 30, {
           align: "right",
         });
 
       doc
         .font("Helvetica-Bold")
-        .text("Total:", 400, summaryTop + 60, { align: "left" })
-        .text(`₹${totalAmount.toFixed(2)}`, 480, summaryTop + 60, {
+        .text("Total:", 400, summaryTop + 45, { align: "left" })
+        .text(`₹${totalAmount.toFixed(2)}`, 480, summaryTop + 45, {
           align: "right",
         });
 
@@ -481,11 +477,10 @@ exports.createOrder = async (req, res) => {
           .join("")}
               </table>
             </div>
-            <p class="total"><strong>Subtotal:</strong> ${subtotal}</p>
-            <p class="total"><strong>Tax:</strong> ${tax_amount}</p>
-            <p class="total"><strong>Shipping:</strong> ${shipping_cost}</p>
-            <p class="total"><strong>Discount:</strong> -${discount_amount}</p>
-            <p class="total"><strong>Total Amount:</strong> ${total_amount}</p>
+            <p class="total"><strong>Subtotal:</strong> ₹${subtotal}</p>
+            <p class="total"><strong>Shipping:</strong> ₹${shipping_cost}</p>
+            <p class="total"><strong>Discount:</strong> -₹${discount_amount}</p>
+            <p class="total"><strong>Total Amount:</strong> ₹${total_amount}</p>
             <p>You can download your invoice <a href="${firebaseUrl}">here</a>.</p>
           </div>
           <div class="footer">

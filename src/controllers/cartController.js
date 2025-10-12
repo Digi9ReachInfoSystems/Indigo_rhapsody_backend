@@ -97,17 +97,14 @@ exports.createCart = async (req, res) => {
       await product.save();
     }
 
-    // Calculate Tax Amount (GST at 12%)
-    const tax_amount = roundToTwoDecimals(subtotal * 0.12);
-
     // Calculate Shipping Cost based on subtotal
     const shipping_cost = subtotal > 3000 ? 0 : 99;
 
-    // Calculate Total Amount
+    // Calculate Total Amount (without GST)
     cart.subtotal = subtotal;
-    cart.tax_amount = tax_amount;
+    cart.tax_amount = 0;  // No GST/tax
     cart.shipping_cost = shipping_cost;
-    cart.total_amount = subtotal + tax_amount + shipping_cost;
+    cart.total_amount = subtotal + shipping_cost;
 
     await cart.save();
     return res
@@ -184,13 +181,12 @@ exports.addItemToCart = async (req, res) => {
       subtotal += item.price * item.quantity;
     });
 
-    const tax_amount = subtotal * 0.12;
     const shipping_cost = subtotal > 3000 ? 0 : 99;
 
     cart.subtotal = subtotal;
-    cart.tax_amount = tax_amount;
+    cart.tax_amount = 0;  // No GST/tax
     cart.shipping_cost = shipping_cost;
-    cart.total_amount = subtotal + tax_amount + shipping_cost;
+    cart.total_amount = subtotal + shipping_cost;
 
     await cart.save();
     return res.status(201).json({ message: "Item added to cart", cart });
@@ -256,11 +252,10 @@ exports.updateQuantity = async (req, res) => {
     cart.products.forEach((item) => {
       subtotal += item.price * item.quantity;
     });
-    const tax_amount = roundToTwoDecimals(subtotal * 0.12);
     const shipping_cost = subtotal > 3000 ? 0 : 99;
 
     cart.subtotal = subtotal;
-    cart.tax_amount = tax_amount;
+    cart.tax_amount = 0;  // No GST/tax
     cart.shipping_cost = shipping_cost;
 
     // Adjust discount if cart is cleared
@@ -270,7 +265,7 @@ exports.updateQuantity = async (req, res) => {
     }
 
     cart.total_amount =
-      subtotal + tax_amount + shipping_cost - cart.discount_amount;
+      subtotal + shipping_cost - cart.discount_amount;
 
     await cart.save();
     return res.status(200).json({ message: "Quantity updated", cart });
@@ -328,11 +323,10 @@ exports.deleteItem = async (req, res) => {
       subtotal += item.price * item.quantity;
     });
 
-    const tax_amount = roundToTwoDecimals(subtotal * 0.12);
     const shipping_cost = subtotal > 3000 ? 0 : 99;
 
     cart.subtotal = subtotal;
-    cart.tax_amount = tax_amount;
+    cart.tax_amount = 0;  // No GST/tax
     cart.shipping_cost = shipping_cost;
 
     // Adjust discount if cart is cleared
@@ -342,7 +336,7 @@ exports.deleteItem = async (req, res) => {
     }
 
     cart.total_amount =
-      subtotal + tax_amount + shipping_cost - cart.discount_amount;
+      subtotal + shipping_cost - cart.discount_amount;
 
     await cart.save();
     return res.status(200).json({ message: "Item deleted from cart", cart });
@@ -495,8 +489,7 @@ exports.upsertCart = async (req, res) => {
       subtotal += item.price * item.quantity;
     });
 
-    // Calculate tax and shipping
-    const tax_amount = roundToTwoDecimals(subtotal * 0.12);
+    // Calculate shipping (no tax)
     const shipping_cost = subtotal > 3000 ? 0 : 99;
 
     // Apply discount if available
@@ -505,13 +498,13 @@ exports.upsertCart = async (req, res) => {
       discount_amount = cart.discount_amount;
     }
 
-    // Update the cart totals
+    // Update the cart totals (without GST)
     cart.subtotal = roundToTwoDecimals(subtotal);
-    cart.tax_amount = tax_amount;
+    cart.tax_amount = 0;  // No GST/tax
     cart.shipping_cost = shipping_cost;
     cart.discount_amount = roundToTwoDecimals(discount_amount);
     cart.total_amount = roundToTwoDecimals(
-      subtotal + tax_amount + shipping_cost - discount_amount
+      subtotal + shipping_cost - discount_amount
     );
 
     await cart.save();

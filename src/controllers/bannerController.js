@@ -219,17 +219,23 @@ exports.getBannersByPage = async (req, res) => {
 
     const now = new Date();
 
+    // Build filter with proper $and structure
     const filter = {
       page: pageName,
       isActive: true,
-      $or: [{ platform: platform }, { platform: "both" }],
       $and: [
+        // Platform filter
+        {
+          $or: [{ platform: platform }, { platform: "both" }],
+        },
+        // Start date filter
         {
           $or: [
             { startDate: null },
             { startDate: { $lte: now } },
           ],
         },
+        // End date filter
         {
           $or: [
             { endDate: null },
@@ -239,11 +245,16 @@ exports.getBannersByPage = async (req, res) => {
       ],
     };
 
+    console.log(`🔍 Fetching banners for page: ${pageName}, platform: ${platform}`);
+    console.log('Filter:', JSON.stringify(filter, null, 2));
+
     const banners = await Banner.find(filter)
       .populate("linkedProduct", "productName coverImage price mrp discount")
       .populate("linkedCategory", "name image")
       .populate("linkedDesigner", "name profileImage")
       .sort({ displayOrder: 1 });
+
+    console.log(`✅ Found ${banners.length} banners`);
 
     res.status(200).json({
       success: true,
@@ -277,14 +288,19 @@ exports.getBannersByPlatform = async (req, res) => {
 
     const now = new Date();
 
-    // Build filter
+    // Build filter with proper $and structure
     const filter = {
-      $or: [{ platform: platform.toLowerCase() }, { platform: "both" }],
       isActive: isActive !== undefined ? isActive === "true" : true,
       $and: [
+        // Platform filter
+        {
+          $or: [{ platform: platform.toLowerCase() }, { platform: "both" }],
+        },
+        // Start date filter
         {
           $or: [{ startDate: null }, { startDate: { $lte: now } }],
         },
+        // End date filter
         {
           $or: [{ endDate: null }, { endDate: { $gte: now } }],
         },
@@ -296,6 +312,9 @@ exports.getBannersByPlatform = async (req, res) => {
       filter.page = page;
     }
 
+    console.log(`🔍 Fetching banners for platform: ${platform}, page: ${page || 'all'}`);
+    console.log('Filter:', JSON.stringify(filter, null, 2));
+
     const banners = await Banner.find(filter)
       .populate("linkedProduct", "productName coverImage price mrp discount")
       .populate("linkedCategory", "name image")
@@ -305,6 +324,8 @@ exports.getBannersByPlatform = async (req, res) => {
       .skip(parseInt(skip));
 
     const total = await Banner.countDocuments(filter);
+
+    console.log(`✅ Found ${banners.length} banners (Total in DB matching filter: ${total})`);
 
     res.status(200).json({
       success: true,
@@ -726,6 +747,47 @@ exports.reorderBanners = async (req, res) => {
     res.status(500).json({
       success: false,
       message: "Error reordering banners",
+      error: error.message,
+    });
+  }
+};
+
+// Debug endpoint - Get all banners without filters
+exports.getAllBannersDebug = async (req, res) => {
+  try {
+    const allBanners = await Banner.find({})
+      .select("name platform page isActive startDate endDate displayOrder")
+      .sort({ displayOrder: 1 });
+
+    const mobileBanners = allBanners.filter(
+      (b) => b.platform === "mobile" || b.platform === "both"
+    );
+
+    const webBanners = allBanners.filter(
+      (b) => b.platform === "web" || b.platform === "both"
+    );
+
+    res.status(200).json({
+      success: true,
+      debug: true,
+      data: {
+        total: allBanners.length,
+        mobile: {
+          count: mobileBanners.length,
+          banners: mobileBanners,
+        },
+        web: {
+          count: webBanners.length,
+          banners: webBanners,
+        },
+        all: allBanners,
+      },
+    });
+  } catch (error) {
+    console.error("Error in debug endpoint:", error);
+    res.status(500).json({
+      success: false,
+      message: "Debug endpoint error",
       error: error.message,
     });
   }
