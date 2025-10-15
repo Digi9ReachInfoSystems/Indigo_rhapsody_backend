@@ -111,12 +111,6 @@ router.post(
   orderController.createPaymentService
 );
 
-// Create PhonePe payment (Legacy v1 API with X-VERIFY)
-router.post(
-  "/payment/phonepe/legacy",
-  // authMiddleware,
-  orderController.createPhonePePaymentLegacy
-);
 
 // Get available payment methods
 router.get(

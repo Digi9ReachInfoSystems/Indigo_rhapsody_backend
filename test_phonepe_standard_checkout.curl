@@ -1,0 +1,408 @@
+# PhonePe Standard Checkout Flow Test
+# Test the updated PhonePe integration using only the standard OAuth-based API
+
+echo "🚀 Testing PhonePe Standard Checkout Flow"
+echo "=========================================="
+
+# Test 1: Create Payment with Standard API
+echo -e "\n--- Test 1: Create Payment ---\n"
+
+curl -X POST "http://localhost:5000/order/payment/create" \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN" \
+  -d '{
+    "userId": "68ccf8d9c585b659b38bc7ed",
+    "cartId": "68ccf9196fdf60f32f91a100",
+    "paymentMethod": "phonepe",
+    "amount": "1299.99",
+    "currency": "INR",
+    "customerDetails": {
+      "name": "John Doe",
+      "email": "john@example.com",
+      "phone": "9876543210",
+      "address": {
+        "street": "123 Main Street",
+        "city": "Mumbai",
+        "state": "Maharashtra",
+        "pincode": "400001"
+      }
+    },
+    "description": "Payment for order",
+    "notes": "Please process this payment"
+  }'
+
+echo -e "\n\n--- Test 2: Create Payment with Decimal Amount ---\n"
+
+# Test 2: Create Payment with Decimal Amount
+curl -X POST "http://localhost:5000/order/payment/create" \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN" \
+  -d '{
+    "userId": "68ccf8d9c585b659b38bc7ed",
+    "cartId": "68ccf9196fdf60f32f91a101",
+    "paymentMethod": "phonepe",
+    "amount": "99.50",
+    "currency": "INR",
+    "customerDetails": {
+      "name": "Jane Smith",
+      "email": "jane@example.com",
+      "phone": "9876543211"
+    },
+    "description": "Payment for small order",
+    "notes": "Test decimal amount"
+  }'
+
+echo -e "\n\n--- Test 3: Create Payment without Order ID (Auto-generate) ---\n"
+
+# Test 3: Create Payment without Order ID (Auto-generate)
+curl -X POST "http://localhost:5000/order/payment/create" \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN" \
+  -d '{
+    "userId": "68ccf8d9c585b659b38bc7ed",
+    "cartId": "68ccf9196fdf60f32f91a102",
+    "paymentMethod": "phonepe",
+    "amount": "2500.00",
+    "currency": "INR",
+    "customerDetails": {
+      "name": "Bob Johnson",
+      "email": "bob@example.com",
+      "phone": "9876543212"
+    },
+    "description": "Payment for order without orderId",
+    "notes": "Order ID will be auto-generated"
+  }'
+
+echo -e "\n\n--- Test 4: Create Payment with Large Amount ---\n"
+
+# Test 4: Create Payment with Large Amount
+curl -X POST "http://localhost:5000/order/payment/create" \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN" \
+  -d '{
+    "userId": "68ccf8d9c585b659b38bc7ed",
+    "cartId": "68ccf9196fdf60f32f91a103",
+    "paymentMethod": "phonepe",
+    "amount": "99999.99",
+    "currency": "INR",
+    "customerDetails": {
+      "name": "Alice Brown",
+      "email": "alice@example.com",
+      "phone": "9876543213"
+    },
+    "description": "Payment for large order",
+    "notes": "Test large amount handling"
+  }'
+
+echo -e "\n\n--- Test 5: Create Payment with Minimal Data ---\n"
+
+# Test 5: Create Payment with Minimal Data
+curl -X POST "http://localhost:5000/order/payment/create" \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN" \
+  -d '{
+    "userId": "68ccf8d9c585b659b38bc7ed",
+    "paymentMethod": "phonepe",
+    "amount": "500.00",
+    "customerDetails": {
+      "phone": "9876543214"
+    }
+  }'
+
+echo -e "\n\n--- Test 6: Test Invalid Amount ---\n"
+
+# Test 6: Test Invalid Amount
+curl -X POST "http://localhost:5000/order/payment/create" \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN" \
+  -d '{
+    "userId": "68ccf8d9c585b659b38bc7ed",
+    "paymentMethod": "phonepe",
+    "amount": "invalid_amount",
+    "customerDetails": {
+      "phone": "9876543215"
+    }
+  }'
+
+echo -e "\n\n--- Test 7: Test Missing Required Fields ---\n"
+
+# Test 7: Test Missing Required Fields
+curl -X POST "http://localhost:5000/order/payment/create" \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN" \
+  -d '{
+    "userId": "68ccf8d9c585b659b38bc7ed",
+    "paymentMethod": "phonepe"
+  }'
+
+echo -e "\n\n--- Test 8: Test Zero Amount ---\n"
+
+# Test 8: Test Zero Amount
+curl -X POST "http://localhost:5000/order/payment/create" \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN" \
+  -d '{
+    "userId": "68ccf8d9c585b659b38bc7ed",
+    "paymentMethod": "phonepe",
+    "amount": "0",
+    "customerDetails": {
+      "phone": "9876543216"
+    }
+  }'
+
+echo -e "\n\n--- Test 9: Test Negative Amount ---\n"
+
+# Test 9: Test Negative Amount
+curl -X POST "http://localhost:5000/order/payment/create" \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN" \
+  -d '{
+    "userId": "68ccf8d9c585b659b38bc7ed",
+    "paymentMethod": "phonepe",
+    "amount": "-100.00",
+    "customerDetails": {
+      "phone": "9876543217"
+    }
+  }'
+
+echo -e "\n\n--- Test 10: Test Status Check (Replace with actual orderId) ---\n"
+
+# Test 10: Test Status Check (Replace with actual orderId from previous responses)
+curl -X GET "http://localhost:5000/order/payment/phonepe/status/ORD_1703123456789_xyz" \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN"
+
+echo -e "\n\n--- Test 11: Test Webhook Processing ---\n"
+
+# Test 11: Test Webhook Processing
+curl -X POST "http://localhost:5000/order/payment/webhook/phonepe" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "event": "checkout.order.completed",
+    "payload": {
+        "orderId": "OMO2403282020198641071317",
+        "merchantId": "merchantId",
+        "merchantOrderId": "ORD_1703123456789_xyz",
+        "state": "COMPLETED",
+        "amount": 129999,
+        "expireAt": 1724866793837,
+        "metaInfo": {
+            "udf1": "",
+            "udf2": "",
+            "udf3": "",
+            "udf4": ""
+        },
+        "paymentDetails": [
+            {
+                "paymentMode": "UPI_QR",
+                "transactionId": "OM12334",
+                "timestamp": 1724866793837,
+                "amount": 129999,
+                "state": "COMPLETED"
+            }
+        ]
+    }
+}'
+
+echo -e "\n\n--- Test 12: Test Failed Payment Webhook ---\n"
+
+# Test 12: Test Failed Payment Webhook
+curl -X POST "http://localhost:5000/order/payment/webhook/phonepe" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "event": "checkout.order.completed",
+    "payload": {
+        "orderId": "OMO2403282020198641071318",
+        "merchantId": "merchantId",
+        "merchantOrderId": "ORD_1703123456789_abc",
+        "state": "FAILED",
+        "amount": 50000,
+        "expireAt": 1724866793837,
+        "metaInfo": {
+            "udf1": "",
+            "udf2": "",
+            "udf3": "",
+            "udf4": ""
+        },
+        "paymentDetails": [
+            {
+                "paymentMode": "UPI_QR",
+                "transactionId": "OM12335",
+                "timestamp": 1724866793837,
+                "amount": 50000,
+                "state": "FAILED"
+            }
+        ]
+    }
+}'
+
+echo -e "\n\n--- Test 13: Test Payment Methods Endpoint ---\n"
+
+# Test 13: Test Payment Methods Endpoint
+curl -X GET "http://localhost:5000/order/payment/methods" \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN"
+
+echo -e "\n\n--- Test 14: Test Payment Status by Reference ID ---\n"
+
+# Test 14: Test Payment Status by Reference ID
+curl -X GET "http://localhost:5000/order/payment/status/PAY_1703123456789_xyz" \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN"
+
+echo -e "\n\n--- Test 15: Test Invalid Payment Method ---\n"
+
+# Test 15: Test Invalid Payment Method
+curl -X POST "http://localhost:5000/order/payment/create" \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN" \
+  -d '{
+    "userId": "68ccf8d9c585b659b38bc7ed",
+    "paymentMethod": "invalid_method",
+    "amount": "100.00",
+    "customerDetails": {
+      "phone": "9876543218"
+    }
+  }'
+
+echo -e "\n\n--- Test 16: Test Different Currency ---\n"
+
+# Test 16: Test Different Currency
+curl -X POST "http://localhost:5000/order/payment/create" \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN" \
+  -d '{
+    "userId": "68ccf8d9c585b659b38bc7ed",
+    "cartId": "68ccf9196fdf60f32f91a104",
+    "paymentMethod": "phonepe",
+    "amount": "100.00",
+    "currency": "USD",
+    "customerDetails": {
+      "name": "Test User",
+      "email": "test@example.com",
+      "phone": "9876543219"
+    }
+  }'
+
+echo -e "\n\n--- Test 17: Test Webhook with Different Payment Modes ---\n"
+
+# Test 17: Test Webhook with Different Payment Modes
+curl -X POST "http://localhost:5000/order/payment/webhook/phonepe" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "event": "checkout.order.completed",
+    "payload": {
+        "orderId": "OMO2403282020198641071319",
+        "merchantId": "merchantId",
+        "merchantOrderId": "ORD_1703123456789_def",
+        "state": "COMPLETED",
+        "amount": 75000,
+        "expireAt": 1724866793837,
+        "metaInfo": {
+            "udf1": "",
+            "udf2": "",
+            "udf3": "",
+            "udf4": ""
+        },
+        "paymentDetails": [
+            {
+                "paymentMode": "CREDIT_CARD",
+                "transactionId": "OM12336",
+                "timestamp": 1724866793837,
+                "amount": 75000,
+                "state": "COMPLETED"
+            }
+        ]
+    }
+}'
+
+echo -e "\n\n--- Test 18: Test Webhook with Multiple Payment Details ---\n"
+
+# Test 18: Test Webhook with Multiple Payment Details
+curl -X POST "http://localhost:5000/order/payment/webhook/phonepe" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "event": "checkout.order.completed",
+    "payload": {
+        "orderId": "OMO2403282020198641071320",
+        "merchantId": "merchantId",
+        "merchantOrderId": "ORD_1703123456789_ghi",
+        "state": "COMPLETED",
+        "amount": 200000,
+        "expireAt": 1724866793837,
+        "metaInfo": {
+            "udf1": "",
+            "udf2": "",
+            "udf3": "",
+            "udf4": ""
+        },
+        "paymentDetails": [
+            {
+                "paymentMode": "UPI_QR",
+                "transactionId": "OM12337",
+                "timestamp": 1724866793837,
+                "amount": 100000,
+                "state": "COMPLETED"
+            },
+            {
+                "paymentMode": "CREDIT_CARD",
+                "transactionId": "OM12338",
+                "timestamp": 1724866793837,
+                "amount": 100000,
+                "state": "COMPLETED"
+            }
+        ]
+    }
+}'
+
+echo -e "\n\n--- Test 19: Test Webhook with Custom Meta Info ---\n"
+
+# Test 19: Test Webhook with Custom Meta Info
+curl -X POST "http://localhost:5000/order/payment/webhook/phonepe" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "event": "checkout.order.completed",
+    "payload": {
+        "orderId": "OMO2403282020198641071321",
+        "merchantId": "merchantId",
+        "merchantOrderId": "ORD_1703123456789_jkl",
+        "state": "COMPLETED",
+        "amount": 120000,
+        "expireAt": 1724866793837,
+        "metaInfo": {
+            "udf1": "custom_data_1",
+            "udf2": "custom_data_2",
+            "udf3": "custom_data_3",
+            "udf4": "custom_data_4"
+        },
+        "paymentDetails": [
+            {
+                "paymentMode": "NET_BANKING",
+                "transactionId": "OM12339",
+                "timestamp": 1724866793837,
+                "amount": 120000,
+                "state": "COMPLETED"
+            }
+        ]
+    }
+}'
+
+echo -e "\n\n--- Test 20: Test Invalid Webhook Data ---\n"
+
+# Test 20: Test Invalid Webhook Data
+curl -X POST "http://localhost:5000/order/payment/webhook/phonepe" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "invalid": "data",
+    "missing": "required_fields"
+}'
+
+echo -e "\n\n✅ All PhonePe Standard Checkout tests completed!"
+echo "=========================================="
+echo "📋 Test Summary:"
+echo "- Payment Creation: Tests 1-10"
+echo "- Status Checking: Test 10"
+echo "- Webhook Processing: Tests 11-12, 17-20"
+echo "- Error Handling: Tests 6-9, 15, 20"
+echo "- Edge Cases: Tests 3-5, 13-14, 16, 18-19"
+echo ""
+echo "🔍 Check the server logs for detailed processing information."
+echo "📊 Monitor the database for payment and order records."
+echo "🎯 Verify redirect URLs contain the correct orderId parameter."
