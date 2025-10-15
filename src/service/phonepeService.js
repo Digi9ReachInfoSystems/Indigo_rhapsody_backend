@@ -7,7 +7,7 @@ class PhonePeService {
     this.clientSecret =
       process.env.PHONEPE_CLIENT_SECRET ||
       "089c4f5c-b7e2-4c3a-820d-c1f5ccc5002a";
-    this.clientVersion = process.env.PHONEPE_CLIENT_VERSION || "1.0";
+    this.clientVersion = process.env.PHONEPE_CLIENT_VERSION || "1";
     this.env = "production";
 
     // API endpoints
