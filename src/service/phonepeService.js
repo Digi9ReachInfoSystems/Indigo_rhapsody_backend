@@ -3,26 +3,27 @@ const axios = require("axios");
 class PhonePeService {
   constructor() {
     // Configuration values
-    this.clientId = process.env.PHONEPE_CLIENT_ID || "TEST-M1LA2M87XNOE_251005";
+    this.clientId = process.env.PHONEPE_CLIENT_ID || "SU2510141432464834659105";
     this.clientSecret =
       process.env.PHONEPE_CLIENT_SECRET ||
-      "NWVjODZiMTAtNGQ0MS00YmVlLTgxZTEtM2I4ZjNkM2I3MDIy";
+      "089c4f5c-b7e2-4c3a-820d-c1f5ccc5002a";
     this.clientVersion = process.env.PHONEPE_CLIENT_VERSION || "1.0";
-    this.env = "sandbox";
+    this.env = "production";
 
     // API endpoints
     this.authUrl =
-      "https://api-preprod.phonepe.com/apis/pg-sandbox/v1/oauth/token";
+      "https://api.phonepe.com/apis/identity-manager/v1/oauth/token";
 
-    this.baseUrl = "https://api-preprod.phonepe.com/apis/pg-sandbox";
+    this.baseUrl = "https://api.phonepe.com/apis/pg/checkout/v2";
 
     // Redirect and callback URLs
-    this.redirectUrl = process.env.PHONEPE_REDIRECT_URL || "https://google.com";
+    this.redirectUrl = process.env.PHONEPE_REDIRECT_URL || "http://localhost:3000/payment-status?orderId=";
 
     this.callbackUrl =
       process.env.PHONEPE_CALLBACK_URL ||
-      "https://indigo-rhapsody-backend-ten.vercel.app/order/payment/webhook/phonepe";
+      "https://indigo-rhapsody-backend-ten.vercel.app/payment/webhook";
   }
+
 
   // 🔐 Generate OAuth Access Token
   async getAuthToken() {
@@ -55,13 +56,12 @@ class PhonePeService {
   }
 
   // 💳 Create Payment Request (Standard Checkout API v2)
-  // 💳 Create Payment (Standard Checkout v2)
   async createPaymentRequest(paymentData) {
     try {
       const { amount, orderId, customerId, customerPhone } = paymentData;
       const token = await this.getAuthToken();
 
-      const url = `${this.baseUrl}/checkout/v2/pay`;
+      const url = `${this.baseUrl}/pay`;
 
       const payload = {
         merchantOrderId: orderId,
@@ -75,7 +75,7 @@ class PhonePeService {
           type: "PG_CHECKOUT",
           message: "Complete your payment via PhonePe",
           merchantUrls: {
-            redirectUrl: this.redirectUrl,
+            redirectUrl: `${this.redirectUrl}${orderId}`,
             callbackUrl: this.callbackUrl,
           },
         },
@@ -172,7 +172,51 @@ class PhonePeService {
   // 📦 Handle Callback / Webhook Response
   handlePaymentCallback(callbackData) {
     try {
-      console.log("📦 PhonePe Callback Data:", callbackData);
+      console.log("📦 PhonePe Callback Data:", JSON.stringify(callbackData, null, 2));
+
+      // Handle new webhook format
+      if (callbackData.event === "checkout.order.completed" && callbackData.payload) {
+        const { payload } = callbackData;
+
+        console.log("🎯 Processing PhonePe Order Completed Event");
+        console.log("Order ID:", payload.orderId);
+        console.log("Merchant Order ID:", payload.merchantOrderId);
+        console.log("State:", payload.state);
+        console.log("Amount:", payload.amount);
+
+        // Extract payment details
+        const paymentDetails = payload.paymentDetails && payload.paymentDetails.length > 0
+          ? payload.paymentDetails[0]
+          : null;
+
+        const responseData = {
+          orderId: payload.orderId,
+          merchantOrderId: payload.merchantOrderId,
+          merchantId: payload.merchantId,
+          state: payload.state,
+          amount: payload.amount,
+          expireAt: payload.expireAt,
+          metaInfo: payload.metaInfo,
+          transactionId: paymentDetails?.transactionId || payload.orderId,
+          paymentMode: paymentDetails?.paymentMode || "UNKNOWN",
+          timestamp: paymentDetails?.timestamp || Date.now(),
+          paymentAmount: paymentDetails?.amount || payload.amount,
+          paymentState: paymentDetails?.state || payload.state,
+          status: payload.state === "COMPLETED" ? "COMPLETED" : "FAILED",
+          responseCode: payload.state === "COMPLETED" ? "PAYMENT_SUCCESS" : "PAYMENT_FAILED",
+          responseMessage: payload.state === "COMPLETED" ? "Payment completed successfully" : "Payment failed",
+        };
+
+        console.log("✅ Processed PhonePe Webhook Response:", responseData);
+
+        return {
+          success: true,
+          data: responseData,
+        };
+      }
+
+      // Handle legacy webhook format (fallback)
+      console.log("📦 Processing Legacy PhonePe Callback Format");
       return {
         success: true,
         data: callbackData,
@@ -186,6 +230,7 @@ class PhonePeService {
       };
     }
   }
+
 }
 
 module.exports = new PhonePeService();

@@ -1,0 +1,203 @@
+#!/bin/bash
+
+echo "🧪 Testing PhonePe Legacy API (X-VERIFY Method)"
+echo "================================================"
+echo ""
+
+BASE_URL="http://localhost:5000"
+JWT_TOKEN="YOUR_JWT_TOKEN"
+
+echo "📋 Test 1: Create Payment with Legacy API (Decimal Amount)"
+echo "POST ${BASE_URL}/order/payment/phonepe/legacy"
+echo ""
+curl -X POST "${BASE_URL}/order/payment/phonepe/legacy" \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer ${JWT_TOKEN}" \
+  -d '{
+    "userId": "68ccf8d9c585b659b38bc7ed",
+    "cartId": "68ccf9196fdf60f32f91a100",
+    "amount": "1299.99",
+    "currency": "INR",
+    "customerDetails": {
+      "name": "Rajat",
+      "email": "rajatjiedm@gmail.com",
+      "phone": "9876543210",
+      "address": "c 1304 apex athena sec 75 noida"
+    },
+    "description": "Test payment via legacy API",
+    "notes": "Testing X-VERIFY method"
+  }' | jq '.'
+echo ""
+echo "-------------------------------------------------------------------"
+echo ""
+
+echo "📋 Test 2: Create Payment with Custom Order ID"
+echo "POST ${BASE_URL}/order/payment/phonepe/legacy"
+echo ""
+curl -X POST "${BASE_URL}/order/payment/phonepe/legacy" \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer ${JWT_TOKEN}" \
+  -d '{
+    "userId": "68ccf8d9c585b659b38bc7ed",
+    "cartId": "68ccf9196fdf60f32f91a100",
+    "orderId": "CUSTOM_ORDER_LEGACY_001",
+    "amount": 2499.50,
+    "currency": "INR",
+    "customerDetails": {
+      "name": "Rajat",
+      "email": "rajatjiedm@gmail.com",
+      "phone": "9876543210"
+    }
+  }' | jq '.'
+echo ""
+echo "-------------------------------------------------------------------"
+echo ""
+
+echo "📋 Test 3: Create Payment with Integer Amount"
+echo "POST ${BASE_URL}/order/payment/phonepe/legacy"
+echo ""
+curl -X POST "${BASE_URL}/order/payment/phonepe/legacy" \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer ${JWT_TOKEN}" \
+  -d '{
+    "userId": "68ccf8d9c585b659b38bc7ed",
+    "cartId": "68ccf9196fdf60f32f91a100",
+    "amount": 5000,
+    "customerDetails": {
+      "name": "Rajat",
+      "email": "rajatjiedm@gmail.com",
+      "phone": "9876543210"
+    }
+  }' | jq '.'
+echo ""
+echo "-------------------------------------------------------------------"
+echo ""
+
+echo "📋 Test 4: Missing Phone Number (Should Fail)"
+echo "POST ${BASE_URL}/order/payment/phonepe/legacy"
+echo ""
+curl -X POST "${BASE_URL}/order/payment/phonepe/legacy" \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer ${JWT_TOKEN}" \
+  -d '{
+    "userId": "68ccf8d9c585b659b38bc7ed",
+    "amount": 1000,
+    "customerDetails": {
+      "name": "Rajat",
+      "email": "rajatjiedm@gmail.com"
+    }
+  }' | jq '.'
+echo ""
+echo "Expected: Error - phone is required"
+echo "-------------------------------------------------------------------"
+echo ""
+
+echo "📋 Test 5: Invalid Amount (Should Fail)"
+echo "POST ${BASE_URL}/order/payment/phonepe/legacy"
+echo ""
+curl -X POST "${BASE_URL}/order/payment/phonepe/legacy" \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer ${JWT_TOKEN}" \
+  -d '{
+    "userId": "68ccf8d9c585b659b38bc7ed",
+    "amount": "invalid",
+    "customerDetails": {
+      "phone": "9876543210"
+    }
+  }' | jq '.'
+echo ""
+echo "Expected: Error - invalid amount"
+echo "-------------------------------------------------------------------"
+echo ""
+
+echo ""
+echo "✅ Expected Success Response:"
+echo "============================="
+echo '{'
+echo '  "success": true,'
+echo '  "message": "Payment initiated successfully via PhonePe Legacy API",'
+echo '  "data": {'
+echo '    "paymentId": "mongodb_id",'
+echo '    "paymentReferenceId": "PAY_1703123456789_abc",'
+echo '    "orderId": "ORD_1703123456789_xyz",'
+echo '    "merchantTransactionId": "ORD_1703123456789_xyz",'
+echo '    "transactionId": "T2024012012345678",'
+echo '    "paymentMethod": "phonepe",'
+echo '    "amount": 1299.99,'
+echo '    "currency": "INR",'
+echo '    "redirectUrl": "https://mercury.phonepe.com/transact/...",'
+echo '    "paymentUrl": "https://mercury.phonepe.com/transact/..."'
+echo '  }'
+echo '}'
+echo ""
+echo "🔐 How X-VERIFY is Generated:"
+echo "=============================="
+echo ""
+echo "Step 1: Build Payload"
+echo '  {'
+echo '    "merchantId": "M1LA2M87XNOE",'
+echo '    "merchantTransactionId": "ORD_xxx",'
+echo '    "amount": 129999,  // in paise'
+echo '    ...'
+echo '  }'
+echo ""
+echo "Step 2: Convert to Base64"
+echo '  base64String = Buffer.from(JSON.stringify(payload)).toString("base64")'
+echo ""
+echo "Step 3: Generate Hash"
+echo '  data = base64String + "/pg/v1/pay" + saltKey'
+echo '  hash = SHA256(data)'
+echo ""
+echo "Step 4: Create X-VERIFY Header"
+echo '  xVerify = hash + "###1"'
+echo ""
+echo "Step 5: Send Request"
+echo "  POST https://api.phonepe.com/apis/hermes/pg/v1/pay"
+echo '  Headers: { "X-VERIFY": xVerify }'
+echo '  Body: { "request": base64String }'
+echo ""
+echo "📊 Configuration:"
+echo "================="
+echo ""
+echo "Merchant ID:  M1LA2M87XNOE"
+echo "Salt Key:     6362bd9f-17b6-4eb2-b030-1ebbb78ce518"
+echo "Salt Index:   1"
+echo "Base URL:     https://api.phonepe.com/apis/hermes"
+echo ""
+echo "🌐 API Endpoints:"
+echo "================="
+echo ""
+echo "Create Payment (Legacy):"
+echo "  POST /order/payment/phonepe/legacy"
+echo ""
+echo "PhonePe Legacy Endpoint (Internal):"
+echo "  POST https://api.phonepe.com/apis/hermes/pg/v1/pay"
+echo ""
+echo "💡 Key Features:"
+echo "================"
+echo "✅ X-VERIFY header authentication"
+echo "✅ Base64 payload encoding"
+echo "✅ SHA256 hash generation"
+echo "✅ Decimal amount support (1299.99)"
+echo "✅ Auto-generated order ID"
+echo "✅ Database storage"
+echo "✅ Email support (optional)"
+echo "✅ Comprehensive error handling"
+echo "✅ Debug logging"
+echo ""
+echo "🔄 Payment Flow:"
+echo "================"
+echo "1. Client sends payment request"
+echo "2. Server generates order ID (if not provided)"
+echo "3. Server builds PhonePe payload"
+echo "4. Server encodes payload to base64"
+echo "5. Server generates X-VERIFY header (SHA256 hash)"
+echo "6. Server calls PhonePe legacy API"
+echo "7. Server saves payment details to database"
+echo "8. Server returns payment URL to client"
+echo "9. Client redirects user to PhonePe payment page"
+echo "10. User completes payment"
+echo "11. PhonePe calls webhook"
+echo "12. Order is created"
+echo ""
+

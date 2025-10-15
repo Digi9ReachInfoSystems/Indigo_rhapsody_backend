@@ -104,12 +104,13 @@ router.get(
 
 // ==================== PAYMENT SERVICE ROUTES ====================
 
-// Create payment service
+// Create payment service (OAuth v2 API)
 router.post(
   "/payment/create",
   authMiddleware,
   orderController.createPaymentService
 );
+
 
 // Get available payment methods
 router.get(

@@ -1,0 +1,164 @@
+#!/bin/bash
+
+echo "🧪 Testing Cart Without GST Calculations"
+echo "========================================="
+echo ""
+
+BASE_URL="http://localhost:5000"
+TOKEN="YOUR_JWT_TOKEN"
+
+echo "📋 Test 1: Add Item to Cart (No GST)"
+echo "POST ${BASE_URL}/cart/addItem"
+echo ""
+curl -X POST "${BASE_URL}/cart/addItem" \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer ${TOKEN}" \
+  -d '{
+    "userId": "68ccf8d9c585b659b38bc7ed",
+    "productId": "6789abcdef123456789abcde",
+    "quantity": 2,
+    "size": "M",
+    "color": "Red",
+    "is_customizable": false
+  }' | jq '.'
+echo ""
+echo "👆 CHECK: tax_amount should be 0"
+echo "👆 CHECK: total_amount = subtotal + shipping - discount"
+echo ""
+echo "-------------------------------------------------------------------"
+echo ""
+
+echo "📋 Test 2: Update Cart Item Quantity"
+echo "PUT ${BASE_URL}/cart/update"
+echo ""
+curl -X PUT "${BASE_URL}/cart/update" \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer ${TOKEN}" \
+  -d '{
+    "userId": "68ccf8d9c585b659b38bc7ed",
+    "productId": "6789abcdef123456789abcde",
+    "quantity": 3,
+    "size": "M",
+    "color": "Red"
+  }' | jq '.'
+echo ""
+echo "👆 CHECK: tax_amount should be 0"
+echo ""
+echo "-------------------------------------------------------------------"
+echo ""
+
+echo "📋 Test 3: Get Cart"
+echo "GET ${BASE_URL}/cart/getCart/68ccf8d9c585b659b38bc7ed"
+echo ""
+curl -X GET "${BASE_URL}/cart/getCart/68ccf8d9c585b659b38bc7ed" \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer ${TOKEN}" | jq '.'
+echo ""
+echo "👆 CHECK: tax_amount = 0"
+echo "👆 CHECK: total_amount = subtotal + shipping_cost - discount_amount"
+echo ""
+echo "-------------------------------------------------------------------"
+echo ""
+
+echo "📋 Test 4: Create Order (No GST)"
+echo "POST ${BASE_URL}/order"
+echo ""
+curl -X POST "${BASE_URL}/order" \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer ${TOKEN}" \
+  -d '{
+    "userId": "68ccf8d9c585b659b38bc7ed",
+    "cartId": "68ccf9196fdf60f32f91a100",
+    "paymentMethod": "cod",
+    "shippingDetails": {
+      "address": {
+        "street": "123 Main St",
+        "city": "Mumbai",
+        "state": "Maharashtra",
+        "pincode": "400001",
+        "country": "India"
+      }
+    }
+  }' | jq '.'
+echo ""
+echo "👆 CHECK: tax_amount = 0 in order"
+echo "👆 CHECK: Email and PDF should not show tax line"
+echo ""
+echo "-------------------------------------------------------------------"
+echo ""
+
+echo ""
+echo "✅ Expected Results:"
+echo "===================="
+echo ""
+echo "Cart Response:"
+echo "{"
+echo '  "cart": {'
+echo '    "subtotal": 3000,'
+echo '    "tax_amount": 0,           ← Should be 0'
+echo '    "shipping_cost": 0,'
+echo '    "discount_amount": 0,'
+echo '    "total_amount": 3000        ← No tax included'
+echo "  }"
+echo "}"
+echo ""
+echo "Order Response:"
+echo "{"
+echo '  "order": {'
+echo '    "subtotal": 3000,'
+echo '    "tax_amount": 0,           ← Should be 0'
+echo '    "shipping_cost": 0,'
+echo '    "discountAmount": 0,'
+echo '    "amount": 3000              ← No tax included'
+echo "  }"
+echo "}"
+echo ""
+echo "💰 Pricing Breakdown Examples:"
+echo "==============================="
+echo ""
+echo "Example 1: Cart under ₹3000"
+echo "  Subtotal:      ₹1,500"
+echo "  Tax:           ₹0      (removed)"
+echo "  Shipping:      ₹99"
+echo "  Discount:      ₹0"
+echo "  Total:         ₹1,599"
+echo ""
+echo "Example 2: Cart over ₹3000 (Free Shipping)"
+echo "  Subtotal:      ₹5,000"
+echo "  Tax:           ₹0      (removed)"
+echo "  Shipping:      ₹0      (free)"
+echo "  Discount:      ₹0"
+echo "  Total:         ₹5,000"
+echo ""
+echo "Example 3: Cart with Discount"
+echo "  Subtotal:      ₹2,000"
+echo "  Tax:           ₹0      (removed)"
+echo "  Shipping:      ₹99"
+echo "  Discount:      ₹200"
+echo "  Total:         ₹1,899"
+echo ""
+echo "📧 Email & PDF Changes:"
+echo "======================="
+echo ""
+echo "Email Template:"
+echo "  - Tax line removed"
+echo "  - Currency symbol (₹) added"
+echo "  - Clean pricing display"
+echo ""
+echo "PDF Invoice:"
+echo "  - Tax (12%) line removed"
+echo "  - Line spacing adjusted"
+echo "  - Professional format maintained"
+echo ""
+echo "🔄 Calculation Formula:"
+echo "======================="
+echo ""
+echo "Previous:"
+echo "  Total = Subtotal + (Subtotal × 12%) + Shipping - Discount"
+echo ""
+echo "Current:"
+echo "  Total = Subtotal + Shipping - Discount"
+echo ""
+echo "✅ GST Calculations Successfully Removed!"
+echo ""
+

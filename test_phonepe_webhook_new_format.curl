@@ -1,0 +1,282 @@
+# PhonePe Webhook Test - New Format
+# Test the updated webhook handler with the new PhonePe response format
+
+# Test 1: Successful Payment Webhook
+curl -X POST "http://localhost:5000/order/payment/webhook/phonepe" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "event": "checkout.order.completed",
+    "payload": {
+        "orderId": "OMO2403282020198641071317",
+        "merchantId": "merchantId",
+        "merchantOrderId": "ORD_1703123456789_xyz",
+        "state": "COMPLETED",
+        "amount": 10000,
+        "expireAt": 1724866793837,
+        "metaInfo": {
+            "udf1": "",
+            "udf2": "",
+            "udf3": "",
+            "udf4": ""
+        },
+        "paymentDetails": [
+            {
+                "paymentMode": "UPI_QR",
+                "transactionId": "OM12334",
+                "timestamp": 1724866793837,
+                "amount": 10000,
+                "state": "COMPLETED"
+            }
+        ]
+    }
+}'
+
+echo -e "\n\n--- Test 2: Failed Payment Webhook ---\n"
+
+# Test 2: Failed Payment Webhook
+curl -X POST "http://localhost:5000/order/payment/webhook/phonepe" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "event": "checkout.order.completed",
+    "payload": {
+        "orderId": "OMO2403282020198641071318",
+        "merchantId": "merchantId",
+        "merchantOrderId": "ORD_1703123456789_abc",
+        "state": "FAILED",
+        "amount": 5000,
+        "expireAt": 1724866793837,
+        "metaInfo": {
+            "udf1": "",
+            "udf2": "",
+            "udf3": "",
+            "udf4": ""
+        },
+        "paymentDetails": [
+            {
+                "paymentMode": "UPI_QR",
+                "transactionId": "OM12335",
+                "timestamp": 1724866793837,
+                "amount": 5000,
+                "state": "FAILED"
+            }
+        ]
+    }
+}'
+
+echo -e "\n\n--- Test 3: Pending Payment Webhook ---\n"
+
+# Test 3: Pending Payment Webhook
+curl -X POST "http://localhost:5000/order/payment/webhook/phonepe" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "event": "checkout.order.completed",
+    "payload": {
+        "orderId": "OMO2403282020198641071319",
+        "merchantId": "merchantId",
+        "merchantOrderId": "ORD_1703123456789_def",
+        "state": "PENDING",
+        "amount": 7500,
+        "expireAt": 1724866793837,
+        "metaInfo": {
+            "udf1": "",
+            "udf2": "",
+            "udf3": "",
+            "udf4": ""
+        },
+        "paymentDetails": [
+            {
+                "paymentMode": "UPI_QR",
+                "transactionId": "OM12336",
+                "timestamp": 1724866793837,
+                "amount": 7500,
+                "state": "PENDING"
+            }
+        ]
+    }
+}'
+
+echo -e "\n\n--- Test 4: Different Payment Mode ---\n"
+
+# Test 4: Different Payment Mode (Credit Card)
+curl -X POST "http://localhost:5000/order/payment/webhook/phonepe" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "event": "checkout.order.completed",
+    "payload": {
+        "orderId": "OMO2403282020198641071320",
+        "merchantId": "merchantId",
+        "merchantOrderId": "ORD_1703123456789_ghi",
+        "state": "COMPLETED",
+        "amount": 15000,
+        "expireAt": 1724866793837,
+        "metaInfo": {
+            "udf1": "",
+            "udf2": "",
+            "udf3": "",
+            "udf4": ""
+        },
+        "paymentDetails": [
+            {
+                "paymentMode": "CREDIT_CARD",
+                "transactionId": "OM12337",
+                "timestamp": 1724866793837,
+                "amount": 15000,
+                "state": "COMPLETED"
+            }
+        ]
+    }
+}'
+
+echo -e "\n\n--- Test 5: Multiple Payment Details ---\n"
+
+# Test 5: Multiple Payment Details (Split Payment)
+curl -X POST "http://localhost:5000/order/payment/webhook/phonepe" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "event": "checkout.order.completed",
+    "payload": {
+        "orderId": "OMO2403282020198641071321",
+        "merchantId": "merchantId",
+        "merchantOrderId": "ORD_1703123456789_jkl",
+        "state": "COMPLETED",
+        "amount": 20000,
+        "expireAt": 1724866793837,
+        "metaInfo": {
+            "udf1": "",
+            "udf2": "",
+            "udf3": "",
+            "udf4": ""
+        },
+        "paymentDetails": [
+            {
+                "paymentMode": "UPI_QR",
+                "transactionId": "OM12338",
+                "timestamp": 1724866793837,
+                "amount": 10000,
+                "state": "COMPLETED"
+            },
+            {
+                "paymentMode": "CREDIT_CARD",
+                "transactionId": "OM12339",
+                "timestamp": 1724866793837,
+                "amount": 10000,
+                "state": "COMPLETED"
+            }
+        ]
+    }
+}'
+
+echo -e "\n\n--- Test 6: Legacy Format (Fallback) ---\n"
+
+# Test 6: Legacy Format (Fallback)
+curl -X POST "http://localhost:5000/order/payment/webhook/phonepe" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "transactionId": "LEGACY12345",
+    "status": "COMPLETED",
+    "amount": 2500,
+    "paymentId": "PAY_LEGACY_12345",
+    "responseCode": "PAYMENT_SUCCESS",
+    "responseMessage": "Payment completed successfully"
+}'
+
+echo -e "\n\n--- Test 7: Invalid Webhook Data ---\n"
+
+# Test 7: Invalid Webhook Data
+curl -X POST "http://localhost:5000/order/payment/webhook/phonepe" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "invalid": "data",
+    "missing": "required_fields"
+}'
+
+echo -e "\n\n--- Test 8: Empty Payment Details ---\n"
+
+# Test 8: Empty Payment Details
+curl -X POST "http://localhost:5000/order/payment/webhook/phonepe" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "event": "checkout.order.completed",
+    "payload": {
+        "orderId": "OMO2403282020198641071322",
+        "merchantId": "merchantId",
+        "merchantOrderId": "ORD_1703123456789_mno",
+        "state": "COMPLETED",
+        "amount": 3000,
+        "expireAt": 1724866793837,
+        "metaInfo": {
+            "udf1": "",
+            "udf2": "",
+            "udf3": "",
+            "udf4": ""
+        },
+        "paymentDetails": []
+    }
+}'
+
+echo -e "\n\n--- Test 9: Webhook with Custom Meta Info ---\n"
+
+# Test 9: Webhook with Custom Meta Info
+curl -X POST "http://localhost:5000/order/payment/webhook/phonepe" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "event": "checkout.order.completed",
+    "payload": {
+        "orderId": "OMO2403282020198641071323",
+        "merchantId": "merchantId",
+        "merchantOrderId": "ORD_1703123456789_pqr",
+        "state": "COMPLETED",
+        "amount": 12000,
+        "expireAt": 1724866793837,
+        "metaInfo": {
+            "udf1": "custom_data_1",
+            "udf2": "custom_data_2",
+            "udf3": "custom_data_3",
+            "udf4": "custom_data_4"
+        },
+        "paymentDetails": [
+            {
+                "paymentMode": "NET_BANKING",
+                "transactionId": "OM12340",
+                "timestamp": 1724866793837,
+                "amount": 12000,
+                "state": "COMPLETED"
+            }
+        ]
+    }
+}'
+
+echo -e "\n\n--- Test 10: Large Amount Payment ---\n"
+
+# Test 10: Large Amount Payment
+curl -X POST "http://localhost:5000/order/payment/webhook/phonepe" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "event": "checkout.order.completed",
+    "payload": {
+        "orderId": "OMO2403282020198641071324",
+        "merchantId": "merchantId",
+        "merchantOrderId": "ORD_1703123456789_stu",
+        "state": "COMPLETED",
+        "amount": 999999,
+        "expireAt": 1724866793837,
+        "metaInfo": {
+            "udf1": "",
+            "udf2": "",
+            "udf3": "",
+            "udf4": ""
+        },
+        "paymentDetails": [
+            {
+                "paymentMode": "WALLET",
+                "transactionId": "OM12341",
+                "timestamp": 1724866793837,
+                "amount": 999999,
+                "state": "COMPLETED"
+            }
+        ]
+    }
+}'
+
+echo -e "\n\n✅ All PhonePe webhook tests completed!"
+echo "Check the server logs for detailed processing information."

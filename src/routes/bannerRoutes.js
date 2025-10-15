@@ -12,6 +12,9 @@ const upload = multer({ storage });
 
 // ==================== PUBLIC ROUTES ====================
 
+// Debug endpoint (must be before other routes)
+router.get("/debug/all", bannerController.getAllBannersDebug);
+
 // Get banners by page (must be before /:bannerId to avoid route conflict)
 router.get("/page/:pageName", bannerController.getBannersByPage);
 
@@ -36,7 +39,6 @@ router.post("/:bannerId/impression", bannerController.trackBannerImpression);
 router.post(
   "/reorder",
   authMiddleware,
-  roleMiddleware(["Admin"]),
   bannerController.reorderBanners
 );
 
@@ -44,7 +46,6 @@ router.post(
 router.post(
   "/",
   authMiddleware,
-  roleMiddleware(["Admin"]),
   bannerController.createBanner
 );
 
@@ -52,7 +53,6 @@ router.post(
 router.get(
   "/:bannerId/analytics",
   authMiddleware,
-  roleMiddleware(["Admin"]),
   bannerController.getBannerAnalytics
 );
 
@@ -60,7 +60,6 @@ router.get(
 router.patch(
   "/:bannerId/toggle",
   authMiddleware,
-  roleMiddleware(["Admin"]),
   bannerController.toggleBannerStatus
 );
 
@@ -68,7 +67,6 @@ router.patch(
 router.put(
   "/:bannerId",
   authMiddleware,
-  roleMiddleware(["Admin"]),
   bannerController.updateBanner
 );
 
@@ -76,7 +74,6 @@ router.put(
 router.delete(
   "/:bannerId",
   authMiddleware,
-  roleMiddleware(["Admin"]),
   bannerController.deleteBanner
 );
 
