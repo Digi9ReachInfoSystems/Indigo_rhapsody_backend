@@ -1514,6 +1514,131 @@ exports.getCancellableOrdersByDesigner = async (req, res) => {
   }
 };
 
+// Create PhonePe Payment (Legacy API with X-VERIFY)
+exports.createPhonePePaymentLegacy = async (req, res) => {
+  try {
+    const {
+      userId,
+      cartId,
+      orderId,
+      amount,
+      currency = "INR",
+      customerDetails: { name, email, phone, address } = {},
+      description,
+      notes,
+    } = req.body;
+
+    // Validate required fields
+    if (!userId || !amount || !phone) {
+      return res.status(400).json({
+        success: false,
+        message: "userId, amount, and phone are required",
+      });
+    }
+
+    // Validate amount
+    const parsedAmount = parseFloat(amount);
+    if (isNaN(parsedAmount) || parsedAmount <= 0) {
+      return res.status(400).json({
+        success: false,
+        message: "Amount must be a valid number greater than 0",
+      });
+    }
+
+    // Generate transaction IDs
+    const paymentReferenceId = `PAY_${Date.now()}_${Math.random()
+      .toString(36)
+      .substr(2, 9)}`;
+
+    const finalOrderId =
+      orderId || `ORD_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+
+    // Call PhonePe Legacy API
+    const phonePeResponse = await phonepeService.createPaymentLegacy({
+      amount: parsedAmount,
+      merchantTransactionId: finalOrderId,
+      merchantUserId: userId,
+      mobileNumber: phone,
+      email: email || "",
+      redirectMode: "POST",
+    });
+
+    if (!phonePeResponse.success) {
+      return res.status(500).json({
+        success: false,
+        message: "Payment initiation failed",
+        error: phonePeResponse.message || "Unknown error",
+      });
+    }
+
+    // Store payment record in database
+    try {
+      const paymentRecordToSave = new PaymentDetails({
+        userId,
+        cartId,
+        orderId: finalOrderId,
+        paymentReferenceId,
+        transactionId: phonePeResponse.data.merchantTransactionId || finalOrderId,
+        paymentId: phonePeResponse.data.transactionId || null,
+        paymentMethod: "phonepe",
+        amount: parsedAmount,
+        currency,
+        paymentStatus: "Initiated",
+        status: "initiated",
+        customerDetails: {
+          name: name || "",
+          email: email || "",
+          phone: phone || "",
+          address: address || {},
+        },
+        description: description || `Payment for order ${finalOrderId}`,
+        notes: notes || "",
+        createdDate: new Date(),
+        updatedAt: new Date(),
+      });
+
+      const savedPayment = await paymentRecordToSave.save();
+      console.log("✅ Payment record saved (Legacy API):", savedPayment._id);
+
+      return res.status(200).json({
+        success: true,
+        message: "Payment initiated successfully via PhonePe Legacy API",
+        data: {
+          paymentId: savedPayment._id,
+          paymentReferenceId,
+          orderId: finalOrderId,
+          merchantTransactionId: phonePeResponse.data.merchantTransactionId,
+          transactionId: phonePeResponse.data.transactionId,
+          paymentMethod: "phonepe",
+          amount: parsedAmount,
+          currency,
+          redirectUrl: phonePeResponse.data.redirectUrl,
+          paymentUrl: phonePeResponse.data.paymentUrl,
+        },
+      });
+    } catch (dbError) {
+      console.error("❌ Database Error:", dbError);
+      return res.status(500).json({
+        success: false,
+        message: "Payment initiated but failed to save to database",
+        error: dbError.message,
+        data: {
+          paymentReferenceId,
+          orderId: finalOrderId,
+          redirectUrl: phonePeResponse.data.redirectUrl,
+        },
+      });
+    }
+  } catch (error) {
+    console.error("❌ PhonePe Legacy Payment Error:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Payment service error",
+      error: error.message,
+    });
+  }
+};
+
 exports.createPaymentService = async (req, res) => {
   try {
     const {
@@ -1690,6 +1815,50 @@ exports.createPaymentService = async (req, res) => {
     });
   }
 };
+
+// PhonePe Legacy Payment Handler (X-VERIFY method)
+async function handlePhonePePaymentLegacy(paymentRecord) {
+  try {
+    const { amount, orderId, userId, customerDetails } = paymentRecord;
+
+    const phonePeResponse = await phonepeService.createPaymentLegacy({
+      amount,
+      merchantTransactionId: orderId,
+      merchantUserId: userId,
+      mobileNumber: customerDetails.phone,
+      email: customerDetails.email,
+      redirectMode: "POST",
+    });
+
+    const redirectUrl =
+      phonePeResponse?.data?.redirectUrl ||
+      phonePeResponse?.data?.paymentUrl;
+
+    if (phonePeResponse.success && redirectUrl) {
+      return {
+        success: true,
+        data: {
+          provider: "PhonePe",
+          merchantTransactionId: phonePeResponse.data.merchantTransactionId,
+          transactionId: phonePeResponse.data.transactionId,
+          redirectUrl,
+        },
+      };
+    } else {
+      console.error("⚠️ PhonePe Legacy Payment Failure:", phonePeResponse);
+      return {
+        success: false,
+        message: phonePeResponse.message || "Failed to create PhonePe payment session",
+      };
+    }
+  } catch (error) {
+    console.error("❌ PhonePe Legacy Handler Error:", error);
+    return {
+      success: false,
+      message: error.message,
+    };
+  }
+}
 
 // PhonePe Payment Handler
 async function handlePhonePePayment(paymentRecord) {
@@ -2064,6 +2233,37 @@ exports.handlePaymentWebhook = async (req, res) => {
       });
     }
 
+    // Handle order creation for successful payments
+    if (webhookResponse.data.shouldCreateOrder && webhookResponse.data.paymentRecord) {
+      try {
+        console.log("🛒 Creating order from webhook...");
+        const { paymentRecord } = webhookResponse.data;
+
+        // Create order request
+        const orderRequest = {
+          body: {
+            userId: paymentRecord.userId,
+            cartId: paymentRecord.cartId,
+            paymentMethod: "PhonePe",
+            shippingDetails: {}, // Add shipping details if available
+            notes: `Payment completed via PhonePe - Order ID: ${paymentRecord.orderId}`,
+          },
+        };
+
+        // Create order using existing order creation logic
+        const orderResult = await createOrder(orderRequest, res);
+
+        if (orderResult) {
+          console.log("✅ Order created successfully from webhook");
+          webhookResponse.data.orderCreated = true;
+          webhookResponse.data.orderId = orderResult.orderId;
+        }
+      } catch (orderError) {
+        console.error("❌ Error creating order from webhook:", orderError);
+        webhookResponse.data.orderCreationError = orderError.message;
+      }
+    }
+
     return res.status(200).json({
       success: true,
       message: "Webhook processed successfully",
@@ -2082,10 +2282,29 @@ exports.handlePaymentWebhook = async (req, res) => {
 // PhonePe Webhook Handler
 const handlePhonePeWebhook = async (webhookData) => {
   try {
+    console.log("🎯 PhonePe Webhook Received:", JSON.stringify(webhookData, null, 2));
+
     const callbackResult = phonepeService.handlePaymentCallback(webhookData);
 
     if (callbackResult.success) {
-      const { transactionId, status, amount, paymentId } = callbackResult.data;
+      const {
+        orderId,
+        merchantOrderId,
+        transactionId,
+        status,
+        amount,
+        paymentMode,
+        responseCode,
+        responseMessage
+      } = callbackResult.data;
+
+      console.log("📊 Processing PhonePe Webhook Data:");
+      console.log("- Order ID:", orderId);
+      console.log("- Merchant Order ID:", merchantOrderId);
+      console.log("- Transaction ID:", transactionId);
+      console.log("- Status:", status);
+      console.log("- Amount:", amount);
+      console.log("- Payment Mode:", paymentMode);
 
       // Update payment status in database
       try {
@@ -2097,46 +2316,108 @@ const handlePhonePeWebhook = async (webhookData) => {
 
         if (status === "COMPLETED") {
           updateData.completedAt = new Date();
-          updateData.paymentId = paymentId;
+          updateData.paymentId = orderId; // Use PhonePe orderId as paymentId
+          updateData.responseCode = responseCode;
+          updateData.responseMessage = responseMessage;
         } else if (status === "FAILED") {
           updateData.failedAt = new Date();
-          updateData.failureReason = callbackResult.data.responseMessage || "Payment failed";
+          updateData.failureReason = responseMessage || "Payment failed";
         }
 
-        const updatedPayment = await PaymentDetails.findOneAndUpdate(
+        // Try to find payment record by transactionId first, then by orderId
+        let updatedPayment = await PaymentDetails.findOneAndUpdate(
           { transactionId: transactionId },
           updateData,
           { new: true }
         );
 
+        // If not found by transactionId, try by orderId
+        if (!updatedPayment) {
+          updatedPayment = await PaymentDetails.findOneAndUpdate(
+            { orderId: merchantOrderId },
+            updateData,
+            { new: true }
+          );
+        }
+
         if (updatedPayment) {
           console.log(`✅ Payment status updated in database for transaction: ${transactionId}`);
+          console.log(`📋 Updated Payment Record:`, {
+            id: updatedPayment._id,
+            orderId: updatedPayment.orderId,
+            status: updatedPayment.status,
+            amount: updatedPayment.amount,
+            userId: updatedPayment.userId
+          });
 
           // Create order if payment is successful
           if (status === "COMPLETED") {
             console.log(`🎉 Payment completed for transaction: ${transactionId}`);
-            // The order creation will be handled by the existing paymentController.paymentWebhook
-            // which is called from the payment routes
+            console.log(`🛒 Ready to create order for user: ${updatedPayment.userId}`);
+
+            // Return success with order creation flag
+            return {
+              success: true,
+              data: {
+                ...callbackResult.data,
+                shouldCreateOrder: true,
+                paymentRecord: {
+                  id: updatedPayment._id,
+                  userId: updatedPayment.userId,
+                  cartId: updatedPayment.cartId,
+                  orderId: updatedPayment.orderId,
+                  amount: updatedPayment.amount
+                }
+              },
+            };
+          } else {
+            console.log(`❌ Payment failed for transaction: ${transactionId}`);
+            return {
+              success: true,
+              data: {
+                ...callbackResult.data,
+                shouldCreateOrder: false,
+                paymentRecord: {
+                  id: updatedPayment._id,
+                  userId: updatedPayment.userId,
+                  cartId: updatedPayment.cartId,
+                  orderId: updatedPayment.orderId,
+                  amount: updatedPayment.amount
+                }
+              },
+            };
           }
         } else {
-          console.warn(`⚠️ Payment record not found for transaction: ${transactionId}`);
+          console.warn(`⚠️ Payment record not found for transaction: ${transactionId} or orderId: ${merchantOrderId}`);
+          return {
+            success: true,
+            data: {
+              ...callbackResult.data,
+              shouldCreateOrder: false,
+              warning: "Payment record not found in database"
+            },
+          };
         }
       } catch (dbError) {
         console.error("❌ Database update error:", dbError);
-        // Continue processing even if database update fails
+        return {
+          success: true,
+          data: {
+            ...callbackResult.data,
+            shouldCreateOrder: false,
+            warning: "Database update failed"
+          },
+        };
       }
-
-      return {
-        success: true,
-        data: callbackResult.data,
-      };
     } else {
+      console.error("❌ PhonePe webhook processing failed:", callbackResult.message);
       return {
         success: false,
         message: callbackResult.message,
       };
     }
   } catch (error) {
+    console.error("❌ PhonePe webhook error:", error);
     return {
       success: false,
       message: error.message,

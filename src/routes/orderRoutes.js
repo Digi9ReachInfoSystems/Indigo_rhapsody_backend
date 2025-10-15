@@ -104,11 +104,18 @@ router.get(
 
 // ==================== PAYMENT SERVICE ROUTES ====================
 
-// Create payment service
+// Create payment service (OAuth v2 API)
 router.post(
   "/payment/create",
   authMiddleware,
   orderController.createPaymentService
+);
+
+// Create PhonePe payment (Legacy v1 API with X-VERIFY)
+router.post(
+  "/payment/phonepe/legacy",
+  // authMiddleware,
+  orderController.createPhonePePaymentLegacy
 );
 
 // Get available payment methods
