@@ -37,9 +37,11 @@ const PORT = process.env.PORT || 5000;
 
 // CORS configuration based on environment
 const corsOptions = {
-  origin: NODE_ENV === "production"
-    ? process.env.CORS_ORIGIN?.split(",") || ["https://indigorhapsody.com"]
-    : ["http://localhost:3000", "http://localhost:3001"],
+  origin: [
+    "http://localhost:3000",
+    "http://localhost:3001",
+    "https://indigorhapsody.com"
+  ],
   credentials: true,
   optionsSuccessStatus: 200
 };
