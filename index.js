@@ -40,7 +40,8 @@ const corsOptions = {
   origin: [
     "http://localhost:3000",
     "http://localhost:3001",
-    "https://indigorhapsody.com"
+    "https://indigorhapsody.com",
+    "https://www.indigorhapsody.com"
   ],
   credentials: true,
   optionsSuccessStatus: 200
