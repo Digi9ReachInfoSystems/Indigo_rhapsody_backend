@@ -187,15 +187,36 @@ exports.paymentWebhook = async (req, res) => {
     console.log("Payment status updated:", payment);
 
     if (state === "COMPLETED") {
+      // Get user details to extract address information
+      const User = require("../models/userModel");
+      const user = await User.findById(payment.userId);
+
+      if (!user) {
+        console.error("User not found for order creation");
+        return res.status(404).send("User not found for order creation.");
+      }
+
+      // Prepare address from user details or use default values
+      const address = {
+        street: user.address?.street || "Default Street",
+        city: user.address?.city || "Default City",
+        state: user.address?.state || "Default State",
+        pincode: user.address?.pincode || "000000",
+        phoneNumber: user.phoneNumber || ""
+      };
+
       const orderRequest = {
         body: {
           userId: payment.userId,
           cartId: payment.cartId,
           paymentMethod: "Phonepe",
-          shippingDetails: payment.shippingDetails || {},
-          notes: req.body.notes || "",
+          address: address,
+          notes: req.body.notes || `Payment completed via PhonePe - Transaction ID: ${merchantTransactionId}`,
         },
       };
+
+      console.log("Creating order with request:", JSON.stringify(orderRequest, null, 2));
+
       try {
         await createOrder(orderRequest, res);
         // Note: createOrder already sends a response, so we don't send another one here
