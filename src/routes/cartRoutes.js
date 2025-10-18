@@ -14,5 +14,6 @@ router.post("/CreateCart", authMiddleware, cartController.upsertCart);
 
 router.get("/cart-id/:userId", authMiddleware, cartController.getCartIdByUserId);
 router.get("/cart-details/:userId", authMiddleware, cartController.getCartDetailsByUserId);
+router.put("/update-address/:userId", authMiddleware, cartController.updateCartAddress);
 
 module.exports = router;

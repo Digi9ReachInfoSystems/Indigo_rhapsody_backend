@@ -187,22 +187,28 @@ exports.paymentWebhook = async (req, res) => {
     console.log("Payment status updated:", payment);
 
     if (state === "COMPLETED") {
-      // Get user details to extract address information
-      const User = require("../models/userModel");
-      const user = await User.findById(payment.userId);
+      // Get cart details to extract address information
+      const Cart = require("../models/cartModel");
+      const cart = await Cart.findById(payment.cartId);
 
-      if (!user) {
-        console.error("User not found for order creation");
-        return res.status(404).send("User not found for order creation.");
+      if (!cart) {
+        console.error("Cart not found for order creation");
+        return res.status(404).send("Cart not found for order creation.");
       }
 
-      // Prepare address from user details or use default values
+      // Check if cart has address information
+      if (!cart.address || !cart.address.street || !cart.address.city || !cart.address.state || !cart.address.pincode) {
+        console.error("Cart does not have complete address information");
+        return res.status(400).send("Cart does not have complete address information. Please update cart address before payment.");
+      }
+
+      // Use address from cart
       const address = {
-        street: user.address?.street || "Default Street",
-        city: user.address?.city || "Default City",
-        state: user.address?.state || "Default State",
-        pincode: user.address?.pincode || "000000",
-        phoneNumber: user.phoneNumber || ""
+        street: cart.address.street,
+        city: cart.address.city,
+        state: cart.address.state,
+        pincode: cart.address.pincode,
+        phoneNumber: cart.address.phoneNumber || ""
       };
 
       const orderRequest = {

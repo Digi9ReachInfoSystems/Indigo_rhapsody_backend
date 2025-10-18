@@ -615,3 +615,77 @@ exports.getCartDetailsByUserId = async (req, res) => {
     });
   }
 };
+
+// Update Cart Address
+exports.updateCartAddress = async (req, res) => {
+  try {
+    const { userId } = req.params;
+    const { address } = req.body;
+
+    // Validate required fields
+    if (!address) {
+      return res.status(400).json({
+        success: false,
+        message: "Address is required",
+        error: "Missing address in request body"
+      });
+    }
+
+    // Validate address fields
+    if (!address.street || !address.city || !address.state || !address.pincode) {
+      return res.status(400).json({
+        success: false,
+        message: "Address must include street, city, state, and pincode",
+        error: "Incomplete address information"
+      });
+    }
+
+    // Validate ObjectId format
+    if (!mongoose.Types.ObjectId.isValid(userId)) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid user ID format"
+      });
+    }
+
+    // Find the cart
+    const cart = await Cart.findOne({ userId });
+    if (!cart) {
+      return res.status(404).json({
+        success: false,
+        message: "Cart not found for this user"
+      });
+    }
+
+    // Update the cart with address information
+    cart.address = {
+      street: address.street,
+      city: address.city,
+      state: address.state,
+      pincode: address.pincode,
+      country: address.country || "India",
+      phoneNumber: address.phoneNumber || ""
+    };
+
+    await cart.save();
+
+    return res.status(200).json({
+      success: true,
+      message: "Cart address updated successfully",
+      data: {
+        cartId: cart._id,
+        userId: cart.userId,
+        address: cart.address,
+        lastUpdatedDate: cart.lastUpdatedDate
+      }
+    });
+
+  } catch (error) {
+    console.error("Error updating cart address:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Error updating cart address",
+      error: error.message
+    });
+  }
+};
