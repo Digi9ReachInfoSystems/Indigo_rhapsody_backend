@@ -78,6 +78,27 @@ const cartSchema = new mongoose.Schema({
   shipping_method: {
     type: String,
   },
+  address: {
+    street: {
+      type: String,
+    },
+    city: {
+      type: String,
+    },
+    state: {
+      type: String,
+    },
+    pincode: {
+      type: String,
+    },
+    country: {
+      type: String,
+      default: "India",
+    },
+    phoneNumber: {
+      type: String,
+    },
+  },
   status: {
     type: String,
     enum: ["active", "completed", "abandoned"],
