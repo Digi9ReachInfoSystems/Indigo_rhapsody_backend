@@ -41,7 +41,9 @@ const corsOptions = {
     "http://localhost:3000",
     "http://localhost:3001",
     "https://indigorhapsody.com",
-    "https://www.indigorhapsody.com"
+    "https://www.indigorhapsody.com",
+    "https://test.irtest.in",
+    "https://www.test.irtest.in"
   ],
   credentials: true,
   optionsSuccessStatus: 200
