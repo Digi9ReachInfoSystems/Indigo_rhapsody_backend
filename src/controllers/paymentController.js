@@ -198,17 +198,16 @@ exports.paymentWebhook = async (req, res) => {
       };
       try {
         await createOrder(orderRequest, res);
+        // Note: createOrder already sends a response, so we don't send another one here
+        return; // Exit early since createOrder handles the response
       } catch (error) {
         console.error("Error creating order:", error.message);
         return res.status(500).send("Error creating order.");
       }
     } else {
       console.log("Payment failed");
+      return res.status(200).send("Payment status updated.");
     }
-
-    // Create an order regardless of payment status (for testing purposes)
-
-    return res.status(200).send("Payment status updated and order created.");
   } catch (error) {
     console.error("Error processing webhook:", error.message);
     return res.status(500).send("Error processing webhook.");
