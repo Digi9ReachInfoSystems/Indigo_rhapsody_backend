@@ -49,7 +49,9 @@ const corsOptions = {
     "https://designerdashboard.irtest.in",
     "https://designerdashboard.irtest.in",
     "https://admindashboard.irtest.in",
-    "https://www.admindashboard.irtest.in"
+    "https://www.admindashboard.irtest.in",
+    "https://admin.indigorhapsody.com",
+    "https://www.admin.indigorhapsody.com"
   ],
   credentials: true,
   optionsSuccessStatus: 200
