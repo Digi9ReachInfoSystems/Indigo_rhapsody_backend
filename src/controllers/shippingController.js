@@ -22,6 +22,32 @@ const MANIFEST_API_URL =
 
 const SHIPROCKET_RETURN_API_URL =
   "https://apiv2.shiprocket.in/v1/external/orders/create/return";
+
+// Map payment method to Shiprocket's expected values
+const mapPaymentMethodToShiprocket = (paymentMethod) => {
+  if (!paymentMethod) return "PREPAID"; // Default to PREPAID if no method specified
+
+  const method = paymentMethod.toLowerCase();
+
+  switch (method) {
+    case "phonepe":
+    case "razorpay":
+    case "stripe":
+    case "paypal":
+    case "upi":
+    case "card":
+    case "netbanking":
+    case "wallet":
+      return "PREPAID";
+    case "cod":
+    case "cash_on_delivery":
+      return "COD";
+    default:
+      console.warn(`Unknown payment method: ${paymentMethod}, defaulting to PREPAID`);
+      return "PREPAID";
+  }
+};
+
 exports.ship = async (req, res) => {
   try {
     console.log("Starting ship function...");
@@ -137,7 +163,7 @@ exports.ship = async (req, res) => {
         selling_price: product.price,
         productId: product.productId._id,
       })),
-      payment_method: order.paymentMethod,
+      payment_method: mapPaymentMethodToShiprocket(order.paymentMethod),
       total_discount: order.discountAmount || 0,
       sub_total: subtotal, // Updated subtotal for this designer
       length: length || 10,
@@ -587,7 +613,7 @@ exports.createReturnRequestForDesigner = async (req, res) => {
       shipping_country: "India",
 
       order_items: orderItems,
-      payment_method: order.paymentMethod || "PREPAID",
+      payment_method: mapPaymentMethodToShiprocket(order.paymentMethod) || "PREPAID",
       sub_total: product.price * product.quantity,
       length: shippingDoc.length || 11,
       breadth: shippingDoc.breadth || 11,
