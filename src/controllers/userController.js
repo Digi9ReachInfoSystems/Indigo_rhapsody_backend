@@ -1,3 +1,4 @@
+const mongoose = require("mongoose");
 const User = require("../models/userModel");
 const Designer = require("../models/designerModel");
 const { bucket } = require("../service/firebaseServices");
@@ -559,7 +560,11 @@ exports.getAllUsersWithRoleUser = async (req, res) => {
   }
 };
 exports.createUserAndDesigner = async (req, res) => {
-  const session = await User.startSession();
+  // Start session with primary read preference (required for transactions)
+  // Transactions must use primary read preference, overriding connection-level readPreference
+  const session = await mongoose.startSession({
+    readPreference: 'primary'
+  });
   let transactionCommitted = false;
   session.startTransaction();
 
@@ -736,9 +741,8 @@ async function sendWelcomeEmail(email, displayName, token) {
     });
 
     const mailOptions = {
-      from: `"Indigo Rhapsody" <${
-        process.env.EMAIL_FROM || "Info@gully2global.com"
-      }>`,
+      from: `"Indigo Rhapsody" <${process.env.EMAIL_FROM || "Info@gully2global.com"
+        }>`,
       to: email,
       subject: "Welcome to Indigo Rhapsody",
       html: generateWelcomeEmail(displayName, token),
@@ -870,7 +874,7 @@ exports.loginDesigner = async (req, res) => {
       });
     }
 
-    
+
 
     // Step 4: Find the associated designer record
     const designer = await Designer.findOne({ userId: user._id });
