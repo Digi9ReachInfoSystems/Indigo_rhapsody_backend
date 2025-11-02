@@ -1,7 +1,7 @@
 const mongoose = require("mongoose");
 const StylistProfile = require("../models/stylistProfile");
 const User = require("../models/userModel");
-const phonepeService = require("../service/phonepeService");
+const RazorpayService = require("../service/razorpayService");
 const {
     createNotification,
     sendFcmNotification,
@@ -241,48 +241,61 @@ exports.initiatePayment = async (req, res) => {
             });
         }
 
-        // Generate payment reference ID
-        const paymentReferenceId = `STYLIST_${applicationId}_${Date.now()}`;
+        // Generate payment reference ID (max 40 characters for Razorpay)
+        const shortAppId = applicationId.slice(-8);
+        const timestamp = Date.now().toString().slice(-8);
+        const paymentReferenceId = `STY_${shortAppId}_${timestamp}`;
 
-        // Prepare payment data for PhonePe
-        const paymentData = {
+        // Prepare payment data for Razorpay
+        const orderData = {
             amount: application.registrationFee,
-            orderId: paymentReferenceId,
-            customerId: applicationId.toString(),
-            customerEmail: application.tempUserData.email,
-            customerPhone: application.tempUserData.phoneNumber,
-            customerName: application.tempUserData.displayName,
-            description: `Stylist Registration Fee - ${application.stylistName}`
+            currency: 'INR',
+            receipt: paymentReferenceId,
+            notes: {
+                applicationId: applicationId,
+                stylistName: application.stylistName,
+                type: 'stylist_registration'
+            }
         };
 
-        // Create payment request with PhonePe
-        const paymentResponse = await phonepeService.createPaymentRequest(paymentData);
+        // Create Razorpay order
+        const orderResult = await RazorpayService.createOrder(orderData);
 
-        if (!paymentResponse.success) {
+        if (!orderResult.success) {
             return res.status(500).json({
                 success: false,
-                message: "Failed to create payment request",
-                error: paymentResponse.message
+                message: "Failed to create payment order",
+                error: orderResult.message
             });
         }
 
         // Update application with payment details
         application.paymentReferenceId = paymentReferenceId;
-        application.paymentId = paymentResponse.data.paymentId;
+        application.razorpayOrderId = orderResult.data.orderId;
         application.applicationStatus = 'payment_pending';
         application.updatedAt = new Date();
 
         await application.save();
+
+        // Generate client payment options for Razorpay
+        const paymentOptions = RazorpayService.generatePaymentOptions({
+            ...orderResult.data,
+            name: 'IndigoRhapsody',
+            description: `Stylist Registration Fee - ${application.stylistName}`,
+            customerName: application.tempUserData.displayName,
+            customerEmail: application.tempUserData.email,
+            customerPhone: application.tempUserData.phoneNumber
+        });
 
         return res.status(200).json({
             success: true,
             message: "Payment initiated successfully",
             data: {
                 applicationId: application._id,
-                paymentUrl: paymentResponse.data.paymentUrl,
-                paymentReferenceId,
+                orderId: orderResult.data.orderId,
                 amount: application.registrationFee,
                 currency: 'INR',
+                paymentOptions: paymentOptions,
                 expiresIn: 1800 // 30 minutes
             }
         });

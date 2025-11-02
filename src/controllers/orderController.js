@@ -523,6 +523,7 @@ exports.getOrdersByDesignerRef = async (req, res) => {
     const orders = await Order.find({
       "products.designerRef": designerRef,
     })
+      .sort({ createdDate: -1 }) // Sort by createdDate in descending order (newest first)
       .populate({
         path: "products.productId",
         select: "productName",
@@ -630,6 +631,7 @@ exports.updateOrder = async (req, res) => {
 exports.getAllOrders = async (req, res) => {
   try {
     const orders = await Order.find()
+      .sort({ createdDate: -1 }) // Sort by createdDate in descending order (newest first)
       .populate({
         path: "products.productId",
         select: "productName",

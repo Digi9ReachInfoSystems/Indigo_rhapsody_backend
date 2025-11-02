@@ -370,7 +370,9 @@ exports.getApprovedStylistProfiles = async (req, res) => {
         // Build query for approved profiles only
         let query = {
             isApproved: true,
-            approvalStatus: 'approved'
+            approvalStatus: 'approved',
+            applicationStatus: 'approved',
+            'bookingSettings.isAvailableForBooking': true
         };
 
         // Filter by location

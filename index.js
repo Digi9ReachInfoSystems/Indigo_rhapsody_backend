@@ -28,6 +28,8 @@ const queryRoutes = require("./src/routes/queryRoutes.js");
 const Blogs = require("./src/routes/blogsRoutes.js");
 const stylistRoutes = require("./src/routes/stylistRoutes.js");
 const stylistApplicationRoutes = require("./src/routes/stylistApplicationRoutes.js");
+const stylistBookingRoutes = require("./src/routes/stylistBookingRoutes.js");
+const stylistCalendarRoutes = require("./src/routes/stylistCalendarRoutes.js");
 
 const app = express();
 
@@ -49,6 +51,7 @@ const corsOptions = {
     "https://designerdashboard.irtest.in",
     "https://designerdashboard.irtest.in",
     "https://admindashboard.irtest.in",
+    "http://localhost:5173/",
     "https://www.admindashboard.irtest.in"
   ],
   credentials: true,
@@ -92,6 +95,8 @@ app.use("/states", states);
 app.use("/blogs", Blogs);
 app.use("/stylist", stylistRoutes);
 app.use("/stylist-application", stylistApplicationRoutes);
+app.use("/stylist-booking", stylistBookingRoutes);
+app.use("/stylist-calendar", stylistCalendarRoutes);
 
 // Add health check endpoint
 app.get("/health", (req, res) => {

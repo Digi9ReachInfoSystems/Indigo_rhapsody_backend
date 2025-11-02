@@ -16,9 +16,11 @@ const getMongoDBURI = () => {
 
     if (testingUri) {
       console.log(`✅ Using TESTING_MONGODB_URI`);
+      console.log(`🔗 Testing URI: ${testingUri}`);
       return testingUri;
     } else if (fallbackUri) {
       console.log(`⚠️  Using MONGODB_URI (fallback - TESTING_MONGODB_URI not found)`);
+      console.log(`🔗 Fallback URI: ${fallbackUri}`);
       return fallbackUri;
     } else {
       throw new Error("Neither TESTING_MONGODB_URI nor MONGODB_URI is set for development environment");
@@ -30,6 +32,7 @@ const getMongoDBURI = () => {
 
     if (productionUri) {
       console.log(`✅ Using MONGODB_URI`);
+      console.log(`🔗 Production URI: ${productionUri}`);
       return productionUri;
     } else {
       throw new Error("MONGODB_URI is not set for production environment");
@@ -81,6 +84,7 @@ const connectDB = async () => {
 
     console.log(`🔗 Connecting to MongoDB (${NODE_ENV} environment)...`);
     console.log(`📍 Database: ${MONGODB_URI.split('@')[1]?.split('/')[1] || 'local'}`);
+    console.log(`🔗 MongoDB URI: ${MONGODB_URI}`);
 
     await mongoose.connect(MONGODB_URI, options);
 

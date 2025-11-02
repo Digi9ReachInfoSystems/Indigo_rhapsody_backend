@@ -111,6 +111,15 @@ const stylistProfileSchema = new mongoose.Schema({
     paymentId: {
         type: String, // PhonePe transaction ID
     },
+    razorpayOrderId: {
+        type: String, // Razorpay order ID
+    },
+    razorpayPaymentId: {
+        type: String, // Razorpay payment ID
+    },
+    razorpaySignature: {
+        type: String, // Razorpay payment signature
+    },
     paymentReferenceId: {
         type: String, // Our internal reference ID
     },
@@ -123,7 +132,7 @@ const stylistProfileSchema = new mongoose.Schema({
     },
     paymentMethod: {
         type: String,
-        default: 'phonepe',
+        default: 'razorpay',
     },
     paymentCompletedAt: {
         type: Date,
@@ -152,8 +161,141 @@ const stylistProfileSchema = new mongoose.Schema({
         type: Date,
         default: Date.now,
     },
+    // Booking-related fields
+    bookingSettings: {
+        isAvailableForBooking: {
+            type: Boolean,
+            default: true
+        },
+        minAdvanceBooking: {
+            type: Number, // Hours
+            default: 2
+        },
+        maxAdvanceBooking: {
+            type: Number, // Days
+            default: 30
+        },
+        slotDuration: {
+            type: Number, // Minutes
+            default: 60
+        },
+        maxBookingsPerDay: {
+            type: Number,
+            default: 8
+        },
+        bufferTime: {
+            type: Number, // Minutes between bookings
+            default: 15
+        },
+        cancellationPolicy: {
+            type: String,
+            enum: ['flexible', 'moderate', 'strict'],
+            default: 'moderate'
+        },
+        reschedulingPolicy: {
+            type: String,
+            enum: ['flexible', 'moderate', 'strict'],
+            default: 'moderate'
+        }
+    },
+
+    // Booking statistics
+    bookingStats: {
+        totalBookings: {
+            type: Number,
+            default: 0
+        },
+        completedBookings: {
+            type: Number,
+            default: 0
+        },
+        cancelledBookings: {
+            type: Number,
+            default: 0
+        },
+        averageRating: {
+            type: Number,
+            default: 0
+        },
+        totalEarnings: {
+            type: Number,
+            default: 0
+        },
+        lastBookingDate: {
+            type: Date
+        }
+    },
+
+    // Video call settings
+    videoCallSettings: {
+        isVideoCallEnabled: {
+            type: Boolean,
+            default: true
+        },
+        preferredVideoQuality: {
+            type: String,
+            enum: ['low', 'medium', 'high'],
+            default: 'medium'
+        },
+        maxCallDuration: {
+            type: Number, // Minutes
+            default: 120
+        }
+    },
+
+    // Chat settings
+    chatSettings: {
+        isChatEnabled: {
+            type: Boolean,
+            default: true
+        },
+        autoReplyEnabled: {
+            type: Boolean,
+            default: false
+        },
+        autoReplyMessage: {
+            type: String
+        },
+        responseTime: {
+            type: String,
+            enum: ['immediate', 'within_1_hour', 'within_24_hours', 'custom'],
+            default: 'within_24_hours'
+        }
+    },
+
     updatedAt: {
         type: Date,
         default: Date.now,
     },
 });
+
+// Indexes for better query performance
+stylistProfileSchema.index({ userId: 1 });
+stylistProfileSchema.index({ applicationStatus: 1 });
+stylistProfileSchema.index({ isApproved: 1 });
+stylistProfileSchema.index({ stylistEmail: 1 });
+stylistProfileSchema.index({ 'bookingSettings.isAvailableForBooking': 1 });
+
+// Pre-save middleware to update the updatedAt field
+stylistProfileSchema.pre('save', function (next) {
+    this.updatedAt = new Date();
+    next();
+});
+
+// Static method to find approved stylists
+stylistProfileSchema.statics.findApprovedStylists = function () {
+    return this.find({
+        applicationStatus: 'approved',
+        isApproved: true,
+        'bookingSettings.isAvailableForBooking': true
+    });
+};
+
+// Instance method to check if stylist is available for booking
+stylistProfileSchema.methods.isAvailableForBooking = function () {
+    return this.applicationStatus === 'approved' &&
+        this.isApproved === true &&
+        this.bookingSettings.isAvailableForBooking === true;
+};
+
+module.exports = mongoose.model("StylistProfile", stylistProfileSchema);

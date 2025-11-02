@@ -1,0 +1,834 @@
+openapi: 3.0.3
+info:
+  title: Stylist Application API
+  description: API for managing stylist applications including submission, payment processing, and admin approval workflow
+  version: 1.0.0
+  contact:
+    name: API Support
+    email: support@indigorhapsody.com
+servers:
+  - url: http://localhost:5000/stylist-application
+    description: Development server
+  - url: https://api.indigorhapsody.com/api/stylist-application
+    description: Production server
+
+paths:
+  /submit:
+    post:
+      summary: Submit stylist application
+      description: Submit a new stylist application with user account details and stylist profile information
+      tags:
+        - Stylist Applications
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/StylistApplicationRequest"
+            example:
+              displayName: "John Doe"
+              email: "john.doe@example.com"
+              phoneNumber: "+919876543210"
+              password: "securePassword123"
+              stylistName: "John Doe"
+              stylistEmail: "john.stylist@example.com"
+              stylistPhone: "+919876543210"
+              stylistAddress: "123 Fashion Street"
+              stylistCity: "Mumbai"
+              stylistState: "Maharashtra"
+              stylistPincode: "400001"
+              stylistCountry: "India"
+              stylistImage: "https://example.com/image.jpg"
+              stylistBio: "Professional stylist with 5 years experience"
+              stylistPortfolio:
+                [
+                  "https://example.com/portfolio1.jpg",
+                  "https://example.com/portfolio2.jpg",
+                ]
+              stylistExperience: "5 years in fashion styling"
+              stylistEducation: "Fashion Design Degree"
+              stylistSkills: ["Hair Styling", "Makeup", "Fashion Consulting"]
+              stylistAvailability: "Monday to Friday, 9 AM to 6 PM"
+              stylistPrice: 1500
+      responses:
+        "201":
+          description: Application submitted successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/StylistApplicationResponse"
+        "400":
+          description: Bad request - validation errors
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "500":
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /payment/initiate/{applicationId}:
+    post:
+      summary: Initiate payment for stylist application
+      description: Initiate payment process for a submitted stylist application
+      tags:
+        - Payment
+      parameters:
+        - name: applicationId
+          in: path
+          required: true
+          description: Unique identifier of the stylist application
+          schema:
+            type: string
+            pattern: "^[0-9a-fA-F]{24}$"
+            example: "507f1f77bcf86cd799439011"
+      responses:
+        "200":
+          description: Payment initiated successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PaymentInitiationResponse"
+        "400":
+          description: Bad request - invalid application ID or application not in correct status
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Application not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "500":
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /payment/callback:
+    post:
+      summary: Handle payment callback
+      description: Handle payment callback from PhonePe payment gateway
+      tags:
+        - Payment
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PaymentCallbackRequest"
+      responses:
+        "200":
+          description: Payment callback processed successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PaymentCallbackResponse"
+        "400":
+          description: Bad request - invalid callback data
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Application not found for payment
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "500":
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /payment/status/{applicationId}:
+    get:
+      summary: Check payment status
+      description: Check the payment status of a stylist application
+      tags:
+        - Payment
+      parameters:
+        - name: applicationId
+          in: path
+          required: true
+          description: Unique identifier of the stylist application
+          schema:
+            type: string
+            pattern: "^[0-9a-fA-F]{24}$"
+            example: "507f1f77bcf86cd799439011"
+      responses:
+        "200":
+          description: Payment status retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PaymentStatusResponse"
+        "400":
+          description: Bad request - invalid application ID
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Application not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "500":
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /applications:
+    get:
+      summary: Get applications for admin review
+      description: Retrieve stylist applications for admin review (Admin only)
+      tags:
+        - Admin
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: page
+          in: query
+          description: Page number for pagination
+          schema:
+            type: integer
+            minimum: 1
+            default: 1
+        - name: limit
+          in: query
+          description: Number of applications per page
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 10
+        - name: status
+          in: query
+          description: Filter by application status
+          schema:
+            type: string
+            enum:
+              [
+                submitted,
+                payment_pending,
+                under_review,
+                approved,
+                rejected,
+                all,
+              ]
+            default: under_review
+      responses:
+        "200":
+          description: Applications retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApplicationsListResponse"
+        "401":
+          description: Unauthorized - authentication required
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "403":
+          description: Forbidden - admin role required
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "500":
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /approve/{applicationId}:
+    post:
+      summary: Approve stylist application
+      description: Approve a stylist application and create user account (Admin only)
+      tags:
+        - Admin
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: applicationId
+          in: path
+          required: true
+          description: Unique identifier of the stylist application
+          schema:
+            type: string
+            pattern: "^[0-9a-fA-F]{24}$"
+            example: "507f1f77bcf86cd799439011"
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                adminNotes:
+                  type: string
+                  description: Optional admin notes for the approval
+                  example: "Application approved after thorough review"
+      responses:
+        "200":
+          description: Application approved successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApprovalResponse"
+        "400":
+          description: Bad request - invalid application ID or application not in correct status
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "401":
+          description: Unauthorized - authentication required
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "403":
+          description: Forbidden - admin role required
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Application not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "500":
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /reject/{applicationId}:
+    post:
+      summary: Reject stylist application
+      description: Reject a stylist application (Admin only)
+      tags:
+        - Admin
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: applicationId
+          in: path
+          required: true
+          description: Unique identifier of the stylist application
+          schema:
+            type: string
+            pattern: "^[0-9a-fA-F]{24}$"
+            example: "507f1f77bcf86cd799439011"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - rejectionReason
+              properties:
+                rejectionReason:
+                  type: string
+                  description: Reason for rejection
+                  example: "Insufficient experience in the required field"
+                adminNotes:
+                  type: string
+                  description: Optional admin notes
+                  example: "Applicant needs more experience in bridal styling"
+      responses:
+        "200":
+          description: Application rejected successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RejectionResponse"
+        "400":
+          description: Bad request - invalid application ID, missing rejection reason, or application already approved
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "401":
+          description: Unauthorized - authentication required
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "403":
+          description: Forbidden - admin role required
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Application not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "500":
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  schemas:
+    StylistApplicationRequest:
+      type: object
+      required:
+        - displayName
+        - email
+        - phoneNumber
+        - password
+        - stylistName
+        - stylistEmail
+        - stylistPhone
+        - stylistAddress
+        - stylistCity
+        - stylistState
+        - stylistPincode
+        - stylistCountry
+        - stylistImage
+        - stylistBio
+        - stylistPortfolio
+        - stylistExperience
+        - stylistEducation
+        - stylistSkills
+        - stylistAvailability
+      properties:
+        # User account fields
+        displayName:
+          type: string
+          description: Display name for the user account
+          example: "John Doe"
+        email:
+          type: string
+          format: email
+          description: Email address for the user account
+          example: "john.doe@example.com"
+        phoneNumber:
+          type: string
+          description: Phone number for the user account
+          example: "+919876543210"
+        password:
+          type: string
+          minLength: 8
+          description: Password for the user account (minimum 8 characters)
+          example: "securePassword123"
+
+        # Stylist profile fields
+        stylistName:
+          type: string
+          description: Professional name of the stylist
+          example: "John Doe"
+        stylistEmail:
+          type: string
+          format: email
+          description: Professional email of the stylist
+          example: "john.stylist@example.com"
+        stylistPhone:
+          type: string
+          description: Professional phone number of the stylist
+          example: "+919876543210"
+        stylistAddress:
+          type: string
+          description: Address of the stylist
+          example: "123 Fashion Street"
+        stylistCity:
+          type: string
+          description: City of the stylist
+          example: "Mumbai"
+        stylistState:
+          type: string
+          description: State of the stylist
+          example: "Maharashtra"
+        stylistPincode:
+          type: string
+          description: Pincode of the stylist
+          example: "400001"
+        stylistCountry:
+          type: string
+          description: Country of the stylist
+          example: "India"
+        stylistImage:
+          type: string
+          format: uri
+          description: Profile image URL of the stylist
+          example: "https://example.com/image.jpg"
+        stylistBio:
+          type: string
+          description: Biography of the stylist
+          example: "Professional stylist with 5 years experience"
+        stylistPortfolio:
+          type: array
+          items:
+            type: string
+            format: uri
+          minItems: 1
+          description: Portfolio images/links of the stylist
+          example:
+            [
+              "https://example.com/portfolio1.jpg",
+              "https://example.com/portfolio2.jpg",
+            ]
+        stylistExperience:
+          type: string
+          description: Experience details of the stylist
+          example: "5 years in fashion styling"
+        stylistEducation:
+          type: string
+          description: Education background of the stylist
+          example: "Fashion Design Degree"
+        stylistSkills:
+          type: array
+          items:
+            type: string
+          minItems: 1
+          description: Skills of the stylist
+          example: ["Hair Styling", "Makeup", "Fashion Consulting"]
+        stylistAvailability:
+          type: string
+          description: Availability of the stylist
+          example: "Monday to Friday, 9 AM to 6 PM"
+        stylistPrice:
+          type: number
+          minimum: 0
+          description: Price per service (optional)
+          example: 1500
+
+    StylistApplicationResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: true
+        message:
+          type: string
+          example: "Stylist application submitted successfully. Please complete payment to proceed."
+        data:
+          type: object
+          properties:
+            applicationId:
+              type: string
+              description: Unique identifier of the application
+              example: "507f1f77bcf86cd799439011"
+            registrationFee:
+              type: number
+              description: Registration fee amount
+              example: 500
+            applicationStatus:
+              type: string
+              enum: [submitted]
+              example: "submitted"
+            nextStep:
+              type: string
+              example: "payment"
+
+    PaymentInitiationResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: true
+        message:
+          type: string
+          example: "Payment initiated successfully"
+        data:
+          type: object
+          properties:
+            applicationId:
+              type: string
+              example: "507f1f77bcf86cd799439011"
+            paymentUrl:
+              type: string
+              format: uri
+              description: URL to redirect user for payment
+              example: "https://mercury.phonepe.com/transact/..."
+            paymentReferenceId:
+              type: string
+              description: Unique payment reference ID
+              example: "STYLIST_507f1f77bcf86cd799439011_1703123456789"
+            amount:
+              type: number
+              description: Payment amount
+              example: 500
+            currency:
+              type: string
+              example: "INR"
+            expiresIn:
+              type: integer
+              description: Payment URL expiration time in seconds
+              example: 1800
+
+    PaymentCallbackRequest:
+      type: object
+      description: Payment callback data from PhonePe
+      properties:
+        transactionId:
+          type: string
+          description: Transaction ID from PhonePe
+        paymentId:
+          type: string
+          description: Payment ID from PhonePe
+        status:
+          type: string
+          enum: [COMPLETED, FAILED, PENDING]
+          description: Payment status
+        amount:
+          type: number
+          description: Payment amount
+        currency:
+          type: string
+          description: Payment currency
+        timestamp:
+          type: string
+          format: date-time
+          description: Payment timestamp
+
+    PaymentCallbackResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        message:
+          type: string
+        data:
+          type: object
+          properties:
+            applicationId:
+              type: string
+            paymentStatus:
+              type: string
+              enum: [completed, failed]
+            applicationStatus:
+              type: string
+              enum: [under_review, submitted]
+            nextStep:
+              type: string
+              enum: [admin_review, payment_retry]
+
+    PaymentStatusResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: true
+        message:
+          type: string
+          example: "Payment status retrieved successfully"
+        data:
+          type: object
+          properties:
+            applicationId:
+              type: string
+              example: "507f1f77bcf86cd799439011"
+            applicationStatus:
+              type: string
+              enum:
+                [submitted, payment_pending, under_review, approved, rejected]
+              example: "under_review"
+            paymentStatus:
+              type: string
+              enum: [pending, completed, failed]
+              example: "completed"
+            paymentAmount:
+              type: number
+              example: 500
+            paymentReferenceId:
+              type: string
+              example: "STYLIST_507f1f77bcf86cd799439011_1703123456789"
+            paymentCompletedAt:
+              type: string
+              format: date-time
+              example: "2023-12-21T10:30:00Z"
+
+    ApplicationsListResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: true
+        message:
+          type: string
+          example: "Applications retrieved successfully"
+        data:
+          type: object
+          properties:
+            applications:
+              type: array
+              items:
+                $ref: "#/components/schemas/StylistApplication"
+            pagination:
+              $ref: "#/components/schemas/PaginationInfo"
+
+    StylistApplication:
+      type: object
+      properties:
+        _id:
+          type: string
+          example: "507f1f77bcf86cd799439011"
+        stylistName:
+          type: string
+          example: "John Doe"
+        stylistEmail:
+          type: string
+          example: "john.stylist@example.com"
+        stylistPhone:
+          type: string
+          example: "+919876543210"
+        stylistCity:
+          type: string
+          example: "Mumbai"
+        stylistState:
+          type: string
+          example: "Maharashtra"
+        applicationStatus:
+          type: string
+          enum: [submitted, payment_pending, under_review, approved, rejected]
+          example: "under_review"
+        paymentStatus:
+          type: string
+          enum: [pending, completed, failed]
+          example: "completed"
+        registrationFee:
+          type: number
+          example: 500
+        createdAt:
+          type: string
+          format: date-time
+          example: "2023-12-21T10:00:00Z"
+        updatedAt:
+          type: string
+          format: date-time
+          example: "2023-12-21T10:30:00Z"
+
+    PaginationInfo:
+      type: object
+      properties:
+        currentPage:
+          type: integer
+          example: 1
+        totalPages:
+          type: integer
+          example: 5
+        totalApplications:
+          type: integer
+          example: 47
+        hasNextPage:
+          type: boolean
+          example: true
+        hasPrevPage:
+          type: boolean
+          example: false
+
+    ApprovalResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: true
+        message:
+          type: string
+          example: "Stylist application approved successfully. User account created."
+        data:
+          type: object
+          properties:
+            applicationId:
+              type: string
+              example: "507f1f77bcf86cd799439011"
+            userId:
+              type: string
+              description: ID of the created user account
+              example: "507f1f77bcf86cd799439012"
+            stylistName:
+              type: string
+              example: "John Doe"
+            applicationStatus:
+              type: string
+              enum: [approved]
+              example: "approved"
+            approvedAt:
+              type: string
+              format: date-time
+              example: "2023-12-21T11:00:00Z"
+
+    RejectionResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: true
+        message:
+          type: string
+          example: "Stylist application rejected successfully"
+        data:
+          type: object
+          properties:
+            applicationId:
+              type: string
+              example: "507f1f77bcf86cd799439011"
+            stylistName:
+              type: string
+              example: "John Doe"
+            applicationStatus:
+              type: string
+              enum: [rejected]
+              example: "rejected"
+            rejectionReason:
+              type: string
+              example: "Insufficient experience in the required field"
+            rejectedAt:
+              type: string
+              format: date-time
+              example: "2023-12-21T11:00:00Z"
+
+    ErrorResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: false
+        message:
+          type: string
+          description: Error message
+          example: "Invalid application ID format"
+        error:
+          type: string
+          description: Detailed error information (optional)
+          example: "Validation failed for field 'email'"
+
+tags:
+  - name: Stylist Applications
+    description: Operations related to stylist application submission
+  - name: Payment
+    description: Payment processing operations
+  - name: Admin
+    description: Admin operations for managing stylist applications
