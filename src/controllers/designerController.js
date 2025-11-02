@@ -117,9 +117,8 @@ exports.toggleDesignerApproval = async (req, res) => {
     await designer.save();
 
     return res.status(200).json({
-      message: `Designer ${
-        designer.is_approved ? "approved" : "disabled"
-      } successfully`,
+      message: `Designer ${designer.is_approved ? "approved" : "disabled"
+        } successfully`,
       is_approved: designer.is_approved,
     });
   } catch (error) {
@@ -854,7 +853,7 @@ exports.getDesignersForDropdown = async (req, res) => {
 
     // Build query
     let query = {};
-    
+
     if (approved === 'true' || approved === true) {
       query.is_approved = true;
     }
@@ -896,6 +895,199 @@ exports.getDesignersForDropdown = async (req, res) => {
       success: false,
       message: "Error fetching designers for dropdown",
       error: error.message
+    });
+  }
+};
+
+// Add Product Sample Images for Designer (using URLs)
+exports.addProductSampleImages = async (req, res) => {
+  try {
+    const { designerId } = req.params;
+    const { imageUrls } = req.body;
+
+    // Validate designer ID
+    if (!designerId || !mongoose.Types.ObjectId.isValid(designerId)) {
+      return res.status(400).json({
+        success: false,
+        message: "Valid designer ID is required",
+      });
+    }
+
+    // Validate imageUrls
+    if (!imageUrls || !Array.isArray(imageUrls) || imageUrls.length === 0) {
+      return res.status(400).json({
+        success: false,
+        message: "At least one image URL is required",
+      });
+    }
+
+    // Validate that all items in array are strings (URLs)
+    const invalidUrls = imageUrls.filter(url => typeof url !== 'string' || url.trim() === '');
+    if (invalidUrls.length > 0) {
+      return res.status(400).json({
+        success: false,
+        message: "All image URLs must be valid strings",
+      });
+    }
+
+    // Find the designer
+    const designer = await Designer.findById(designerId);
+    if (!designer) {
+      return res.status(404).json({
+        success: false,
+        message: "Designer not found",
+      });
+    }
+
+    // Add new image URLs to the existing array
+    const updatedImages = [...(designer.product_sample_images || []), ...imageUrls];
+
+    // Update the designer with new sample images
+    designer.product_sample_images = updatedImages;
+    designer.updatedTime = Date.now();
+    await designer.save();
+
+    return res.status(200).json({
+      success: true,
+      message: "Product sample images added successfully",
+      data: {
+        designerId: designer._id,
+        totalImages: updatedImages.length,
+        newImages: imageUrls,
+        allImages: updatedImages,
+      },
+    });
+  } catch (error) {
+    console.error("Error adding product sample images:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Error adding product sample images",
+      error: error.message,
+    });
+  }
+};
+
+// Update/Edit Product Sample Images for Designer (using URLs)
+exports.updateProductSampleImages = async (req, res) => {
+  try {
+    const { designerId } = req.params;
+    const { imageUrls, removeImageIndexes } = req.body;
+
+    // Validate designer ID
+    if (!designerId || !mongoose.Types.ObjectId.isValid(designerId)) {
+      return res.status(400).json({
+        success: false,
+        message: "Valid designer ID is required",
+      });
+    }
+
+    // Find the designer
+    const designer = await Designer.findById(designerId);
+    if (!designer) {
+      return res.status(404).json({
+        success: false,
+        message: "Designer not found",
+      });
+    }
+
+    let updatedImages = [...(designer.product_sample_images || [])];
+
+    // Remove images by index if provided
+    if (removeImageIndexes && Array.isArray(removeImageIndexes) && removeImageIndexes.length > 0) {
+      // Sort in descending order to remove from the end first (prevents index shifting issues)
+      const sortedIndexes = [...removeImageIndexes].sort((a, b) => b - a);
+      sortedIndexes.forEach((index) => {
+        if (index >= 0 && index < updatedImages.length) {
+          updatedImages.splice(index, 1);
+        }
+      });
+    }
+
+    // Replace or add new image URLs if provided
+    if (imageUrls && Array.isArray(imageUrls)) {
+      // If removeImageIndexes was provided, add to existing; otherwise replace
+      if (removeImageIndexes && removeImageIndexes.length > 0) {
+        // Add new URLs to existing array
+        updatedImages = [...updatedImages, ...imageUrls];
+      } else {
+        // Replace entire array
+        updatedImages = imageUrls;
+      }
+    }
+
+    // Validate all URLs are strings
+    const invalidUrls = updatedImages.filter(url => typeof url !== 'string' || url.trim() === '');
+    if (invalidUrls.length > 0) {
+      return res.status(400).json({
+        success: false,
+        message: "All image URLs must be valid strings",
+      });
+    }
+
+    // Update the designer
+    designer.product_sample_images = updatedImages;
+    designer.updatedTime = Date.now();
+    await designer.save();
+
+    return res.status(200).json({
+      success: true,
+      message: "Product sample images updated successfully",
+      data: {
+        designerId: designer._id,
+        totalImages: updatedImages.length,
+        allImages: updatedImages,
+      },
+    });
+  } catch (error) {
+    console.error("Error updating product sample images:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Error updating product sample images",
+      error: error.message,
+    });
+  }
+};
+
+// Get Product Sample Images for Designer
+exports.getProductSampleImages = async (req, res) => {
+  try {
+    const { designerId } = req.params;
+
+    // Validate designer ID
+    if (!designerId || !mongoose.Types.ObjectId.isValid(designerId)) {
+      return res.status(400).json({
+        success: false,
+        message: "Valid designer ID is required",
+      });
+    }
+
+    // Find the designer
+    const designer = await Designer.findById(designerId).select(
+      "product_sample_images userId"
+    );
+
+    if (!designer) {
+      return res.status(404).json({
+        success: false,
+        message: "Designer not found",
+      });
+    }
+
+    return res.status(200).json({
+      success: true,
+      message: "Product sample images retrieved successfully",
+      data: {
+        designerId: designer._id,
+        totalImages: designer.product_sample_images?.length || 0,
+        images: designer.product_sample_images || [],
+      },
+    });
+  } catch (error) {
+    console.error("Error fetching product sample images:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Error fetching product sample images",
+      error: error.message,
     });
   }
 };
