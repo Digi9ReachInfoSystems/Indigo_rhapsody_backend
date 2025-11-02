@@ -51,8 +51,10 @@ const corsOptions = {
     "https://designerdashboard.irtest.in",
     "https://designerdashboard.irtest.in",
     "https://admindashboard.irtest.in",
-    "http://localhost:5173/",
-    "https://www.admindashboard.irtest.in"
+    "https://www.admindashboard.irtest.in",
+    "https://admin.indigorhapsody.com",
+    "http://localhost:5173",
+    "https://www.admin.indigorhapsody.com"
   ],
   credentials: true,
   optionsSuccessStatus: 200
