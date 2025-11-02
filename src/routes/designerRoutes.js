@@ -152,4 +152,27 @@ router.get(
   designerController.getDesignersForDropdown
 );
 
+// Product Sample Images routes
+// Add product sample images using URLs (Designer only)
+router.post(
+  "/:designerId/product-sample-images",
+  authMiddleware,
+  roleMiddleware(["Designer", "Admin"]),
+  designerController.addProductSampleImages
+);
+
+// Update/Edit product sample images using URLs (Designer only)
+router.put(
+  "/:designerId/product-sample-images",
+  authMiddleware,
+  roleMiddleware(["Designer", "Admin"]),
+  designerController.updateProductSampleImages
+);
+
+// Get product sample images (Public - can be accessed by anyone)
+router.get(
+  "/:designerId/product-sample-images",
+  designerController.getProductSampleImages
+);
+
 module.exports = router;
