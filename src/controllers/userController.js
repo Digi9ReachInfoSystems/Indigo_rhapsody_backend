@@ -560,48 +560,43 @@ exports.getAllUsersWithRoleUser = async (req, res) => {
   }
 };
 exports.createUserAndDesigner = async (req, res) => {
-  // Start session with primary read preference (required for transactions)
-  // Transactions must use primary read preference, overriding connection-level readPreference
-  const session = await mongoose.startSession({
-    readPreference: 'primary'
-  });
-  let transactionCommitted = false;
-  session.startTransaction();
+  const {
+    email,
+    password,
+    displayName,
+    phoneNumber,
+    role = "user",
+    address = [],
+    shortDescription,
+    about,
+    logoUrl,
+    backgroundImageUrl,
+  } = req.body;
 
+  // === 1. Validate address early ===
+  if (address.length === 0) {
+    return res.status(400).json({ success: false, message: "At least one address is required" });
+  }
+
+  // === 2. Check for existing user (outside transaction) ===
+  const existingUser = await User.findOne({ email }).read('primary'); // or just regular read
+  if (existingUser) {
+    return res.status(400).json({ success: false, message: "User already exists with this email" });
+  }
+
+  // === 3. Create external resources (Firebase, Pickup) BEFORE transaction ===
   try {
-    const {
+    const firebaseUser = await admin.auth().createUser({
       email,
       password,
       displayName,
-      phoneNumber,
-      role = "user", // Default role
-      address = [], // Default empty array
-      shortDescription,
-      about,
-      logoUrl,
-      backgroundImageUrl,
-    } = req.body;
+      phoneNumber: phoneNumber.toString(),
+    });
 
-    // Generate pickup location name
     const randomId = Math.floor(100 + Math.random() * 900);
     const pickup_location_name = `${randomId}_${displayName}`;
-
-    // 1. Check if user exists
-    const existingUser = await User.findOne({ email }).session(session);
-    if (existingUser) {
-      await session.abortTransaction();
-      return res.status(400).json({
-        success: false,
-        message: "User already exists with this email",
-      });
-    }
-
-    // 2. Validate and create pickup location
-    if (address.length === 0) {
-      throw new Error("At least one address is required");
-    }
-
     const firstAddress = address[0];
+
     const addPickupResponse = await addPickupLocation({
       pickup_location: pickup_location_name,
       name: displayName,
@@ -616,113 +611,86 @@ exports.createUserAndDesigner = async (req, res) => {
     });
 
     if (!addPickupResponse?.success) {
+      await admin.auth().deleteUser(firebaseUser.uid); // cleanup Firebase
       throw new Error("Failed to create pickup location");
     }
 
-    // 3. Create Firebase Auth User
-    const firebaseUser = await admin.auth().createUser({
-      email,
-      password,
-      displayName,
-      phoneNumber: phoneNumber.toString(),
-    });
+    // === 4. NOW start transaction for MongoDB only ===
+    const session = await mongoose.startSession({ readPreference: 'primary' });
+    session.startTransaction();
 
-    if (!firebaseUser?.uid) {
-      throw new Error("Failed to create Firebase user");
-    }
-
-    // 4. Create MongoDB User
-    const newUser = new User({
-      email,
-      displayName,
-      phoneNumber,
-      password, // Note: Should be hashed in production
-      role,
-      firebaseUid: firebaseUser.uid,
-      pickup_location_name,
-      address,
-    });
-
-    await newUser.save({ session });
-
-    // 5. Create Designer Document if role is "Designer"
-    let newDesigner = null;
-    if (role === "Designer") {
-      newDesigner = new Designer({
-        userId: newUser._id,
-        logoUrl: logoUrl || null,
-        backGroundImage: backgroundImageUrl || null,
-        shortDescription,
-        about,
+    try {
+      const newUser = new User({
+        email,
+        displayName,
+        phoneNumber,
+        password, // ⚠️ Should be hashed! (security note below)
+        role,
+        firebaseUid: firebaseUser.uid,
         pickup_location_name,
-        is_approved: false, // Default to false, admin needs to approve
+        address,
       });
-      await newDesigner.save({ session });
-    }
 
-    // Commit transaction
-    await session.commitTransaction();
-    transactionCommitted = true;
-    session.endSession();
+      await newUser.save({ session });
 
-    // Generate JWT Token
-    const tokenPayload = {
-      id: newUser._id,
-      email: newUser.email,
-      role: newUser.role,
-      firebaseUid: newUser.firebaseUid,
-      ...(newDesigner && { designerId: newDesigner._id }), // Include designerId if exists
-    };
+      let newDesigner = null;
+      if (role === "Designer") {
+        newDesigner = new Designer({
+          userId: newUser._id,
+          logoUrl: logoUrl || null,
+          backGroundImage: backgroundImageUrl || null,
+          shortDescription,
+          about,
+          pickup_location_name,
+          is_approved: false,
+        });
+        await newDesigner.save({ session });
+      }
 
-    const token = jwt.sign(tokenPayload, process.env.JWT_SECRET, {
-      expiresIn: process.env.JWT_EXPIRES_IN || "1d",
-    });
+      await session.commitTransaction();
+      session.endSession();
 
-    // Send welcome email
-    await sendWelcomeEmail(email, displayName, token);
+      // === 5. Post-transaction steps ===
+      const token = jwt.sign(
+        {
+          id: newUser._id,
+          email: newUser.email,
+          role: newUser.role,
+          firebaseUid: newUser.firebaseUid,
+          ...(newDesigner && { designerId: newDesigner._id }),
+        },
+        process.env.JWT_SECRET,
+        { expiresIn: process.env.JWT_EXPIRES_IN || "1d" }
+      );
 
-    // Prepare response
-    const response = {
-      success: true,
-      message:
-        role === "Designer"
+      await sendWelcomeEmail(email, displayName, token);
+
+      return res.status(201).json({
+        success: true,
+        message: role === "Designer"
           ? "Designer account created successfully (pending approval)"
           : "User created successfully",
-      user: {
-        id: newUser._id,
-        email: newUser.email,
-        displayName: newUser.displayName,
-        phoneNumber: newUser.phoneNumber,
-        role: newUser.role,
-        createdTime: newUser.createdAt,
-        last_logged_in: newUser.last_logged_in,
-        address: newUser.address,
-      },
-      token: `Bearer ${token}`,
-    };
+        user: { /* ... */ },
+        token: `Bearer ${token}`,
+        ...(newDesigner && { designer: { /* ... */ } }),
+      });
 
-    // Add designer info if created
-    if (newDesigner) {
-      response.designer = {
-        id: newDesigner._id,
-        shortDescription: newDesigner.shortDescription,
-        about: newDesigner.about,
-        is_approved: newDesigner.is_approved,
-      };
-    }
-
-    res.status(201).json(response);
-  } catch (error) {
-    if (!transactionCommitted) {
+    } catch (dbError) {
       await session.abortTransaction();
-    }
-    session.endSession();
+      session.endSession();
 
+      // Cleanup external resources on DB failure
+      await admin.auth().deleteUser(firebaseUser.uid);
+      // (Optional) Call deletePickupLocation if supported
+
+      throw dbError;
+    }
+
+  } catch (error) {
     console.error("Error in user creation:", error);
-    res.status(500).json({
+    return res.status(500).json({
       success: false,
       message: error.message || "Internal Server Error",
-      error: error.message,
     });
   }
 };

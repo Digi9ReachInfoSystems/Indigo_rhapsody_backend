@@ -1,11 +1,9 @@
-// Load environment variables first
 require("dotenv").config();
 
 const express = require("express");
 const cors = require("cors");
 const { connectDB, getDatabaseInfo } = require("./src/config/database");
 
-// Import all routes
 const categoryRoutes = require("./src/routes/categoryRoutes.js");
 const productRoutes = require("./src/routes/productRoutes.js");
 const subcategoryRoutes = require("./src/routes/subcategoryRoutes.js");
@@ -33,11 +31,9 @@ const stylistCalendarRoutes = require("./src/routes/stylistCalendarRoutes.js");
 
 const app = express();
 
-// Environment configuration
 const NODE_ENV = process.env.NODE_ENV || "development";
 const PORT = process.env.PORT || 5000;
 
-// CORS configuration based on environment
 const corsOptions = {
   origin: [
     "http://localhost:3000",
@@ -62,7 +58,6 @@ const corsOptions = {
 
 app.use(cors(corsOptions));
 
-// Request logging (only in development)
 if (NODE_ENV === "development") {
   app.use((req, res, next) => {
     console.log(`${req.method} ${req.url} - ${new Date().toISOString()}`);
@@ -70,7 +65,6 @@ if (NODE_ENV === "development") {
   });
 }
 
-// Connect to database
 connectDB();
 
 app.use(express.json());
@@ -100,7 +94,6 @@ app.use("/stylist-application", stylistApplicationRoutes);
 app.use("/stylist-booking", stylistBookingRoutes);
 app.use("/stylist-calendar", stylistCalendarRoutes);
 
-// Add health check endpoint
 app.get("/health", (req, res) => {
   const dbInfo = getDatabaseInfo();
   res.status(200).json({
@@ -116,13 +109,11 @@ app.get("/health", (req, res) => {
   });
 });
 
-// Add database status endpoint
 app.get("/database/status", (req, res) => {
   const dbInfo = getDatabaseInfo();
   res.json(dbInfo);
 });
 
-// Start server
 app.listen(PORT, () => {
   console.log(`🚀 IndigoRhapsody Server Started`);
   console.log(`📍 Environment: ${NODE_ENV}`);
