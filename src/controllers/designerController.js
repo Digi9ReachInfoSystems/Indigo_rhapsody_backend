@@ -1,5 +1,6 @@
 const mongoose = require("mongoose");
 const Designer = require("../models/designerModel");
+const User = require("../models/userModel");
 const path = require("path");
 const { bucket } = require("../service/firebaseServices"); // Firebase storage configuration
 const UpdateRequest = require("../models/updateDesignerSchema");
@@ -441,26 +442,72 @@ exports.reviewUpdateRequests = async (req, res) => {
         });
       }
 
-      // Dynamically construct the update object
-      const updateFields = {};
+      // Get the designer to access userId
+      const designer = await Designer.findById(designerId);
+      if (!designer) {
+        return res.status(404).json({
+          message: "Designer not found"
+        });
+      }
+
+      // Define which fields belong to User model vs Designer model
+      const userFields = [
+        'displayName',
+        'address',
+        'phoneNumber',
+        'email',
+        'fcmToken'
+      ];
+
+      // Separate fields into User and Designer updates
+      const userUpdateFields = {};
+      const designerUpdateFields = {};
 
       // Iterate through all keys in requestedUpdates
       Object.keys(updates).forEach((key) => {
         // Skip _id and undefined/null values, but allow empty strings and 0
         if (key !== "_id" && key !== "__v" && updates[key] !== undefined && updates[key] !== null) {
-          updateFields[key] = updates[key];
+          if (userFields.includes(key)) {
+            userUpdateFields[key] = updates[key];
+          } else {
+            designerUpdateFields[key] = updates[key];
+          }
         }
       });
 
-      // Always update the updatedTime field
-      updateFields.updatedTime = Date.now();
+      // Update User model if there are user fields to update
+      let updatedUser = null;
+      if (Object.keys(userUpdateFields).length > 0) {
+        updatedUser = await User.findByIdAndUpdate(
+          designer.userId,
+          { $set: userUpdateFields },
+          { new: true, runValidators: true }
+        );
 
-      // Perform the update only if there are fields to update
+        if (!updatedUser) {
+          return res.status(404).json({
+            message: "User not found after update attempt"
+          });
+        }
+
+        console.log("User updated successfully:", {
+          userId: designer.userId.toString(),
+          updatedFields: Object.keys(userUpdateFields),
+          updateFields: userUpdateFields
+        });
+      }
+
+      // Always update the updatedTime field for Designer
+      if (Object.keys(designerUpdateFields).length > 0) {
+        designerUpdateFields.updatedTime = Date.now();
+      }
+
+      // Update Designer model if there are designer fields to update
       let updatedDesigner = null;
-      if (Object.keys(updateFields).length > 0) {
+      if (Object.keys(designerUpdateFields).length > 0) {
         updatedDesigner = await Designer.findByIdAndUpdate(
           designerId,
-          { $set: updateFields },
+          { $set: designerUpdateFields },
           { new: true, runValidators: true }
         );
 
@@ -472,13 +519,17 @@ exports.reviewUpdateRequests = async (req, res) => {
 
         console.log("Designer updated successfully:", {
           designerId: designerId.toString(),
-          updatedFields: Object.keys(updateFields),
-          updateFields: updateFields
+          updatedFields: Object.keys(designerUpdateFields),
+          updateFields: designerUpdateFields
         });
       } else {
-        console.warn("No valid fields to update for designer:", designerId);
         // Still fetch the designer to return in response
-        updatedDesigner = await Designer.findById(designerId);
+        updatedDesigner = await Designer.findById(designerId).populate('userId');
+      }
+
+      // If no fields were updated in either model, log a warning
+      if (Object.keys(userUpdateFields).length === 0 && Object.keys(designerUpdateFields).length === 0) {
+        console.warn("No valid fields to update for designer:", designerId);
       }
 
       updateRequest.status = "Approved";
@@ -497,18 +548,43 @@ exports.reviewUpdateRequests = async (req, res) => {
       updateRequest,
     };
 
-    // If approved and designer was updated, include the updated designer in response
-    if (status === "Approved" && updatedDesigner) {
+    // If approved and designer was updated, include the updated designer and user in response
+    if (status === "Approved") {
+      // Populate designer if not already populated
+      if (updatedDesigner && (!updatedDesigner.userId || typeof updatedDesigner.userId === 'string')) {
+        updatedDesigner = await Designer.findById(updatedDesigner._id).populate('userId');
+      }
+
       response.updatedDesigner = {
-        id: updatedDesigner._id,
-        shortDescription: updatedDesigner.shortDescription,
-        about: updatedDesigner.about,
-        logoUrl: updatedDesigner.logoUrl,
-        backGroundImage: updatedDesigner.backGroundImage,
-        store_banner_web: updatedDesigner.store_banner_web,
-        is_approved: updatedDesigner.is_approved,
-        updatedTime: updatedDesigner.updatedTime,
+        id: updatedDesigner?._id,
+        shortDescription: updatedDesigner?.shortDescription,
+        about: updatedDesigner?.about,
+        logoUrl: updatedDesigner?.logoUrl,
+        backGroundImage: updatedDesigner?.backGroundImage,
+        store_banner_web: updatedDesigner?.store_banner_web,
+        is_approved: updatedDesigner?.is_approved,
+        updatedTime: updatedDesigner?.updatedTime,
       };
+
+      // Include updated user fields if user was updated
+      if (updatedUser) {
+        response.updatedUser = {
+          id: updatedUser._id,
+          displayName: updatedUser.displayName,
+          email: updatedUser.email,
+          phoneNumber: updatedUser.phoneNumber,
+          address: updatedUser.address,
+        };
+      } else if (updatedDesigner?.userId) {
+        // Include user info from populated designer
+        response.updatedUser = {
+          id: updatedDesigner.userId._id,
+          displayName: updatedDesigner.userId.displayName,
+          email: updatedDesigner.userId.email,
+          phoneNumber: updatedDesigner.userId.phoneNumber,
+          address: updatedDesigner.userId.address,
+        };
+      }
     }
 
     res.status(200).json(response);
