@@ -424,25 +424,61 @@ exports.reviewUpdateRequests = async (req, res) => {
 
     // If approved, update the designer's information
     if (status === "Approved") {
-      const designerId = updateRequest.designerId._id;
+      // Handle both populated and non-populated designerId
+      const designerId = updateRequest.designerId._id || updateRequest.designerId;
       const updates = updateRequest.requestedUpdates;
+
+      if (!designerId) {
+        return res.status(400).json({
+          message: "Invalid designer ID in update request"
+        });
+      }
+
+      // Validate that requestedUpdates is an object
+      if (!updates || typeof updates !== 'object' || Array.isArray(updates)) {
+        return res.status(400).json({
+          message: "Invalid update data format. Expected an object."
+        });
+      }
 
       // Dynamically construct the update object
       const updateFields = {};
 
+      // Iterate through all keys in requestedUpdates
       Object.keys(updates).forEach((key) => {
-        if (key !== "_id" && updates[key] !== undefined) {
+        // Skip _id and undefined/null values, but allow empty strings and 0
+        if (key !== "_id" && key !== "__v" && updates[key] !== undefined && updates[key] !== null) {
           updateFields[key] = updates[key];
         }
       });
 
+      // Always update the updatedTime field
+      updateFields.updatedTime = Date.now();
+
       // Perform the update only if there are fields to update
+      let updatedDesigner = null;
       if (Object.keys(updateFields).length > 0) {
-        await Designer.findByIdAndUpdate(
+        updatedDesigner = await Designer.findByIdAndUpdate(
           designerId,
           { $set: updateFields },
-          { new: true }
+          { new: true, runValidators: true }
         );
+
+        if (!updatedDesigner) {
+          return res.status(404).json({
+            message: "Designer not found after update attempt"
+          });
+        }
+
+        console.log("Designer updated successfully:", {
+          designerId: designerId.toString(),
+          updatedFields: Object.keys(updateFields),
+          updateFields: updateFields
+        });
+      } else {
+        console.warn("No valid fields to update for designer:", designerId);
+        // Still fetch the designer to return in response
+        updatedDesigner = await Designer.findById(designerId);
       }
 
       updateRequest.status = "Approved";
@@ -455,10 +491,27 @@ exports.reviewUpdateRequests = async (req, res) => {
     // Save the update request status
     await updateRequest.save();
 
-    res.status(200).json({
+    // Prepare response
+    const response = {
       message: `Request ${status.toLowerCase()} successfully`,
       updateRequest,
-    });
+    };
+
+    // If approved and designer was updated, include the updated designer in response
+    if (status === "Approved" && updatedDesigner) {
+      response.updatedDesigner = {
+        id: updatedDesigner._id,
+        shortDescription: updatedDesigner.shortDescription,
+        about: updatedDesigner.about,
+        logoUrl: updatedDesigner.logoUrl,
+        backGroundImage: updatedDesigner.backGroundImage,
+        store_banner_web: updatedDesigner.store_banner_web,
+        is_approved: updatedDesigner.is_approved,
+        updatedTime: updatedDesigner.updatedTime,
+      };
+    }
+
+    res.status(200).json(response);
   } catch (error) {
     console.error("Error reviewing update request:", error);
     res.status(500).json({
