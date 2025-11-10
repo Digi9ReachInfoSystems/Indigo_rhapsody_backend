@@ -423,6 +423,9 @@ exports.reviewUpdateRequests = async (req, res) => {
         .json({ message: "This request has already been reviewed" });
     }
 
+    let updatedUser = null;
+    let updatedDesigner = null;
+
     // If approved, update the designer's information
     if (status === "Approved") {
       // Handle both populated and non-populated designerId
@@ -450,39 +453,198 @@ exports.reviewUpdateRequests = async (req, res) => {
         });
       }
 
+      const userDoc = await User.findById(designer.userId);
+      if (!userDoc) {
+        return res.status(404).json({
+          message: "User not found for the designer"
+        });
+      }
+
       // Define which fields belong to User model vs Designer model
       const userFields = [
         'displayName',
-        'address',
         'phoneNumber',
         'email',
         'fcmToken'
       ];
 
+      const addressFieldKeys = [
+        'address',
+        'addressId',
+        'nick_name',
+        'city',
+        'state',
+        'pincode',
+        'street_details'
+      ];
+
       // Separate fields into User and Designer updates
       const userUpdateFields = {};
       const designerUpdateFields = {};
+      const addressFieldUpdates = {};
+      let explicitAddressPayload = undefined;
 
       // Iterate through all keys in requestedUpdates
       Object.keys(updates).forEach((key) => {
+        const value = updates[key];
+
         // Skip _id and undefined/null values, but allow empty strings and 0
-        if (key !== "_id" && key !== "__v" && updates[key] !== undefined && updates[key] !== null) {
-          if (userFields.includes(key)) {
-            userUpdateFields[key] = updates[key];
+        if (
+          key === "_id" ||
+          key === "__v" ||
+          value === undefined ||
+          value === null
+        ) {
+          return;
+        }
+
+        if (addressFieldKeys.includes(key)) {
+          if (key === "address") {
+            explicitAddressPayload = value;
           } else {
-            designerUpdateFields[key] = updates[key];
+            addressFieldUpdates[key] = value;
           }
+          return;
+        }
+
+        if (userFields.includes(key)) {
+          userUpdateFields[key] = value;
+        } else {
+          designerUpdateFields[key] = value;
         }
       });
 
-      // Update User model if there are user fields to update
-      let updatedUser = null;
-      if (Object.keys(userUpdateFields).length > 0) {
-        updatedUser = await User.findByIdAndUpdate(
-          designer.userId,
-          { $set: userUpdateFields },
-          { new: true, runValidators: true }
+      const normalizeAddress = () => {
+        let normalized = null;
+
+        if (explicitAddressPayload !== undefined) {
+          if (Array.isArray(explicitAddressPayload)) {
+            if (explicitAddressPayload.length > 0) {
+              normalized = { ...explicitAddressPayload[0] };
+            } else {
+              normalized = {};
+            }
+          } else if (
+            explicitAddressPayload &&
+            typeof explicitAddressPayload === "object"
+          ) {
+            normalized = { ...explicitAddressPayload };
+          } else if (
+            typeof explicitAddressPayload === "string" &&
+            explicitAddressPayload.trim() !== ""
+          ) {
+            normalized = { street_details: explicitAddressPayload.trim() };
+          } else if (explicitAddressPayload === "" || explicitAddressPayload === null) {
+            normalized = {};
+          }
+        }
+
+        const hasAdditionalAddressFields = Object.keys(addressFieldUpdates).some(
+          (field) =>
+            !["address", "addressId"].includes(field) &&
+            addressFieldUpdates[field] !== undefined &&
+            addressFieldUpdates[field] !== null
         );
+
+        if (!normalized && hasAdditionalAddressFields) {
+          normalized = {};
+        }
+
+        if (normalized) {
+          Object.entries(addressFieldUpdates).forEach(([field, val]) => {
+            if (
+              field === "addressId" &&
+              val !== undefined &&
+              val !== null &&
+              val !== ""
+            ) {
+              normalized._id = val;
+              return;
+            }
+
+            if (val !== undefined && val !== null) {
+              normalized[field] = val;
+            }
+          });
+
+          if (
+            normalized.addressId &&
+            !normalized._id &&
+            normalized.addressId !== ""
+          ) {
+            normalized._id = normalized.addressId;
+          }
+
+          delete normalized.addressId;
+
+          if (normalized.pincode !== undefined) {
+            const parsedPincode = Number(normalized.pincode);
+            if (!Number.isNaN(parsedPincode)) {
+              normalized.pincode = parsedPincode;
+            } else {
+              delete normalized.pincode;
+            }
+          }
+
+          Object.keys(normalized).forEach((field) => {
+            if (normalized[field] === undefined || normalized[field] === null) {
+              delete normalized[field];
+            }
+          });
+
+          if (Object.keys(normalized).length === 0) {
+            normalized = null;
+          }
+        }
+
+        return normalized;
+      };
+
+      const normalizedAddressUpdate = normalizeAddress();
+
+      // Update User model if there are user fields to update
+      if (
+        Object.keys(userUpdateFields).length > 0 ||
+        normalizedAddressUpdate
+      ) {
+        Object.entries(userUpdateFields).forEach(([field, val]) => {
+          userDoc[field] = val;
+        });
+
+        if (normalizedAddressUpdate) {
+          const targetAddressId = normalizedAddressUpdate._id
+            ? normalizedAddressUpdate._id.toString()
+            : null;
+
+          const updatableFields = { ...normalizedAddressUpdate };
+          delete updatableFields._id;
+
+          if (!Array.isArray(userDoc.address)) {
+            userDoc.address = [];
+          }
+
+          if (targetAddressId) {
+            const addressIndex = userDoc.address.findIndex(
+              (addr) => addr._id && addr._id.toString() === targetAddressId
+            );
+
+            if (addressIndex !== -1) {
+              Object.entries(updatableFields).forEach(([field, val]) => {
+                userDoc.address[addressIndex][field] = val;
+              });
+            } else {
+              userDoc.address.push(updatableFields);
+            }
+          } else if (userDoc.address.length > 0) {
+            Object.entries(updatableFields).forEach(([field, val]) => {
+              userDoc.address[0][field] = val;
+            });
+          } else if (Object.keys(updatableFields).length > 0) {
+            userDoc.address.push(updatableFields);
+          }
+        }
+
+        updatedUser = await userDoc.save();
 
         if (!updatedUser) {
           return res.status(404).json({
@@ -492,8 +654,14 @@ exports.reviewUpdateRequests = async (req, res) => {
 
         console.log("User updated successfully:", {
           userId: designer.userId.toString(),
-          updatedFields: Object.keys(userUpdateFields),
-          updateFields: userUpdateFields
+          updatedFields: [
+            ...Object.keys(userUpdateFields),
+            ...(normalizedAddressUpdate ? ["address"] : []),
+          ],
+          updateFields: {
+            ...userUpdateFields,
+            ...(normalizedAddressUpdate ? { address: normalizedAddressUpdate } : {}),
+          },
         });
       }
 
@@ -503,7 +671,6 @@ exports.reviewUpdateRequests = async (req, res) => {
       }
 
       // Update Designer model if there are designer fields to update
-      let updatedDesigner = null;
       if (Object.keys(designerUpdateFields).length > 0) {
         updatedDesigner = await Designer.findByIdAndUpdate(
           designerId,
@@ -528,7 +695,11 @@ exports.reviewUpdateRequests = async (req, res) => {
       }
 
       // If no fields were updated in either model, log a warning
-      if (Object.keys(userUpdateFields).length === 0 && Object.keys(designerUpdateFields).length === 0) {
+      if (
+        Object.keys(userUpdateFields).length === 0 &&
+        Object.keys(designerUpdateFields).length === 0 &&
+        !normalizedAddressUpdate
+      ) {
         console.warn("No valid fields to update for designer:", designerId);
       }
 
