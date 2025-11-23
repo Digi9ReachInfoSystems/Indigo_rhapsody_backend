@@ -138,154 +138,167 @@ exports.createUser = async (req, res) => {
       expiresIn: process.env.JWT_EXPIRES_IN || "1d",
     });
 
-    // Set up the email transporter
-    const transporter = nodemailer.createTransport({
-      host: "smtp.hostinger.com",
-      port: 465,
-      secure: true,
-      auth: {
-        user: "info@indigorhapsody.com",
-        pass: "InfoPassword123#@",
-      },
-    });
+    // Send welcome email (non-blocking - don't fail user creation if email fails)
+//     try {
+//       // Set up the email transporter using environment variables
+//       const transporter = nodemailer.createTransport({
+//         host: process.env.EMAIL_HOST || "smtp.hostinger.com",
+//         port: parseInt(process.env.EMAIL_PORT) || 465,
+//         secure: true,
+//         auth: {
+//           user: process.env.EMAIL_USER || "info@indigorhapsody.com",
+//           pass: process.env.EMAIL_PASS || "",
+//         },
+//       });
 
-    // Email options
-    const mailOptions = {
-      from: '"Indigo Rhapsody" <info@indigorhapsody.com>',
-      to: email,
-      subject: "Welcome to Indigo Rhapsody Mobile Application",
-      html: `
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Welcome Email</title>
-</head>
-<body style="margin: 0; padding: 0; font-family: Arial, sans-serif; background-color: #f5f5f5;">
-  <table role="presentation" style="width: 100%; border-collapse: collapse;">
-    <tr>
-      <td style="padding: 0;">
-        <table role="presentation" style="width: 100%; max-width: 600px; margin: 0 auto; background-color: #ffffff; border-collapse: collapse;">
+//       // Email options
+//       const mailOptions = {
+//         from: `"Indigo Rhapsody" <${process.env.EMAIL_FROM || process.env.EMAIL_USER || "info@indigorhapsody.com"}>`,
+//         to: email,
+//         subject: "Welcome to Indigo Rhapsody Mobile Application",
+//         html: `
+// <!DOCTYPE html>
+// <html lang="en">
+// <head>
+//   <meta charset="UTF-8" />
+//   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+//   <title>Welcome Email</title>
+// </head>
+// <body style="margin: 0; padding: 0; font-family: Arial, sans-serif; background-color: #f5f5f5;">
+//   <table role="presentation" style="width: 100%; border-collapse: collapse;">
+//     <tr>
+//       <td style="padding: 0;">
+//         <table role="presentation" style="width: 100%; max-width: 600px; margin: 0 auto; background-color: #ffffff; border-collapse: collapse;">
 
-          <!-- Header -->
-          <tr>
-            <td style="padding: 40px 20px 20px; text-align: center;">
-              <div style="display: inline-block; width: 60px; height: 60px; background-color: #0d47a1; color: white; font-size: 24px; font-weight: bold; line-height: 60px; text-align: center; margin-bottom: 10px;">
-                            <img src="https://firebasestorage.googleapis.com/v0/b/sveccha-11c31.appspot.com/o/Logo.png?alt=media&token=c8b4c22d-8256-4092-8b46-e89e001bd1fe" alt="Welcome illustration" style="max-width: 700px; width: 100%; height: auto; display: block; margin: 0 auto;">
+//           <!-- Header -->
+//           <tr>
+//             <td style="padding: 40px 20px 20px; text-align: center;">
+//               <div style="display: inline-block; width: 60px; height: 60px; background-color: #0d47a1; color: white; font-size: 24px; font-weight: bold; line-height: 60px; text-align: center; margin-bottom: 10px;">
+//                             <img src="https://firebasestorage.googleapis.com/v0/b/sveccha-11c31.appspot.com/o/Logo.png?alt=media&token=c8b4c22d-8256-4092-8b46-e89e001bd1fe" alt="Welcome illustration" style="max-width: 700px; width: 100%; height: auto; display: block; margin: 0 auto;">
 
-              </div>
-              <div style="font-size: 12px; color: #666666; letter-spacing: 2px; margin-top: 5px;">
-                INDIGO RHAPSODY<br>
-                <span style="font-size: 10px;">MOBILE EXPERIENCE</span>
-              </div>
-            </td>
-          </tr>
+//               </div>
+//               <div style="font-size: 12px; color: #666666; letter-spacing: 2px; margin-top: 5px;">
+//                 INDIGO RHAPSODY<br>
+//                 <span style="font-size: 10px;">MOBILE EXPERIENCE</span>
+//               </div>
+//             </td>
+//           </tr>
 
-          <!-- Main Content -->
-          <tr>
-            <td style="padding: 20px 40px; text-align: center;">
-              <h2 style="margin: 0 0 10px; font-size: 16px; color: #666666; font-weight: normal; letter-spacing: 1px;">Hello, ${displayName}</h2>
-              <h1 style="margin: 0 0 20px; font-size: 32px; color: #0d47a1; font-weight: bold; line-height: 1.2;">Nice to meet you!</h1>
-              <p style="margin: 0 0 30px; font-size: 16px; color: #666666; line-height: 1.5;">Welcome to Indigo Rhapsody. We are very happy to have you with us.</p>
-              <p style="margin: 0 0 30px; font-size: 18px; color: #0d47a1; font-weight: 500;">Enjoy your journey with Us</p>
-              <a href="https://indigorhapsody.com" style="display: inline-block; background-color: #0d47a1; color: white; text-decoration: none; padding: 15px 40px; border-radius: 25px; font-size: 16px; font-weight: 500; letter-spacing: 1px;">VISIT WEBSITE</a>
-            </td>
-          </tr>
+//           <!-- Main Content -->
+//           <tr>
+//             <td style="padding: 20px 40px; text-align: center;">
+//               <h2 style="margin: 0 0 10px; font-size: 16px; color: #666666; font-weight: normal; letter-spacing: 1px;">Hello, ${displayName}</h2>
+//               <h1 style="margin: 0 0 20px; font-size: 32px; color: #0d47a1; font-weight: bold; line-height: 1.2;">Nice to meet you!</h1>
+//               <p style="margin: 0 0 30px; font-size: 16px; color: #666666; line-height: 1.5;">Welcome to Indigo Rhapsody. We are very happy to have you with us.</p>
+//               <p style="margin: 0 0 30px; font-size: 18px; color: #0d47a1; font-weight: 500;">Enjoy your journey with Us</p>
+//               <a href="https://indigorhapsody.com" style="display: inline-block; background-color: #0d47a1; color: white; text-decoration: none; padding: 15px 40px; border-radius: 25px; font-size: 16px; font-weight: 500; letter-spacing: 1px;">VISIT WEBSITE</a>
+//             </td>
+//           </tr>
 
-          <!-- Illustration -->
-          <tr>
-            <td style="padding: 40px 20px; text-align: center;">
-              <img src="https://firebasestorage.googleapis.com/v0/b/popandpose-1ea69.firebasestorage.app/o/images%2FChatGPT%20Image%20Jun%202%2C%202025%2C%2004_18_45%20PM.png?alt=media&token=088a409e-e20a-4900-9012-5ae37c0e5b86" alt="Welcome illustration" style="max-width: 700px; width: 100%; height: auto; display: block; margin: 0 auto;">
-            </td>
-          </tr>
+//           <!-- Illustration -->
+//           <tr>
+//             <td style="padding: 40px 20px; text-align: center;">
+//               <img src="https://firebasestorage.googleapis.com/v0/b/popandpose-1ea69.firebasestorage.app/o/images%2FChatGPT%20Image%20Jun%202%2C%202025%2C%2004_18_45%20PM.png?alt=media&token=088a409e-e20a-4900-9012-5ae37c0e5b86" alt="Welcome illustration" style="max-width: 700px; width: 100%; height: auto; display: block; margin: 0 auto;">
+//             </td>
+//           </tr>
 
-          <!-- Footer Logo -->
-          <tr>
-            <td style="padding: 40px 20px 20px; text-align: center; border-top: 1px solid #eeeeee;">
-              <div style="display: inline-block; width: 60px; height: 60px; background-color: #0d47a1; color: white; font-size: 24px; font-weight: bold; line-height: 60px; text-align: center; margin-bottom: 20px;">
-                                            <img src="https://firebasestorage.googleapis.com/v0/b/sveccha-11c31.appspot.com/o/Logo.png?alt=media&token=c8b4c22d-8256-4092-8b46-e89e001bd1fe" alt="Welcome illustration" style="max-width: 700px; width: 100%; height: auto; display: block; margin: 0 auto;">
+//           <!-- Footer Logo -->
+//           <tr>
+//             <td style="padding: 40px 20px 20px; text-align: center; border-top: 1px solid #eeeeee;">
+//               <div style="display: inline-block; width: 60px; height: 60px; background-color: #0d47a1; color: white; font-size: 24px; font-weight: bold; line-height: 60px; text-align: center; margin-bottom: 20px;">
+//                                             <img src="https://firebasestorage.googleapis.com/v0/b/sveccha-11c31.appspot.com/o/Logo.png?alt=media&token=c8b4c22d-8256-4092-8b46-e89e001bd1fe" alt="Welcome illustration" style="max-width: 700px; width: 100%; height: auto; display: block; margin: 0 auto;">
 
-              </div>
-            </td>
-          </tr>
+//               </div>
+//             </td>
+//           </tr>
 
-          <!-- Social Follow Text -->
-          <tr>
-            <td style="padding: 0 20px 20px; text-align: center;">
-              <p style="margin: 0; font-size: 16px; color: #666666;">Follow us on social platforms to receive updates and exclusive offers</p>
-            </td>
-          </tr>
+//           <!-- Social Follow Text -->
+//           <tr>
+//             <td style="padding: 0 20px 20px; text-align: center;">
+//               <p style="margin: 0; font-size: 16px; color: #666666;">Follow us on social platforms to receive updates and exclusive offers</p>
+//             </td>
+//           </tr>
 
-          <!-- Social Icons -->
-          <tr>
-            <td style="padding: 0 20px 30px; text-align: center;">
-              <table role="presentation" style="margin: 0 auto; border-collapse: collapse;">
-                <tr>
-                  <td style="padding: 0 10px;">
-                    <a href="https://www.facebook.com/profile.php?id=61557629035469#" style="display: inline-block; width: 40px; height: 40px; background-color: #0d47a1; border-radius: 50%; text-align: center; line-height: 40px; text-decoration: none;">
-                      <span style="color: white; font-size: 18px;">
-                                             <img src="https://upload.wikimedia.org/wikipedia/commons/c/cd/Facebook_logo_%28square%29.png" alt="Welcome illustration" style="max-width: 700px; width: 100%; height: auto; display: block; margin: 0 auto;">
+//           <!-- Social Icons -->
+//           <tr>
+//             <td style="padding: 0 20px 30px; text-align: center;">
+//               <table role="presentation" style="margin: 0 auto; border-collapse: collapse;">
+//                 <tr>
+//                   <td style="padding: 0 10px;">
+//                     <a href="https://www.facebook.com/profile.php?id=61557629035469#" style="display: inline-block; width: 40px; height: 40px; background-color: #0d47a1; border-radius: 50%; text-align: center; line-height: 40px; text-decoration: none;">
+//                       <span style="color: white; font-size: 18px;">
+//                                              <img src="https://upload.wikimedia.org/wikipedia/commons/c/cd/Facebook_logo_%28square%29.png" alt="Welcome illustration" style="max-width: 700px; width: 100%; height: auto; display: block; margin: 0 auto;">
 
-</span>
-                    </a>
-                  </td>
-                  <td style="padding: 0 10px;">
-                    <a href="https://www.instagram.com/indigorhapsodyofficial/" style="display: inline-block; width: 40px; height: 40px; background-color: #0d47a1; border-radius: 50%; text-align: center; line-height: 40px; text-decoration: none;">
-                      <span style="color: white; font-size: 18px;">                                                 
-                       <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/a/a5/Instagram_icon.png/1200px-Instagram_icon.png" alt="Welcome illustration" style="max-width: 700px; width: 100%; height: auto; display: block; margin: 0 auto;">
-</span>
-                    </a>
-                  </td>
+// </span>
+//                     </a>
+//                   </td>
+//                   <td style="padding: 0 10px;">
+//                     <a href="https://www.instagram.com/indigorhapsodyofficial/" style="display: inline-block; width: 40px; height: 40px; background-color: #0d47a1; border-radius: 50%; text-align: center; line-height: 40px; text-decoration: none;">
+//                       <span style="color: white; font-size: 18px;">                                                 
+//                        <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/a/a5/Instagram_icon.png/1200px-Instagram_icon.png" alt="Welcome illustration" style="max-width: 700px; width: 100%; height: auto; display: block; margin: 0 auto;">
+// </span>
+//                     </a>
+//                   </td>
                  
-                </tr>
-              </table>
-            </td>
-          </tr>
+//                 </tr>
+//               </table>
+//             </td>
+//           </tr>
 
-          <!-- Navigation Links -->
-          <tr>
-            <td style="padding: 0 20px 30px; text-align: center;">
-              <table role="presentation" style="margin: 0 auto; border-collapse: collapse;">
-                <tr>
-                  <td style="padding: 0 20px;">
-                    <a href="https://indigorhapsody.com" style="color: #666666; text-decoration: underline; font-size: 14px;">Home</a>
-                  </td>
-                  <td style="padding: 0 20px;">
-                    <a href="https://indigorhapsody.com/contact" style="color: #666666; text-decoration: underline; font-size: 14px;">Contact</a>
-                  </td>
-                  <td style="padding: 0 20px;">
-                    <a href="https://indigorhapsody.com/services" style="color: #666666; text-decoration: underline; font-size: 14px;">Service</a>
-                  </td>
-                </tr>
-              </table>
-            </td>
-          </tr>
+//           <!-- Navigation Links -->
+//           <tr>
+//             <td style="padding: 0 20px 30px; text-align: center;">
+//               <table role="presentation" style="margin: 0 auto; border-collapse: collapse;">
+//                 <tr>
+//                   <td style="padding: 0 20px;">
+//                     <a href="https://indigorhapsody.com" style="color: #666666; text-decoration: underline; font-size: 14px;">Home</a>
+//                   </td>
+//                   <td style="padding: 0 20px;">
+//                     <a href="https://indigorhapsody.com/contact" style="color: #666666; text-decoration: underline; font-size: 14px;">Contact</a>
+//                   </td>
+//                   <td style="padding: 0 20px;">
+//                     <a href="https://indigorhapsody.com/services" style="color: #666666; text-decoration: underline; font-size: 14px;">Service</a>
+//                   </td>
+//                 </tr>
+//               </table>
+//             </td>
+//           </tr>
 
-          <!-- Footer -->
-          <tr>
-            <td style="background-color: #0d47a1; padding: 30px 20px; text-align: center;">
-              <p style="margin: 0 0 20px; color: #cccccc; font-size: 12px; line-height: 1.5;">
-                This email was sent to ${email} because you signed up on our app or made a purchase.
-              </p>
+//           <!-- Footer -->
+//           <tr>
+//             <td style="background-color: #0d47a1; padding: 30px 20px; text-align: center;">
+//               <p style="margin: 0 0 20px; color: #cccccc; font-size: 12px; line-height: 1.5;">
+//                 This email was sent to ${email} because you signed up on our app or made a purchase.
+//               </p>
              
-              <div style="display: inline-block; background-color: #1565c0; padding: 8px 15px; border-radius: 4px;">
-                <span style="color: white; font-size: 14px; font-weight: bold;">Indigo Rhapsody</span>
-              </div>
-            </td>
-          </tr>
+//               <div style="display: inline-block; background-color: #1565c0; padding: 8px 15px; border-radius: 4px;">
+//                 <span style="color: white; font-size: 14px; font-weight: bold;">Indigo Rhapsody</span>
+//               </div>
+//             </td>
+//           </tr>
 
-        </table>
-      </td>
-    </tr>
-  </table>
-</body>
-</html>
-`,
-    };
+//         </table>
+//       </td>
+//     </tr>
+//   </table>
+// </body>
+// </html>
+// `,
+//     };
 
-    // Send the welcome email
-    await transporter.sendMail(mailOptions);
+//       // Send the welcome email
+//       await transporter.sendMail(mailOptions);
+//       console.log(`✅ Welcome email sent successfully to ${email}`);
+//     } catch (emailError) {
+//       // Log email error but don't fail user creation
+//       console.error("⚠️ Failed to send welcome email:", emailError.message);
+//       console.error("Email error details:", {
+//         code: emailError.code,
+//         response: emailError.response,
+//         email: email,
+//       });
+//       // Continue with user creation even if email fails
+//     }
 
     // Respond with success
     res.status(201).json({
