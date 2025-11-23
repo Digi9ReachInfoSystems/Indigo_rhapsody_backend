@@ -3,6 +3,8 @@ const crypto = require("crypto");
 const Order = require("../models/orderModel");
 const PaymentDetails = require("../models/paymentDetailsModel");
 const { createOrder } = require("./orderController"); // Import your order controller
+const RazorpayService = require("../service/razorpayService");
+const Cart = require("../models/cartModel");
 
 // 1. Create a Payment
 // 1. Create a Payment
@@ -264,6 +266,360 @@ exports.getAllPayments = async (req, res) => {
     console.error("Error fetching all payments:", error.message);
     return res.status(500).json({
       message: "Error fetching all payments",
+      error: error.message,
+    });
+  }
+};
+
+// Razorpay Payment Initiation
+exports.initiateRazorpayPayment = async (req, res) => {
+  try {
+    const { userId, cartId, amount, currency = "INR", notes = {} } = req.body;
+
+    // Validate required fields
+    if (!userId || !cartId || !amount) {
+      return res.status(400).json({
+        success: false,
+        message: "userId, cartId, and amount are required",
+      });
+    }
+
+    // Validate cart exists
+    const cart = await Cart.findById(cartId);
+    if (!cart) {
+      return res.status(404).json({
+        success: false,
+        message: "Cart not found",
+      });
+    }
+
+    // Generate transaction ID
+    const transactionId = generateTransactionId();
+
+    // Check if transactionId already exists
+    const existingPayment = await PaymentDetails.findOne({ transactionId });
+    if (existingPayment) {
+      return res.status(400).json({
+        success: false,
+        message: "Duplicate transaction ID generated. Please try again.",
+      });
+    }
+
+    // Create Razorpay order
+    // Receipt must be max 40 characters - use timestamp + short transactionId prefix
+    const receipt = `rcpt_${Date.now()}${transactionId.substring(0, 8)}`;
+    const orderData = {
+      amount: parseFloat(amount),
+      currency: currency,
+      receipt: receipt,
+      notes: {
+        userId: userId.toString(),
+        cartId: cartId.toString(),
+        transactionId: transactionId,
+        ...notes,
+      },
+    };
+
+    const razorpayOrder = await RazorpayService.createOrder(orderData);
+
+    if (!razorpayOrder.success) {
+      return res.status(500).json({
+        success: false,
+        message: "Failed to create Razorpay order",
+        error: razorpayOrder.message,
+      });
+    }
+
+    // Create payment record in database
+    const newPayment = new PaymentDetails({
+      userId,
+      cartId,
+      paymentMethod: "razorpay",
+      transactionId: transactionId,
+      orderId: razorpayOrder.data.orderId,
+      paymentId: razorpayOrder.data.orderId, // Razorpay order ID
+      amount: parseFloat(amount),
+      currency: currency,
+      paymentStatus: "Initiated",
+      status: "initiated",
+      paymentOptions: {
+        razorpayOrderId: razorpayOrder.data.orderId,
+        receipt: receipt,
+      },
+      notes: JSON.stringify(notes),
+    });
+
+    await newPayment.save();
+
+    // Return Razorpay order details for client-side integration
+    return res.status(200).json({
+      success: true,
+      message: "Razorpay payment initiated successfully",
+      data: {
+        orderId: razorpayOrder.data.orderId,
+        amount: razorpayOrder.data.amount,
+        currency: razorpayOrder.data.currency,
+        receipt: razorpayOrder.data.receipt,
+        key: process.env.RAZORPAY_KEY_ID,
+        transactionId: transactionId,
+        paymentId: newPayment._id,
+      },
+    });
+  } catch (error) {
+    console.error("Error initiating Razorpay payment:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Error initiating Razorpay payment",
+      error: error.message,
+    });
+  }
+};
+
+// Razorpay Webhook Handler
+exports.razorpayWebhook = async (req, res) => {
+  try {
+    console.log("🔔 Razorpay Webhook triggered");
+    console.log("Webhook payload:", JSON.stringify(req.body, null, 2));
+
+    const webhookSignature = req.headers["x-razorpay-signature"];
+    const webhookSecret = process.env.RAZORPAY_WEBHOOK_SECRET;
+
+    if (!webhookSignature) {
+      console.error("❌ Missing Razorpay webhook signature");
+      return res.status(400).json({
+        success: false,
+        message: "Missing webhook signature",
+      });
+    }
+
+    // Verify webhook signature using raw body if available, otherwise use stringified body
+    const crypto = require("crypto");
+    const body = req.rawBody || JSON.stringify(req.body);
+    const expectedSignature = crypto
+      .createHmac("sha256", webhookSecret)
+      .update(body)
+      .digest("hex");
+
+    if (webhookSignature !== expectedSignature) {
+      console.error("❌ Invalid Razorpay webhook signature");
+      console.error("Expected:", expectedSignature);
+      console.error("Received:", webhookSignature);
+      return res.status(400).json({
+        success: false,
+        message: "Invalid webhook signature",
+      });
+    }
+
+    console.log("✅ Webhook signature verified");
+
+    // Process webhook event
+    const webhookData = RazorpayService.handleWebhook(req.body);
+
+    if (!webhookData.success) {
+      console.error("❌ Failed to handle webhook:", webhookData.message);
+      return res.status(400).json({
+        success: false,
+        message: webhookData.message,
+      });
+    }
+
+    const { event, data } = webhookData;
+
+    console.log(`📦 Processing Razorpay event: ${event}`);
+    console.log("Event data:", JSON.stringify(data, null, 2));
+
+    // Handle different webhook events (support both formats: payment_captured and payment.captured)
+    if (
+      event === "payment_captured" ||
+      event === "payment.captured" ||
+      event === "order_paid" ||
+      event === "order.paid"
+    ) {
+      const razorpayOrderId = data.orderId;
+      const razorpayPaymentId = data.paymentId || data.orderId; // Fallback to orderId if paymentId not available
+      const amount = data.amount / 100; // Convert from paise to rupees
+      const status = data.status || (event.includes("paid") ? "paid" : "captured");
+
+      console.log(`💰 Payment captured for order: ${razorpayOrderId}`);
+      console.log(`💳 Payment ID: ${razorpayPaymentId}`);
+      console.log(`💵 Amount: ₹${amount}`);
+
+      // Find payment record by Razorpay order ID
+      let payment = await PaymentDetails.findOne({
+        orderId: razorpayOrderId,
+        paymentMethod: "razorpay",
+      });
+
+      // If not found, try to find by paymentId
+      if (!payment) {
+        payment = await PaymentDetails.findOne({
+          paymentId: razorpayOrderId,
+          paymentMethod: "razorpay",
+        });
+      }
+
+      if (!payment) {
+        console.error(`❌ Payment record not found for Razorpay order: ${razorpayOrderId}`);
+        return res.status(404).json({
+          success: false,
+          message: "Payment record not found",
+        });
+      }
+
+      // Update payment status
+      const updateData = {
+        paymentStatus: status === "captured" || status === "paid" ? "Completed" : "Failed",
+        status: status === "captured" || status === "paid" ? "completed" : "failed",
+        completedAt: status === "captured" || status === "paid" ? new Date() : null,
+        updatedAt: new Date(),
+      };
+
+      // Only update paymentId if it's different from orderId (i.e., we have an actual payment ID)
+      if (razorpayPaymentId && razorpayPaymentId !== razorpayOrderId) {
+        updateData.paymentId = razorpayPaymentId;
+      }
+
+      payment = await PaymentDetails.findByIdAndUpdate(
+        payment._id,
+        { $set: updateData },
+        { new: true }
+      );
+
+      console.log("✅ Payment status updated:", {
+        paymentId: payment._id,
+        transactionId: payment.transactionId,
+        status: payment.status,
+        paymentStatus: payment.paymentStatus,
+      });
+
+      // Create order if payment is successful
+      if (status === "captured" || status === "paid") {
+        console.log("🎉 Payment successful, creating order...");
+
+        // Get cart details to extract address information
+        const cart = await Cart.findById(payment.cartId);
+
+        if (!cart) {
+          console.error("❌ Cart not found for order creation");
+          return res.status(404).json({
+            success: false,
+            message: "Cart not found for order creation",
+          });
+        }
+
+        // Check if cart has address information
+        if (
+          !cart.address ||
+          !cart.address.street ||
+          !cart.address.city ||
+          !cart.address.state ||
+          !cart.address.pincode
+        ) {
+          console.error("❌ Cart does not have complete address information");
+          return res.status(400).json({
+            success: false,
+            message:
+              "Cart does not have complete address information. Please update cart address before payment.",
+          });
+        }
+
+        // Use address from cart
+        const address = {
+          street: cart.address.street,
+          city: cart.address.city,
+          state: cart.address.state,
+          pincode: cart.address.pincode,
+          phoneNumber: cart.address.phoneNumber || "",
+        };
+
+        const orderRequest = {
+          body: {
+            userId: payment.userId,
+            cartId: payment.cartId,
+            paymentMethod: "Razorpay",
+            address: address,
+            notes: `Payment completed via Razorpay - Payment ID: ${razorpayPaymentId}, Order ID: ${razorpayOrderId}`,
+          },
+        };
+
+        console.log("🛒 Creating order with request:", JSON.stringify(orderRequest, null, 2));
+
+        try {
+          await createOrder(orderRequest, res);
+          // Note: createOrder already sends a response, so we don't send another one here
+          return; // Exit early since createOrder handles the response
+        } catch (error) {
+          console.error("❌ Error creating order:", error.message);
+          return res.status(500).json({
+            success: false,
+            message: "Error creating order",
+            error: error.message,
+          });
+        }
+      } else {
+        console.log("❌ Payment failed");
+        return res.status(200).json({
+          success: true,
+          message: "Payment status updated",
+          data: {
+            paymentId: payment._id,
+            status: payment.status,
+          },
+        });
+      }
+    } else if (event === "payment_failed" || event === "payment.failed") {
+      console.log("❌ Payment failed event received");
+
+      const razorpayOrderId = data.orderId;
+      const razorpayPaymentId = data.paymentId;
+
+      // Find and update payment record
+      let payment = await PaymentDetails.findOne({
+        $or: [
+          { orderId: razorpayOrderId, paymentMethod: "razorpay" },
+          { paymentId: razorpayOrderId, paymentMethod: "razorpay" },
+        ],
+      });
+
+      if (payment) {
+        payment = await PaymentDetails.findByIdAndUpdate(
+          payment._id,
+          {
+            $set: {
+              paymentId: razorpayPaymentId,
+              paymentStatus: "Failed",
+              status: "failed",
+              failedAt: new Date(),
+              failureReason: data.errorDescription || "Payment failed",
+              updatedAt: new Date(),
+            },
+          },
+          { new: true }
+        );
+
+        console.log("✅ Payment failure recorded:", {
+          paymentId: payment._id,
+          status: payment.status,
+        });
+      }
+
+      return res.status(200).json({
+        success: true,
+        message: "Payment failure recorded",
+      });
+    } else {
+      console.log(`ℹ️ Unhandled webhook event: ${event}`);
+      return res.status(200).json({
+        success: true,
+        message: "Webhook received but event not processed",
+        event: event,
+      });
+    }
+  } catch (error) {
+    console.error("❌ Error processing Razorpay webhook:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Error processing webhook",
       error: error.message,
     });
   }
