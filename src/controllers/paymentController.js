@@ -495,17 +495,32 @@ exports.razorpayWebhook = async (req, res) => {
       // Create order if payment is successful
       if (status === "captured" || status === "paid") {
         console.log("🎉 Payment successful, creating order...");
+        console.log("📋 Payment Details:", {
+          razorpayOrderId: razorpayOrderId,
+          razorpayPaymentId: razorpayPaymentId,
+          amount: amount,
+          userId: payment.userId.toString(),
+          cartId: payment.cartId.toString(),
+          transactionId: payment.transactionId,
+        });
 
         // Get cart details to extract address information
         const cart = await Cart.findById(payment.cartId);
 
         if (!cart) {
           console.error("❌ Cart not found for order creation");
+          console.error("Cart ID:", payment.cartId);
           return res.status(404).json({
             success: false,
             message: "Cart not found for order creation",
           });
         }
+
+        console.log("✅ Cart found:", {
+          cartId: cart._id.toString(),
+          totalAmount: cart.total_amount,
+          productCount: cart.products.length,
+        });
 
         // Check if cart has address information
         if (
@@ -516,6 +531,7 @@ exports.razorpayWebhook = async (req, res) => {
           !cart.address.pincode
         ) {
           console.error("❌ Cart does not have complete address information");
+          console.error("Cart address:", cart.address);
           return res.status(400).json({
             success: false,
             message:
@@ -532,6 +548,8 @@ exports.razorpayWebhook = async (req, res) => {
           phoneNumber: cart.address.phoneNumber || "",
         };
 
+        console.log("📍 Shipping Address:", address);
+
         const orderRequest = {
           body: {
             userId: payment.userId,
@@ -542,14 +560,37 @@ exports.razorpayWebhook = async (req, res) => {
           },
         };
 
-        console.log("🛒 Creating order with request:", JSON.stringify(orderRequest, null, 2));
+        console.log("🛒 Creating order from Razorpay webhook...");
+        console.log("📦 Order Request:", {
+          userId: orderRequest.body.userId.toString(),
+          cartId: orderRequest.body.cartId.toString(),
+          paymentMethod: orderRequest.body.paymentMethod,
+          address: orderRequest.body.address,
+          notes: orderRequest.body.notes,
+        });
 
         try {
+          console.log("⏳ Calling createOrder function...");
           await createOrder(orderRequest, res);
+          console.log("✅ Order created successfully from Razorpay webhook!");
+          console.log("📝 Order Details:", {
+            userId: payment.userId.toString(),
+            cartId: payment.cartId.toString(),
+            razorpayPaymentId: razorpayPaymentId,
+            razorpayOrderId: razorpayOrderId,
+            amount: amount,
+            paymentMethod: "Razorpay",
+          });
           // Note: createOrder already sends a response, so we don't send another one here
           return; // Exit early since createOrder handles the response
         } catch (error) {
-          console.error("❌ Error creating order:", error.message);
+          console.error("❌ Error creating order from Razorpay webhook:", error);
+          console.error("❌ Error details:", {
+            message: error.message,
+            stack: error.stack,
+            userId: payment.userId.toString(),
+            cartId: payment.cartId.toString(),
+          });
           return res.status(500).json({
             success: false,
             message: "Error creating order",
