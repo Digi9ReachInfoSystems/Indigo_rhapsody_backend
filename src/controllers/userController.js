@@ -106,33 +106,92 @@ exports.createUser = async (req, res) => {
       address, // Array of addresses
     } = req.body;
 
-    // Check if the user already exists
-    const existingUser = await User.findOne({ email });
-    if (existingUser) {
+    // Validate that at least email or phoneNumber is provided
+    if (!email && !phoneNumber) {
       return res.status(400).json({
         success: false,
-        message: "User already exists with this email",
+        message: "Either email or phoneNumber is required to create an account",
       });
     }
 
-    const newUser = new User({
-      email,
+    // Validate displayName is provided
+    if (!displayName) {
+      return res.status(400).json({
+        success: false,
+        message: "displayName is required",
+      });
+    }
+
+    // Check if user already exists by email (only if email is provided)
+    if (email) {
+      const existingUserByEmail = await User.findOne({ email });
+      if (existingUserByEmail) {
+        return res.status(400).json({
+          success: false,
+          message: "User already exists with this email",
+        });
+      }
+    }
+
+    // Check if user already exists by phoneNumber (only if phoneNumber is provided)
+    if (phoneNumber) {
+      const existingUserByPhone = await User.findOne({ phoneNumber });
+      if (existingUserByPhone) {
+        return res.status(400).json({
+          success: false,
+          message: "User already exists with this phone number",
+        });
+      }
+    }
+
+    // Build user object with only provided fields
+    const userData = {
       displayName,
-      phoneNumber,
-      password,
       role,
       is_creator,
-    });
+    };
+
+    // Only include email if provided
+    if (email) {
+      userData.email = email;
+    }
+
+    // Only include phoneNumber if provided
+    if (phoneNumber) {
+      userData.phoneNumber = phoneNumber;
+    }
+
+    // Only include password if provided
+    if (password) {
+      userData.password = password;
+    }
+
+    // Only include address if provided
+    if (address && Array.isArray(address)) {
+      userData.address = address;
+    }
+
+    const newUser = new User(userData);
 
     // Save the new user to the database
     await newUser.save();
 
+    // Build token payload with only available fields
     const tokenPayload = {
       id: newUser._id,
-      email: newUser.email,
       role: newUser.role,
       is_creator: newUser.is_creator,
     };
+
+    // Only include email in token if it exists
+    if (newUser.email) {
+      tokenPayload.email = newUser.email;
+    }
+
+    // Only include phoneNumber in token if it exists
+    if (newUser.phoneNumber) {
+      tokenPayload.phoneNumber = newUser.phoneNumber;
+    }
 
     const token = jwt.sign(tokenPayload, process.env.JWT_SECRET, {
       expiresIn: process.env.JWT_EXPIRES_IN || "1d",
@@ -300,20 +359,35 @@ exports.createUser = async (req, res) => {
 //       // Continue with user creation even if email fails
 //     }
 
+    // Build response user object with only available fields
+    const userResponse = {
+      id: newUser._id,
+      displayName: newUser.displayName,
+      role: newUser.role,
+      is_creator: newUser.is_creator,
+      createdTime: newUser.createdTime || newUser.createdAt,
+    };
+
+    // Only include email in response if it exists
+    if (newUser.email) {
+      userResponse.email = newUser.email;
+    }
+
+    // Only include phoneNumber in response if it exists
+    if (newUser.phoneNumber) {
+      userResponse.phoneNumber = newUser.phoneNumber;
+    }
+
+    // Only include address in response if it exists
+    if (newUser.address && newUser.address.length > 0) {
+      userResponse.address = newUser.address;
+    }
+
     // Respond with success
     res.status(201).json({
       success: true,
       message: "User created successfully",
-      user: {
-        id: newUser._id,
-        email: newUser.email,
-        displayName: newUser.displayName,
-        phoneNumber: newUser.phoneNumber,
-        role: newUser.role,
-        is_creator: newUser.is_creator,
-        createdTime: newUser.createdAt,
-        address: newUser.address,
-      },
+      user: userResponse,
       token: `Bearer ${token}`,
     });
   } catch (error) {
