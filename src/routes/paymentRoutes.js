@@ -27,4 +27,8 @@ router.put(
 );
 router.post("/webhook", paymentController.paymentWebhook);
 
+// Razorpay routes
+router.post("/razorpay/initiate", paymentController.initiateRazorpayPayment);
+router.post("/razorpay/webhook", paymentController.razorpayWebhook);
+
 module.exports = router;

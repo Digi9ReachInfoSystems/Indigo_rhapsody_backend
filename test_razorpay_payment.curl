@@ -1,0 +1,60 @@
+# Razorpay Payment Integration Test Scripts
+# Replace the userId, cartId with actual values from your database
+
+# ============================================
+# 1. Initiate Razorpay Payment
+# ============================================
+
+# Basic Payment Initiation
+curl -X POST http://localhost:5000/payment/razorpay/initiate \
+  -H "Content-Type: application/json" \
+  -d '{
+    "userId": "YOUR_USER_ID_HERE",
+    "cartId": "YOUR_CART_ID_HERE",
+    "amount": 1000.00,
+    "currency": "INR"
+  }'
+
+# Payment with Notes
+curl -X POST http://localhost:5000/payment/razorpay/initiate \
+  -H "Content-Type: application/json" \
+  -d '{
+    "userId": "YOUR_USER_ID_HERE",
+    "cartId": "YOUR_CART_ID_HERE",
+    "amount": 1500.50,
+    "currency": "INR",
+    "notes": {
+      "order_description": "Test order for Razorpay integration",
+      "customer_note": "Please process quickly"
+    }
+  }'
+
+# ============================================
+# 2. Get Payment Details by Transaction ID
+# ============================================
+
+curl -X GET http://localhost:5000/payment/transaction/YOUR_TRANSACTION_ID_HERE \
+  -H "Content-Type: application/json"
+
+# ============================================
+# 3. Get Payment Details by Payment ID
+# ============================================
+
+curl -X GET http://localhost:5000/payment/getPaymentDetails/YOUR_PAYMENT_ID_HERE \
+  -H "Content-Type: application/json"
+
+# ============================================
+# Production URL Examples
+# ============================================
+
+# Initiate Payment (Production)
+curl -X POST https://your-domain.com/payment/razorpay/initiate \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN" \
+  -d '{
+    "userId": "YOUR_USER_ID_HERE",
+    "cartId": "YOUR_CART_ID_HERE",
+    "amount": 1000.00,
+    "currency": "INR"
+  }'
+
