@@ -15,8 +15,9 @@ const userSchema = new mongoose.Schema({
   },
   phoneNumber: {
     type: String, // Changed to String to support international format
-    required: true,
+    required: false, // Optional - at least email or phoneNumber should be provided
     unique: true,
+    sparse: true, // Allows multiple null/undefined values for unique constraint
   },
   firebaseUid: {
     type: String,
