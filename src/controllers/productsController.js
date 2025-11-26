@@ -2222,3 +2222,284 @@ exports.bulkUpdateProducts = async (req, res) => {
     });
   }
 };
+
+// Add or Update Return Policy for a Product
+exports.addReturnPolicy = async (req, res) => {
+  try {
+    const { productId } = req.params;
+    const { returnable, return_Policy, return_Window, return_Window_Unit } = req.body;
+
+    // Validate productId
+    if (!productId || !mongoose.Types.ObjectId.isValid(productId)) {
+      return res.status(400).json({
+        success: false,
+        message: "Valid product ID is required",
+      });
+    }
+
+    // Find the product
+    const product = await Product.findById(productId);
+    if (!product) {
+      return res.status(404).json({
+        success: false,
+        message: "Product not found",
+      });
+    }
+
+    // Build update object with only provided fields
+    const updateData = {};
+
+    // Update returnable status if provided
+    if (returnable !== undefined) {
+      updateData.returnable = returnable;
+    }
+
+    // Update return policy if provided
+    if (return_Policy !== undefined) {
+      if (typeof return_Policy !== 'string' || return_Policy.trim() === '') {
+        return res.status(400).json({
+          success: false,
+          message: "Return policy must be a non-empty string",
+        });
+      }
+      updateData.return_Policy = return_Policy.trim();
+    }
+
+    // Update return window if provided
+    if (return_Window !== undefined) {
+      if (typeof return_Window !== 'number' || return_Window < 0) {
+        return res.status(400).json({
+          success: false,
+          message: "Return window must be a positive number",
+        });
+      }
+      updateData.return_Window = return_Window;
+    }
+
+    // Update return window unit if provided
+    if (return_Window_Unit !== undefined) {
+      const validUnits = ['days', 'weeks', 'months'];
+      if (!validUnits.includes(return_Window_Unit.toLowerCase())) {
+        return res.status(400).json({
+          success: false,
+          message: `Return window unit must be one of: ${validUnits.join(', ')}`,
+        });
+      }
+      updateData.return_Window_Unit = return_Window_Unit.toLowerCase();
+    }
+
+    // Check if at least one field is being updated
+    if (Object.keys(updateData).length === 0) {
+      return res.status(400).json({
+        success: false,
+        message: "At least one return policy field must be provided for update",
+      });
+    }
+
+    // If returnable is true, ensure required fields are present
+    if (updateData.returnable === true || (updateData.returnable === undefined && product.returnable === true)) {
+      const finalReturnable = updateData.returnable !== undefined ? updateData.returnable : product.returnable;
+      const finalReturnPolicy = updateData.return_Policy || product.return_Policy;
+      const finalReturnWindow = updateData.return_Window !== undefined ? updateData.return_Window : product.return_Window;
+      const finalReturnWindowUnit = updateData.return_Window_Unit || product.return_Window_Unit;
+
+      if (!finalReturnPolicy || !finalReturnWindow || !finalReturnWindowUnit) {
+        return res.status(400).json({
+          success: false,
+          message: "When returnable is true, return_Policy, return_Window, and return_Window_Unit are required",
+        });
+      }
+    }
+
+    // Update the product
+    const updatedProduct = await Product.findByIdAndUpdate(
+      productId,
+      { $set: updateData },
+      { new: true, runValidators: true }
+    ).populate('designerRef', 'userId').populate('category', 'name').populate('subCategory', 'name');
+
+    if (!updatedProduct) {
+      return res.status(404).json({
+        success: false,
+        message: "Product not found after update attempt",
+      });
+    }
+
+    console.log(`✅ Return policy updated for product: ${productId}`);
+
+    return res.status(200).json({
+      success: true,
+      message: "Return policy updated successfully",
+      data: {
+        productId: updatedProduct._id,
+        productName: updatedProduct.productName,
+        returnable: updatedProduct.returnable,
+        return_Policy: updatedProduct.return_Policy,
+        return_Window: updatedProduct.return_Window,
+        return_Window_Unit: updatedProduct.return_Window_Unit,
+      },
+    });
+  } catch (error) {
+    console.error("Error adding/updating return policy:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Error updating return policy",
+      error: error.message,
+    });
+  }
+};
+
+// Get Return Policy for a Product
+exports.getReturnPolicy = async (req, res) => {
+  try {
+    const { productId } = req.params;
+
+    // Validate productId
+    if (!productId || !mongoose.Types.ObjectId.isValid(productId)) {
+      return res.status(400).json({
+        success: false,
+        message: "Valid product ID is required",
+      });
+    }
+
+    // Find the product and select only return policy fields
+    const product = await Product.findById(productId).select(
+      'productName returnable return_Policy return_Window return_Window_Unit'
+    );
+
+    if (!product) {
+      return res.status(404).json({
+        success: false,
+        message: "Product not found",
+      });
+    }
+
+    return res.status(200).json({
+      success: true,
+      message: "Return policy retrieved successfully",
+      data: {
+        productId: product._id,
+        productName: product.productName,
+        returnable: product.returnable,
+        return_Policy: product.return_Policy,
+        return_Window: product.return_Window,
+        return_Window_Unit: product.return_Window_Unit,
+      },
+    });
+  } catch (error) {
+    console.error("Error getting return policy:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Error retrieving return policy",
+      error: error.message,
+    });
+  }
+};
+
+// Bulk Update Return Policy for Multiple Products
+exports.bulkUpdateReturnPolicy = async (req, res) => {
+  try {
+    const { products, returnable, return_Policy, return_Window, return_Window_Unit } = req.body;
+
+    // Validate products array
+    if (!products || !Array.isArray(products) || products.length === 0) {
+      return res.status(400).json({
+        success: false,
+        message: "Products array is required and must not be empty",
+      });
+    }
+
+    // Validate at least one return policy field is provided
+    if (returnable === undefined && !return_Policy && return_Window === undefined && !return_Window_Unit) {
+      return res.status(400).json({
+        success: false,
+        message: "At least one return policy field must be provided",
+      });
+    }
+
+    // Validate return window unit if provided
+    if (return_Window_Unit) {
+      const validUnits = ['days', 'weeks', 'months'];
+      if (!validUnits.includes(return_Window_Unit.toLowerCase())) {
+        return res.status(400).json({
+          success: false,
+          message: `Return window unit must be one of: ${validUnits.join(', ')}`,
+        });
+      }
+    }
+
+    // Build update data
+    const updateData = {};
+    if (returnable !== undefined) updateData.returnable = returnable;
+    if (return_Policy) updateData.return_Policy = return_Policy.trim();
+    if (return_Window !== undefined) updateData.return_Window = return_Window;
+    if (return_Window_Unit) updateData.return_Window_Unit = return_Window_Unit.toLowerCase();
+
+    const results = {
+      success: [],
+      failed: [],
+      total: products.length,
+    };
+
+    // Update each product
+    for (const productId of products) {
+      try {
+        // Validate productId
+        if (!mongoose.Types.ObjectId.isValid(productId)) {
+          results.failed.push({
+            productId,
+            error: "Invalid product ID format",
+          });
+          continue;
+        }
+
+        // Check if product exists
+        const product = await Product.findById(productId);
+        if (!product) {
+          results.failed.push({
+            productId,
+            error: "Product not found",
+          });
+          continue;
+        }
+
+        // Update the product
+        const updatedProduct = await Product.findByIdAndUpdate(
+          productId,
+          { $set: updateData },
+          { new: true, runValidators: true }
+        );
+
+        if (updatedProduct) {
+          results.success.push({
+            productId: updatedProduct._id,
+            productName: updatedProduct.productName,
+          });
+        } else {
+          results.failed.push({
+            productId,
+            error: "Failed to update product",
+          });
+        }
+      } catch (error) {
+        results.failed.push({
+          productId,
+          error: error.message,
+        });
+      }
+    }
+
+    return res.status(200).json({
+      success: true,
+      message: `Bulk return policy update completed. ${results.success.length} succeeded, ${results.failed.length} failed.`,
+      data: results,
+    });
+  } catch (error) {
+    console.error("Error in bulk return policy update:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Error processing bulk return policy update",
+      error: error.message,
+    });
+  }
+};
