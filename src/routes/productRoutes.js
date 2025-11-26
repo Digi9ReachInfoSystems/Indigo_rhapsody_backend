@@ -106,4 +106,24 @@ router.post(
   productController.bulkUpdateProducts
 );
 
+// Return Policy Routes
+router.post(
+  "/:productId/return-policy",
+  authMiddleware,
+  roleMiddleware(["Admin", "Designer"]),
+  productController.addReturnPolicy
+);
+
+router.get(
+  "/:productId/return-policy",
+  productController.getReturnPolicy
+);
+
+router.post(
+  "/bulk-return-policy",
+  authMiddleware,
+  roleMiddleware(["Admin", "Designer"]),
+  productController.bulkUpdateReturnPolicy
+);
+
 module.exports = router;

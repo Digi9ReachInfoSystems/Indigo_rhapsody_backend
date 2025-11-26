@@ -103,6 +103,18 @@ const productsSchema = new mongoose.Schema({
     type: Boolean,
     default: true,
   },
+  return_Policy:{
+    type: String,
+    required: true,
+  },
+  return_Window:{
+    type: Number,
+    required: true,
+  },
+  return_Window_Unit:{
+    type: String,
+    required: true,
+  },
   reviews: [
     {
       userId: {

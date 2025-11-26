@@ -1101,29 +1101,3 @@ exports.checkUserExists = async (req, res) => {
   }
 };
 
-exports.checkUserExists = async (req, res) => {
-  const { phoneNumber } = req.body;
-
-  try {
-    const user = await User.findOne({ phoneNumber });
-    if (user) {
-      return res.status(200).json({
-        success: true,
-        message: "User exists",
-        userId: user._id,
-      });
-    } else {
-      return res.status(404).json({
-        success: false,
-        message: "User not found",
-      });
-    }
-  } catch (error) {
-    console.error("Error checking user existence:", error);
-    res.status(500).json({
-      success: false,
-      message: "Internal Server Error",
-      error: error.message,
-    });
-  }
-};
