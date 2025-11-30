@@ -844,6 +844,12 @@ exports.getProductsById = async (req, res) => {
       coverImage: product.coverImage,
       availableColors: availableColors, // Now includes color and single image
       variant: selectedVariant,
+      returnPolicy: {
+        returnable: product.returnable,
+        return_Policy: product.return_Policy,
+        return_Window: product.return_Window,
+        return_Window_Unit: product.return_Window_Unit,
+      },
       userType: userId
         ? req.user?.role === "Guest"
           ? "guest"
