@@ -845,10 +845,16 @@ exports.getProductsById = async (req, res) => {
       availableColors: availableColors, // Now includes color and single image
       variant: selectedVariant,
       returnPolicy: {
-        returnable: product.returnable,
-        return_Policy: product.return_Policy,
-        return_Window: product.return_Window,
-        return_Window_Unit: product.return_Window_Unit,
+        returnable: product.returnable !== undefined ? product.returnable : true,
+        return_Policy: product.return_Policy || "",
+        return_Window: product.return_Window !== undefined && product.return_Window !== null ? product.return_Window : 7,
+        return_Window_Unit: product.return_Window_Unit || "days",
+      },
+      materialAndCare: {
+        material: product.material,
+        material_Details: product.material_Details,
+        fabric: product.fabric,
+        care_Instructions: product.care_Instructions,
       },
       userType: userId
         ? req.user?.role === "Guest"
@@ -1803,6 +1809,13 @@ exports.getAllProductsWithCompleteInfo = async (req, res) => {
           discount: 1,
           isTrending: 1,
           returnable: 1,
+          return_Policy: 1,
+          return_Window: 1,
+          return_Window_Unit: 1,
+          
+          // Material and Care
+          material_Details: 1,
+          care_Instructions: 1,
           
           // Variants and sizes
           variants: 1,
@@ -2505,6 +2518,240 @@ exports.bulkUpdateReturnPolicy = async (req, res) => {
     return res.status(500).json({
       success: false,
       message: "Error processing bulk return policy update",
+      error: error.message,
+    });
+  }
+};
+
+// Add or Update Material and Care Information for a Product
+exports.addMaterialAndCare = async (req, res) => {
+  try {
+    const { productId } = req.params;
+    const { material_Details, care_Instructions } = req.body;
+
+    // Validate productId
+    if (!productId || !mongoose.Types.ObjectId.isValid(productId)) {
+      return res.status(400).json({
+        success: false,
+        message: "Valid product ID is required",
+      });
+    }
+
+    // Find the product
+    const product = await Product.findById(productId);
+    if (!product) {
+      return res.status(404).json({
+        success: false,
+        message: "Product not found",
+      });
+    }
+
+    // Build update object with only provided fields
+    const updateData = {};
+
+    // Update material details if provided
+    if (material_Details !== undefined) {
+      if (typeof material_Details !== 'string') {
+        return res.status(400).json({
+          success: false,
+          message: "Material details must be a string",
+        });
+      }
+      updateData.material_Details = material_Details.trim();
+    }
+
+    // Update care instructions if provided
+    if (care_Instructions !== undefined) {
+      if (typeof care_Instructions !== 'string') {
+        return res.status(400).json({
+          success: false,
+          message: "Care instructions must be a string",
+        });
+      }
+      updateData.care_Instructions = care_Instructions.trim();
+    }
+
+    // Check if at least one field is being updated
+    if (Object.keys(updateData).length === 0) {
+      return res.status(400).json({
+        success: false,
+        message: "At least one field (material_Details or care_Instructions) must be provided for update",
+      });
+    }
+
+    // Update the product
+    const updatedProduct = await Product.findByIdAndUpdate(
+      productId,
+      { $set: updateData },
+      { new: true, runValidators: true }
+    ).populate('designerRef', 'userId').populate('category', 'name').populate('subCategory', 'name');
+
+    if (!updatedProduct) {
+      return res.status(404).json({
+        success: false,
+        message: "Product not found after update attempt",
+      });
+    }
+
+    console.log(`✅ Material and care information updated for product: ${productId}`);
+
+    return res.status(200).json({
+      success: true,
+      message: "Material and care information updated successfully",
+      data: {
+        productId: updatedProduct._id,
+        productName: updatedProduct.productName,
+        material_Details: updatedProduct.material_Details,
+        care_Instructions: updatedProduct.care_Instructions,
+      },
+    });
+  } catch (error) {
+    console.error("Error adding/updating material and care:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Error updating material and care information",
+      error: error.message,
+    });
+  }
+};
+
+// Get Material and Care Information for a Product
+exports.getMaterialAndCare = async (req, res) => {
+  try {
+    const { productId } = req.params;
+
+    // Validate productId
+    if (!productId || !mongoose.Types.ObjectId.isValid(productId)) {
+      return res.status(400).json({
+        success: false,
+        message: "Valid product ID is required",
+      });
+    }
+
+    // Find the product and select only material and care fields
+    const product = await Product.findById(productId).select(
+      'productName material material_Details fabric care_Instructions'
+    );
+
+    if (!product) {
+      return res.status(404).json({
+        success: false,
+        message: "Product not found",
+      });
+    }
+
+    return res.status(200).json({
+      success: true,
+      message: "Material and care information retrieved successfully",
+      data: {
+        productId: product._id,
+        productName: product.productName,
+        material: product.material,
+        material_Details: product.material_Details,
+        fabric: product.fabric,
+        care_Instructions: product.care_Instructions,
+      },
+    });
+  } catch (error) {
+    console.error("Error getting material and care:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Error retrieving material and care information",
+      error: error.message,
+    });
+  }
+};
+
+// Bulk Update Material and Care for Multiple Products
+exports.bulkUpdateMaterialAndCare = async (req, res) => {
+  try {
+    const { products, material_Details, care_Instructions } = req.body;
+
+    // Validate products array
+    if (!products || !Array.isArray(products) || products.length === 0) {
+      return res.status(400).json({
+        success: false,
+        message: "Products array is required and must not be empty",
+      });
+    }
+
+    // Validate at least one field is provided
+    if (!material_Details && !care_Instructions) {
+      return res.status(400).json({
+        success: false,
+        message: "At least one field (material_Details or care_Instructions) must be provided",
+      });
+    }
+
+    // Build update data
+    const updateData = {};
+    if (material_Details) updateData.material_Details = material_Details.trim();
+    if (care_Instructions) updateData.care_Instructions = care_Instructions.trim();
+
+    const results = {
+      success: [],
+      failed: [],
+      total: products.length,
+    };
+
+    // Update each product
+    for (const productId of products) {
+      try {
+        // Validate productId
+        if (!mongoose.Types.ObjectId.isValid(productId)) {
+          results.failed.push({
+            productId,
+            error: "Invalid product ID format",
+          });
+          continue;
+        }
+
+        // Check if product exists
+        const product = await Product.findById(productId);
+        if (!product) {
+          results.failed.push({
+            productId,
+            error: "Product not found",
+          });
+          continue;
+        }
+
+        // Update the product
+        const updatedProduct = await Product.findByIdAndUpdate(
+          productId,
+          { $set: updateData },
+          { new: true, runValidators: true }
+        );
+
+        if (updatedProduct) {
+          results.success.push({
+            productId: updatedProduct._id,
+            productName: updatedProduct.productName,
+          });
+        } else {
+          results.failed.push({
+            productId,
+            error: "Failed to update product",
+          });
+        }
+      } catch (error) {
+        results.failed.push({
+          productId,
+          error: error.message,
+        });
+      }
+    }
+
+    return res.status(200).json({
+      success: true,
+      message: `Bulk material and care update completed. ${results.success.length} succeeded, ${results.failed.length} failed.`,
+      data: results,
+    });
+  } catch (error) {
+    console.error("Error in bulk material and care update:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Error processing bulk material and care update",
       error: error.message,
     });
   }
