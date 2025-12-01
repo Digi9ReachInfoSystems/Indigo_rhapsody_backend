@@ -105,15 +105,23 @@ const productsSchema = new mongoose.Schema({
   },
   return_Policy:{
     type: String,
-    required: true,
+    default: "",
   },
   return_Window:{
     type: Number,
-    required: true,
+    default: 7,
   },
   return_Window_Unit:{
     type: String,
-    required: true,
+    default: "days",
+  },
+  material_Details: {
+    type: String,
+    default: "",
+  },
+  care_Instructions: {
+    type: String,
+    default: "",
   },
   reviews: [
     {

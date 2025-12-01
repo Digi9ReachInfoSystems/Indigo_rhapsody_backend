@@ -126,4 +126,24 @@ router.post(
   productController.bulkUpdateReturnPolicy
 );
 
+// Material and Care Routes
+router.post(
+  "/:productId/material-care",
+  authMiddleware,
+  roleMiddleware(["Admin", "Designer"]),
+  productController.addMaterialAndCare
+);
+
+router.get(
+  "/:productId/material-care",
+  productController.getMaterialAndCare
+);
+
+router.post(
+  "/bulk-material-care",
+  authMiddleware,
+  roleMiddleware(["Admin", "Designer"]),
+  productController.bulkUpdateMaterialAndCare
+);
+
 module.exports = router;
